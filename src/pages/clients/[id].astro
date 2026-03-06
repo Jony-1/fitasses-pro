@@ -2,6 +2,7 @@
 import AppLayout from "../../layouts/layout.astro";
 import { sql } from "../../lib/db/client";
 import { formatDateOnly } from "../../lib/utils/date";
+import { setupClientDelete } from "../../lib/utils/client-delete";
 
 const { id } = Astro.params;
 
@@ -22,7 +23,6 @@ if (!client) {
     return new Response("Cliente no encontrado", { status: 404 });
 }
 
-
 function formatDateTime(value: unknown) {
     if (!value) return "-";
 
@@ -33,7 +33,6 @@ function formatDateTime(value: unknown) {
     return date.toLocaleDateString("es-CO");
 }
 
-const birthDateFormatted = formatDateOnly(client.birth_date);
 const createdAtFormatted = formatDateTime(client.created_at);
 ---
 
@@ -47,41 +46,48 @@ const createdAtFormatted = formatDateTime(client.created_at);
                 >
                     ← Volver a clientes
                 </a>
+
                 <h1 class="mt-2 text-3xl font-bold tracking-tight">
                     {client.full_name}
                 </h1>
-                <a
-                    href={`/clients/${client.id}/edit`}
-                    class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
-                >
-                    Editar cliente
-                </a>
-                <button
-                    id="delete-client"
-                    class="inline-flex items-center rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50"
-                >
-                    Eliminar cliente
-                </button>
+
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <a
+                        href={`/clients/${client.id}/edit`}
+                        class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                        Editar cliente
+                    </a>
+
+                    <button
+                        id="delete-client"
+                        type="button"
+                        class="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
+                    >
+                        Eliminar cliente
+                    </button>
+                </div>
             </div>
 
-            <a
-                href={`/clients/${client.id}/assessments/valoration_new`}
-                class="inline-flex items-center rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-emerald-300"
-            >
-                + Nueva valoración
-            </a>
-            <a
-                href={`/clients/${client.id}/assessments/`}
-                class="inline-flex items-right rounded-lg bg-blue-400 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-blue-300"
-            >
-                ver valoraciones
-            </a>
+            <div class="flex flex-wrap gap-3">
+                <a
+                    href={`/clients/${client.id}/assessments/valoration_new`}
+                    class="inline-flex items-center rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-emerald-300"
+                >
+                    + Nueva valoración
+                </a>
+
+                <a
+                    href={`/clients/${client.id}/assessments`}
+                    class="inline-flex items-center rounded-lg bg-blue-400 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-blue-300"
+                >
+                    Ver valoraciones
+                </a>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div
-                class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-1"
-            >
+            <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-1">
                 <h2 class="mb-4 text-lg font-bold">Datos del cliente</h2>
 
                 <dl class="space-y-4">
@@ -93,36 +99,28 @@ const createdAtFormatted = formatDateTime(client.created_at);
                     </div>
 
                     <div>
-                        <dt class="text-sm font-semibold text-slate-500">
-                            Nombre
-                        </dt>
+                        <dt class="text-sm font-semibold text-slate-500">Nombre</dt>
                         <dd class="mt-1 text-base font-medium text-slate-900">
                             {client.full_name}
                         </dd>
                     </div>
 
                     <div>
-                        <dt class="text-sm font-semibold text-slate-500">
-                            Fecha de nacimiento
-                        </dt>
+                        <dt class="text-sm font-semibold text-slate-500">Fecha de nacimiento</dt>
                         <dd class="mt-1 text-base text-slate-700">
                             {formatDateOnly(client.birth_date)}
                         </dd>
                     </div>
 
                     <div>
-                        <dt class="text-sm font-semibold text-slate-500">
-                            Altura
-                        </dt>
+                        <dt class="text-sm font-semibold text-slate-500">Altura</dt>
                         <dd class="mt-1 text-base text-slate-700">
                             {client.height_m ? `${client.height_m} m` : "-"}
                         </dd>
                     </div>
 
                     <div>
-                        <dt class="text-sm font-semibold text-slate-500">
-                            Fecha de registro
-                        </dt>
+                        <dt class="text-sm font-semibold text-slate-500">Fecha de registro</dt>
                         <dd class="mt-1 text-base text-slate-700">
                             {createdAtFormatted}
                         </dd>
@@ -130,14 +128,10 @@ const createdAtFormatted = formatDateTime(client.created_at);
                 </dl>
             </div>
 
-            <div
-                class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2"
-            >
+            <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
                 <div class="mb-4 flex items-center justify-between">
                     <h2 class="text-lg font-bold">Observaciones generales</h2>
-                    <span
-                        class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"
-                    >
+                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                         MVP
                     </span>
                 </div>
@@ -145,13 +139,10 @@ const createdAtFormatted = formatDateTime(client.created_at);
                 <div class="rounded-lg border border-slate-100 bg-slate-50 p-4">
                     {
                         client.notes ? (
-                            <p class="leading-7 text-slate-700">
-                                {client.notes}
-                            </p>
+                            <p class="leading-7 text-slate-700">{client.notes}</p>
                         ) : (
                             <p class="text-slate-500">
-                                Este cliente no tiene observaciones registradas
-                                todavía.
+                                Este cliente no tiene observaciones registradas todavía.
                             </p>
                         )
                     }
@@ -160,10 +151,8 @@ const createdAtFormatted = formatDateTime(client.created_at);
         </div>
     </div>
 
-    <div
-        id="delete-modal"
-        class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4"
-    >
+    <!-- MODAL -->
+    <div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
         <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h3 class="text-lg font-bold text-slate-900">Eliminar cliente</h3>
 
@@ -178,6 +167,7 @@ const createdAtFormatted = formatDateTime(client.created_at);
             <div class="mt-6 flex justify-end gap-3">
                 <button
                     id="cancel-delete"
+                    type="button"
                     class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
                     Cancelar
@@ -185,6 +175,8 @@ const createdAtFormatted = formatDateTime(client.created_at);
 
                 <button
                     id="confirm-delete"
+                    type="button"
+                    data-client-id={client.id}
                     class="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700"
                 >
                     Eliminar cliente
@@ -193,47 +185,10 @@ const createdAtFormatted = formatDateTime(client.created_at);
         </div>
     </div>
 
-    <script define:vars={{ clientId: client.id }}>
-        const deleteBtn = document.getElementById("delete-client");
-        const modal = document.getElementById("delete-modal");
-        const cancelBtn = document.getElementById("cancel-delete");
-        const confirmBtn = document.getElementById("confirm-delete");
+<script>
+    import { setupClientDelete } from "../../lib/utils/client-delete";
 
-        deleteBtn?.addEventListener("click", () => {
-            modal?.classList.remove("hidden");
-            modal?.classList.add("flex");
-        });
+    setupClientDelete();
+</script>
 
-        cancelBtn?.addEventListener("click", () => {
-            modal?.classList.add("hidden");
-            modal?.classList.remove("flex");
-        });
-
-        confirmBtn?.addEventListener("click", async () => {
-            try {
-                confirmBtn.textContent = "Eliminando...";
-                confirmBtn.disabled = true;
-
-                const res = await fetch(`/api/clients/${clientId}`, {
-                    method: "DELETE",
-                });
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    alert(data.error || "No se pudo eliminar el cliente");
-                    confirmBtn.textContent = "Eliminar cliente";
-                    confirmBtn.disabled = false;
-                    return;
-                }
-
-                window.location.href = "/clients";
-            } catch (error) {
-                alert("Ocurrió un error eliminando el cliente");
-
-                confirmBtn.textContent = "Eliminar cliente";
-                confirmBtn.disabled = false;
-            }
-        });
-    </script>
 </AppLayout>

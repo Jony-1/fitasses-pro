@@ -3,6 +3,7 @@ import AppLayout from "../../layouts/layout.astro";
 import { sql } from "../../lib/db/client";
 import { formatDateOnly } from "../../lib/utils/date";
 
+
 const clients = await sql`
   SELECT id, full_name, birth_date, height_m
   FROM clients

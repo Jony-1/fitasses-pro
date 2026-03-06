@@ -117,7 +117,6 @@ export const PUT: APIRoute = async ({ params, request }) => {
     }
 };
 
-
 export const DELETE: APIRoute = async ({ params }) => {
     const id = parseId(params.id);
 
@@ -132,18 +131,29 @@ export const DELETE: APIRoute = async ({ params }) => {
       RETURNING id
     `;
 
-        const deleted = result[0];
-
-        if (!deleted) {
+        if (!result.length) {
             return json({ error: "Cliente no encontrado" }, 404);
         }
 
-        return json({
-            message: "Cliente eliminado correctamente",
-            id: deleted.id
-        });
-    } catch (error) {
+        return json(
+            {
+                success: true,
+                message: "Cliente eliminado correctamente",
+                id: result[0].id,
+            },
+            200
+        );
+    } catch (error: any) {
         console.error("Error eliminando cliente:", error);
+
+        if (error?.code === "23503") {
+            return json(
+                {
+                    error: "No se puede eliminar el cliente porque tiene registros asociados.",
+                },
+                409
+            );
+        }
 
         return json(
             { error: "No se pudo eliminar el cliente" },
