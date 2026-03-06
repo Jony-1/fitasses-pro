@@ -1,0 +1,198 @@
+---
+import AppLayout from "../../../layouts/layout.astro";
+import { sql } from "../../../lib/db/client";
+import { dateOnlyInputValue } from "../../../lib/utils/date";
+
+
+const { id } = Astro.params;
+
+if (!id || Number.isNaN(Number(id))) {
+    return Astro.redirect("/clients");
+}
+
+const result = await sql`
+  SELECT id, full_name, birth_date, height_m, notes
+  FROM clients
+  WHERE id = ${Number(id)}
+  LIMIT 1
+`;
+
+const client = result[0];
+
+if (!client) {
+    return new Response("Cliente no encontrado", { status: 404 });
+}
+
+
+const birthDateValue = dateOnlyInputValue(client.birth_date);
+---
+
+<AppLayout title={`Editar cliente #${client.id}`}>
+    <div class="mx-auto max-w-3xl">
+        <div class="mb-6">
+            <a
+                href={`/clients/${client.id}`}
+                class="text-sm font-medium text-slate-500 hover:text-emerald-600"
+            >
+                ← Volver al perfil
+            </a>
+
+            <h1 class="mt-2 text-3xl font-bold tracking-tight">
+                Editar cliente
+            </h1>
+            <p class="mt-1 text-sm text-slate-600">
+                Actualiza la información general del cliente.
+            </p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <form id="edit-client-form" class="space-y-6">
+                <div>
+                    <label
+                        for="full_name"
+                        class="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                        Nombre completo
+                    </label>
+                    <input
+                        id="full_name"
+                        name="full_name"
+                        type="text"
+                        value={client.full_name ?? ""}
+                        required
+                        class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                    />
+                </div>
+
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div>
+                        <label
+                            for="birth_date"
+                            class="mb-2 block text-sm font-semibold text-slate-700"
+                        >
+                            Fecha de nacimiento
+                        </label>
+                        <input
+                            id="birth_date"
+                            name="birth_date"
+                            type="date"
+                            value={birthDateValue}
+                            class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                        />
+                    </div>
+
+                    <div>
+                        <label
+                            for="height_m"
+                            class="mb-2 block text-sm font-semibold text-slate-700"
+                        >
+                            Altura (m)
+                        </label>
+                        <input
+                            id="height_m"
+                            name="height_m"
+                            type="number"
+                            step="0.01"
+                            min="0.5"
+                            max="2.5"
+                            value={client.height_m ?? ""}
+                            placeholder="Ej: 1.70"
+                            class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                        />
+                    </div>
+                </div>
+
+                <div>
+                    <label
+                        for="notes"
+                        class="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                        Observaciones
+                    </label>
+                    <textarea
+                        id="notes"
+                        name="notes"
+                        rows="5"
+                        class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                    >{client.notes ?? ""}</textarea>
+                </div>
+
+                <div
+                    id="form-message"
+                    class="hidden rounded-lg px-4 py-3 text-sm font-medium"
+                ></div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <a
+                        href={`/clients/${client.id}`}
+                        class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                        Cancelar
+                    </a>
+
+                    <button
+                        type="submit"
+                        class="inline-flex items-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-600"
+                    >
+                        Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</AppLayout>
+
+<script define:vars={{ clientId: client.id }}>
+    const form = document.getElementById("edit-client-form");
+    const messageBox = document.getElementById("form-message");
+
+    function showMessage(text, type = "error") {
+        if (!messageBox) return;
+
+        messageBox.textContent = text;
+        messageBox.classList.remove("hidden");
+        messageBox.className =
+            "rounded-lg px-4 py-3 text-sm font-medium " +
+            (type === "success"
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-red-100 text-red-800");
+    }
+
+    form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const formData = new FormData(form);
+
+        const payload = {
+            full_name: String(formData.get("full_name") ?? "").trim(),
+            birth_date: String(formData.get("birth_date") ?? "").trim(),
+            height_m: String(formData.get("height_m") ?? "").trim(),
+            notes: String(formData.get("notes") ?? "").trim(),
+        };
+
+        try {
+            const response = await fetch(`/api/clients/${clientId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                showMessage(data.error || "No se pudo actualizar el cliente");
+                return;
+            }
+
+            showMessage("Cliente actualizado correctamente", "success");
+
+            setTimeout(() => {
+                window.location.href = `/clients/${clientId}`;
+            }, 700);
+        } catch (error) {
+            showMessage("Ocurrió un error inesperado al guardar");
+        }
+    });
+</script>

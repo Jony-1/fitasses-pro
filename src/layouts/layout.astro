@@ -1,0 +1,68 @@
+---
+import "../styles/global.css";
+interface Props {
+  title?: string;
+}
+
+const { title = "FitAssess Pro" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body class="min-h-screen bg-[#f6f8f7] text-slate-900" style="font-family: Manrope, sans-serif;">
+    <div class="flex min-h-screen">
+      <aside class="hidden md:flex w-64 flex-col border-r border-slate-200 bg-white">
+        <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-200">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-400 font-bold text-slate-900">
+            F
+          </div>
+          <div>
+            <h1 class="text-lg font-extrabold">FitAssess</h1>
+            <p class="text-xs text-slate-500">Trainer Panel</p>
+          </div>
+        </div>
+
+        <nav class="flex flex-1 flex-col gap-2 px-4 py-6">
+          <a href="/dashboard" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
+            Dashboard
+          </a>
+          <a href="/" class="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+            Clients
+          </a>
+          <a href="/clients/new" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">
+            New Client
+          </a>
+        </nav>
+      </aside>
+
+      <main class="flex-1">
+        <header class="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+          <div>
+            <p class="text-sm text-slate-500">FitAssess Pro</p>
+            <h2 class="text-xl font-bold">{title}</h2>
+          </div>
+
+          <div class="rounded-full bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700">
+            Trainer
+          </div>
+        </header>
+
+        <section class="p-6">
+          <slot />
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

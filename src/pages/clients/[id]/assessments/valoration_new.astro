@@ -1,0 +1,644 @@
+---
+import AppLayout from "../../../../layouts/layout.astro";
+import { sql } from "../../../../lib/db/client";
+
+const { id } = Astro.params;
+
+if (!id || Number.isNaN(Number(id))) {
+    return Astro.redirect("/clients");
+}
+
+const result = await sql`
+  SELECT id, full_name, height_m
+  FROM clients
+  WHERE id = ${Number(id)}
+  LIMIT 1
+`;
+
+const client = result[0];
+
+if (!client) {
+    return new Response("Cliente no encontrado", { status: 404 });
+}
+
+function todayDateInput() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+const today = todayDateInput();
+---
+
+<AppLayout title={`Nueva valoración - ${client.full_name}`}>
+    <div class="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+        <div class="mb-6">
+            <a
+                href={`/clients/${client.id}`}
+                class="text-sm font-medium text-slate-500 hover:text-emerald-600"
+            >
+                ← Volver al cliente
+            </a>
+
+            <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+                Nueva valoración
+            </h1>
+
+            <p class="mt-1 text-sm text-slate-600">
+                Registra una nueva valoración física para <strong>{client.full_name}</strong>.
+            </p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <form id="assessment-form" class="space-y-8" novalidate>
+                <input type="hidden" name="client_id" value={client.id} />
+
+                <section>
+                    <h2 class="mb-4 text-lg font-bold text-slate-900">
+                        Datos principales
+                    </h2>
+
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <label
+                                for="assessment_date"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Fecha de valoración
+                            </label>
+                            <input
+                                id="assessment_date"
+                                name="assessment_date"
+                                type="date"
+                                value={today}
+                                required
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                        </div>
+
+                        <div>
+                            <label
+                                for="weight_kg"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Peso (kg)
+                            </label>
+                            <input
+                                id="weight_kg"
+                                name="weight_kg"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                required
+                                placeholder="Ej: 78.50"
+                                data-decimal="true"
+                                data-max="300"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 30 a 300 kg</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="body_fat_pct"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Grasa corporal (%)
+                            </label>
+                            <input
+                                id="body_fat_pct"
+                                name="body_fat_pct"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="Ej: 18.20"
+                                data-decimal="true"
+                                data-max="60"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 3 a 60%</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="muscle_pct"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Masa muscular (%)
+                            </label>
+                            <input
+                                id="muscle_pct"
+                                name="muscle_pct"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="Ej: 42.10"
+                                data-decimal="true"
+                                data-max="70"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 10 a 70%</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="daily_calories"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Calorías diarias
+                            </label>
+                            <input
+                                id="daily_calories"
+                                name="daily_calories"
+                                type="text"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                placeholder="Ej: 2200"
+                                data-integer="true"
+                                data-max="6000"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 800 a 6000</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="metabolic_age"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Edad metabólica
+                            </label>
+                            <input
+                                id="metabolic_age"
+                                name="metabolic_age"
+                                type="text"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                placeholder="Ej: 28"
+                                data-integer="true"
+                                data-max="100"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 10 a 100</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="visceral_fat"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Grasa visceral
+                            </label>
+                            <input
+                                id="visceral_fat"
+                                name="visceral_fat"
+                                type="text"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                placeholder="Ej: 7"
+                                data-integer="true"
+                                data-max="30"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 1 a 30</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="mb-4 text-lg font-bold text-slate-900">
+                        Medidas corporales (cm)
+                    </h2>
+
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div>
+                            <label
+                                for="shoulders_cm"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Hombros
+                            </label>
+                            <input
+                                id="shoulders_cm"
+                                name="shoulders_cm"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="Ej: 118"
+                                data-decimal="true"
+                                data-max="180"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 60 a 180 cm</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="chest_cm"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Pecho
+                            </label>
+                            <input
+                                id="chest_cm"
+                                name="chest_cm"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="Ej: 98"
+                                data-decimal="true"
+                                data-max="180"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 60 a 180 cm</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="right_arm_cm"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Brazo derecho
+                            </label>
+                            <input
+                                id="right_arm_cm"
+                                name="right_arm_cm"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="Ej: 34"
+                                data-decimal="true"
+                                data-max="70"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 15 a 70 cm</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="waist_cm"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Cintura
+                            </label>
+                            <input
+                                id="waist_cm"
+                                name="waist_cm"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="Ej: 82"
+                                data-decimal="true"
+                                data-max="180"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 40 a 180 cm</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="hips_cm"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Cadera
+                            </label>
+                            <input
+                                id="hips_cm"
+                                name="hips_cm"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="Ej: 96"
+                                data-decimal="true"
+                                data-max="180"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 60 a 180 cm</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="right_thigh_cm"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Muslo derecho
+                            </label>
+                            <input
+                                id="right_thigh_cm"
+                                name="right_thigh_cm"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="Ej: 56"
+                                data-decimal="true"
+                                data-max="120"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 30 a 120 cm</p>
+                        </div>
+
+                        <div>
+                            <label
+                                for="calf_cm"
+                                class="mb-2 block text-sm font-semibold text-slate-700"
+                            >
+                                Pantorrilla
+                            </label>
+                            <input
+                                id="calf_cm"
+                                name="calf_cm"
+                                type="text"
+                                inputmode="decimal"
+                                autocomplete="off"
+                                placeholder="Ej: 38"
+                                data-decimal="true"
+                                data-max="80"
+                                data-decimals="2"
+                                class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                            />
+                            <p class="mt-1 text-xs text-slate-500">Rango recomendado: 20 a 80 cm</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h2 class="mb-4 text-lg font-bold text-slate-900">Notas</h2>
+
+                    <textarea
+                        id="notes"
+                        name="notes"
+                        rows="5"
+                        maxlength="2000"
+                        placeholder="Observaciones de la valoración..."
+                        class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                    ></textarea>
+                </section>
+
+                <div
+                    id="form-message"
+                    class="hidden rounded-xl px-4 py-3 text-sm font-medium"
+                ></div>
+
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <a
+                        href={`/clients/${client.id}`}
+                        class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                        Cancelar
+                    </a>
+
+                    <button
+                        id="submit-button"
+                        type="submit"
+                        class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        Guardar valoración
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</AppLayout>
+
+<script define:vars={{ clientId: client.id }}>
+    const form = document.getElementById("assessment-form");
+    const messageBox = document.getElementById("form-message");
+    const submitButton = document.getElementById("submit-button");
+
+    const decimalInputs = document.querySelectorAll("input[data-decimal='true']");
+    const integerInputs = document.querySelectorAll("input[data-integer='true']");
+
+    function showMessage(text, type = "error") {
+        if (!messageBox) return;
+
+        messageBox.textContent = text;
+        messageBox.classList.remove("hidden");
+        messageBox.className =
+            "rounded-xl px-4 py-3 text-sm font-medium " +
+            (type === "success"
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-red-100 text-red-800");
+    }
+
+    function normalizeDecimalString(value, decimals = 2) {
+        if (!value) return "";
+
+        let normalized = String(value).replace(",", ".").replace(/[^0-9.]/g, "");
+
+        const firstDotIndex = normalized.indexOf(".");
+        if (firstDotIndex !== -1) {
+            normalized =
+                normalized.slice(0, firstDotIndex + 1) +
+                normalized.slice(firstDotIndex + 1).replace(/\./g, "");
+        }
+
+        const [integerPart, decimalPart] = normalized.split(".");
+        const safeInteger = integerPart || "0";
+
+        if (decimalPart === undefined) {
+            return safeInteger;
+        }
+
+        return `${safeInteger}.${decimalPart.slice(0, decimals)}`;
+    }
+
+    function clampDecimal(value, max) {
+        if (!value) return "";
+
+        const parsed = Number(value);
+        if (Number.isNaN(parsed)) return "";
+
+        if (typeof max === "number" && parsed > max) {
+            return max.toFixed(2).replace(/\.00$/, "");
+        }
+
+        if (parsed < 0) return "0";
+
+        return value;
+    }
+
+    function normalizeIntegerString(value) {
+        if (!value) return "";
+        return String(value).replace(/\D/g, "");
+    }
+
+    function clampInteger(value, max) {
+        if (!value) return "";
+
+        const parsed = Number(value);
+        if (Number.isNaN(parsed)) return "";
+
+        if (typeof max === "number" && parsed > max) {
+            return String(max);
+        }
+
+        if (parsed < 0) return "0";
+
+        return String(parsed);
+    }
+
+    function applyDecimalBehavior(input) {
+        const max = Number(input.dataset.max || "999.99");
+        const decimals = Number(input.dataset.decimals || "2");
+
+        input.addEventListener("input", () => {
+            input.value = normalizeDecimalString(input.value, decimals);
+        });
+
+        input.addEventListener("blur", () => {
+            let value = normalizeDecimalString(input.value, decimals);
+            value = clampDecimal(value, max);
+            input.value = value;
+        });
+    }
+
+    function applyIntegerBehavior(input) {
+        const max = Number(input.dataset.max || "99999");
+
+        input.addEventListener("input", () => {
+            input.value = normalizeIntegerString(input.value);
+        });
+
+        input.addEventListener("blur", () => {
+            input.value = clampInteger(input.value, max);
+        });
+    }
+
+    decimalInputs.forEach(applyDecimalBehavior);
+    integerInputs.forEach(applyIntegerBehavior);
+
+    function getDecimalValue(name, label, { required = false, max = 999.99, min = 0 } = {}) {
+        const raw = String(form.elements[name]?.value ?? "").trim();
+
+        if (!raw) {
+            if (required) {
+                throw new Error(`${label} es obligatorio`);
+            }
+            return "";
+        }
+
+        const normalized = normalizeDecimalString(raw, 2);
+        const parsed = Number(normalized);
+
+        if (Number.isNaN(parsed)) {
+            throw new Error(`${label} debe ser un número válido`);
+        }
+
+        if (parsed < min) {
+            throw new Error(`${label} no puede ser menor que ${min}`);
+        }
+
+        if (parsed > max) {
+            throw new Error(`${label} no puede ser mayor que ${max}`);
+        }
+
+        return parsed.toFixed(2);
+    }
+
+    function getIntegerValue(name, label, { required = false, max = 99999, min = 0 } = {}) {
+        const raw = String(form.elements[name]?.value ?? "").trim();
+
+        if (!raw) {
+            if (required) {
+                throw new Error(`${label} es obligatorio`);
+            }
+            return "";
+        }
+
+        const normalized = normalizeIntegerString(raw);
+        const parsed = Number(normalized);
+
+        if (!Number.isInteger(parsed)) {
+            throw new Error(`${label} debe ser un número entero válido`);
+        }
+
+        if (parsed < min) {
+            throw new Error(`${label} no puede ser menor que ${min}`);
+        }
+
+        if (parsed > max) {
+            throw new Error(`${label} no puede ser mayor que ${max}`);
+        }
+
+        return String(parsed);
+    }
+
+    form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        try {
+            messageBox?.classList.add("hidden");
+
+            const assessmentDate = String(form.elements["assessment_date"]?.value ?? "").trim();
+            if (!assessmentDate) {
+                throw new Error("La fecha de valoración es obligatoria");
+            }
+
+            const payload = {
+                client_id: Number(form.elements["client_id"]?.value ?? 0),
+                assessment_date: assessmentDate,
+                weight_kg: getDecimalValue("weight_kg", "Peso", { required: true, min: 30, max: 300 }),
+                body_fat_pct: getDecimalValue("body_fat_pct", "Grasa corporal", { min: 3, max: 60 }),
+                muscle_pct: getDecimalValue("muscle_pct", "Masa muscular", { min: 10, max: 70 }),
+                daily_calories: getIntegerValue("daily_calories", "Calorías diarias", { min: 800, max: 6000 }),
+                metabolic_age: getIntegerValue("metabolic_age", "Edad metabólica", { min: 10, max: 100 }),
+                visceral_fat: getIntegerValue("visceral_fat", "Grasa visceral", { min: 1, max: 30 }),
+                shoulders_cm: getDecimalValue("shoulders_cm", "Hombros", { min: 60, max: 180 }),
+                chest_cm: getDecimalValue("chest_cm", "Pecho", { min: 60, max: 180 }),
+                right_arm_cm: getDecimalValue("right_arm_cm", "Brazo derecho", { min: 15, max: 70 }),
+                waist_cm: getDecimalValue("waist_cm", "Cintura", { min: 40, max: 180 }),
+                hips_cm: getDecimalValue("hips_cm", "Cadera", { min: 60, max: 180 }),
+                right_thigh_cm: getDecimalValue("right_thigh_cm", "Muslo derecho", { min: 30, max: 120 }),
+                calf_cm: getDecimalValue("calf_cm", "Pantorrilla", { min: 20, max: 80 }),
+                notes: String(form.elements["notes"]?.value ?? "").trim(),
+            };
+
+            if (submitButton) {
+                submitButton.textContent = "Guardando...";
+                submitButton.setAttribute("disabled", "true");
+            }
+
+            const response = await fetch("/api/assessments/valoration_create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "No se pudo guardar la valoración");
+            }
+
+            showMessage("Valoración guardada correctamente", "success");
+
+            setTimeout(() => {
+                window.location.href = `/clients/${clientId}`;
+            }, 700);
+        } catch (error) {
+            showMessage(
+                error instanceof Error
+                    ? error.message
+                    : "Ocurrió un error inesperado al guardar"
+            );
+
+            if (submitButton) {
+                submitButton.textContent = "Guardar valoración";
+                submitButton.removeAttribute("disabled");
+            }
+        }
+    });
+</script>

@@ -1,0 +1,180 @@
+---
+interface Props {
+    name?: string;
+    label?: string;
+    placeholder?: string;
+    min?: number;
+    max?: number;
+    value?: string;
+}
+
+const {
+    name = "height_m",
+    label = "Altura (m)",
+    placeholder = "Ej. 1.70",
+    min = 0.5,
+    max = 2.5,
+    value = "",
+} = Astro.props;
+
+const uid = `height-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<div
+    class="height-input-component"
+    data-min={min}
+    data-max={max}
+    data-initial={value}
+>
+    <label
+        for={`${uid}-display`}
+        class="mb-2 block text-sm font-semibold text-slate-700"
+    >
+        {label}
+    </label>
+
+    <div class="relative">
+        <input
+            id={`${uid}-display`}
+            type="text"
+            inputmode="decimal"
+            value={value}
+            placeholder={placeholder}
+            maxlength="5"
+            class="height-display w-full rounded-lg border border-slate-300 px-4 py-3 pr-10 outline-none"
+            autocomplete="off"
+        />
+
+        <span
+            class="height-status absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400"
+        >
+            m
+        </span>
+    </div>
+
+    <input type="hidden" name={name} value="" class="height-hidden" />
+
+    <p class="height-message mt-2 text-xs text-slate-400">
+        Entre {min.toFixed(2)} m y {max.toFixed(2)} m — coma o punto aceptados
+    </p>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        function setupHeightInput(root) {
+            const min = Number(root.dataset.min || 0.5);
+            const max = Number(root.dataset.max || 2.5);
+
+            const displayInput = root.querySelector(".height-display");
+            const hiddenInput = root.querySelector(".height-hidden");
+            const message = root.querySelector(".height-message");
+            const status = root.querySelector(".height-status");
+
+            if (!displayInput || !hiddenInput || !message || !status) return;
+
+            function renderState(rawValue) {
+                let raw = rawValue;
+
+                raw = raw.replace(/[^0-9.,]/g, "");
+                raw = raw.replace(",", ".");
+
+                const parts = raw.split(".");
+                if (parts.length > 2) {
+                    raw = parts[0] + "." + parts.slice(1).join("");
+                }
+
+                if (!raw.includes(".") && raw.length >= 2) {
+                    raw = raw[0] + "." + raw.slice(1);
+                }
+
+                if (raw.includes(".")) {
+                    const [int, dec] = raw.split(".");
+                    if (dec && dec.length > 2) {
+                        raw = int + "." + dec.slice(0, 2);
+                    }
+                }
+
+                displayInput.value = raw;
+
+                const num = parseFloat(raw);
+
+                if (raw === "" || raw === ".") {
+                    displayInput.style.borderColor = "#d1d5db";
+                    hiddenInput.value = "";
+                    message.textContent = `Entre ${min.toFixed(2)} m y ${max.toFixed(2)} m — coma o punto aceptados`;
+                    message.className =
+                        "height-message mt-2 text-xs text-slate-400";
+                    status.textContent = "m";
+                    status.style.color = "#94a3b8";
+                    return;
+                }
+
+                if (Number.isNaN(num)) {
+                    displayInput.style.borderColor = "#ef4444";
+                    hiddenInput.value = "";
+                    message.textContent = "Valor inválido";
+                    message.className = "height-message mt-2 text-xs text-red-500";
+                    status.textContent = "✕";
+                    status.style.color = "#ef4444";
+                    return;
+                }
+
+                if (num < min) {
+                    displayInput.style.borderColor = "#ef4444";
+                    hiddenInput.value = "";
+                    message.textContent = `Mínimo ${min.toFixed(2)} m`;
+                    message.className = "height-message mt-2 text-xs text-red-500";
+                    status.textContent = "✕";
+                    status.style.color = "#ef4444";
+                    return;
+                }
+
+                if (num > max) {
+                    displayInput.style.borderColor = "#ef4444";
+                    hiddenInput.value = "";
+                    message.textContent = `Máximo ${max.toFixed(2)} m`;
+                    message.className = "height-message mt-2 text-xs text-red-500";
+                    status.textContent = "✕";
+                    status.style.color = "#ef4444";
+                    return;
+                }
+
+                const normalized = num.toFixed(2);
+
+                displayInput.style.borderColor = "#22c55e";
+                hiddenInput.value = normalized;
+                message.textContent = `${normalized} m registrado ✓`;
+                message.className = "height-message mt-2 text-xs text-emerald-600";
+                status.textContent = "✓";
+                status.style.color = "#22c55e";
+            }
+
+            displayInput.addEventListener("input", (e) => {
+                renderState(e.target.value);
+            });
+
+            displayInput.addEventListener("keydown", (e) => {
+                if (e.key === ",") {
+                    e.preventDefault();
+
+                    const value = displayInput.value;
+                    if (!value.includes(".")) {
+                        const newValue = value + ".";
+                        renderState(newValue);
+
+                        requestAnimationFrame(() => {
+                            const pos = displayInput.value.length;
+                            displayInput.setSelectionRange(pos, pos);
+                        });
+                    }
+                }
+            });
+
+            renderState(displayInput.value || "");
+        }
+
+        document
+            .querySelectorAll(".height-input-component")
+            .forEach(setupHeightInput);
+    });
+</script>

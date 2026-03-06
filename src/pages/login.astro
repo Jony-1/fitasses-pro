@@ -1,0 +1,56 @@
+---
+const title = 'FitAssess Pro | Login';
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900">
+    <main class="flex min-h-screen items-center justify-center px-6">
+      <section class="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
+        <div class="mb-6">
+          <h1 class="text-3xl font-bold">FitAssess Pro</h1>
+          <p class="mt-2 text-sm text-slate-600">
+            Inicia sesión para gestionar clientes y valoraciones.
+          </p>
+        </div>
+
+        <form class="space-y-4" method="post" action="/api/auth/login">
+          <div>
+            <label for="email" class="mb-1 block text-sm font-medium">Correo</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500"
+              placeholder="trainer@gym.com"
+              required
+            />
+          </div>
+
+          <div>
+            <label for="password" class="mb-1 block text-sm font-medium">Contraseña</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500"
+              placeholder="********"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            class="w-full rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-white transition hover:bg-emerald-600"
+          >
+            Ingresar
+          </button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

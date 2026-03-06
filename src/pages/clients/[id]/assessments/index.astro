@@ -1,0 +1,338 @@
+---
+import AppLayout from "../../../../layouts/layout.astro";
+import { sql } from "../../../../lib/db/client";
+import { formatDateOnly } from "../../../../lib/utils/date";
+
+const { id } = Astro.params;
+
+if (!id || Number.isNaN(Number(id))) {
+    return Astro.redirect("/clients");
+}
+
+const clientRows = await sql`
+  SELECT id, full_name
+  FROM clients
+  WHERE id = ${Number(id)}
+  LIMIT 1
+`;
+
+const client = clientRows[0];
+
+if (!client) {
+    return new Response("Cliente no encontrado", { status: 404 });
+}
+
+const assessments = await sql`
+  SELECT
+    a.id,
+    a.assessment_date,
+    a.weight_kg,
+    a.body_fat_pct,
+    a.muscle_pct,
+    a.daily_calories,
+    a.metabolic_age,
+    a.visceral_fat,
+    a.bmi,
+    a.notes,
+    a.created_at,
+    m.shoulders_cm,
+    m.chest_cm,
+    m.right_arm_cm,
+    m.waist_cm,
+    m.hips_cm,
+    m.right_thigh_cm,
+    m.calf_cm
+  FROM assessments a
+  LEFT JOIN assessment_measurements m
+    ON m.assessment_id = a.id
+  WHERE a.client_id = ${Number(id)}
+  ORDER BY a.assessment_date DESC, a.id DESC
+`;
+
+
+
+function formatNumber(value: unknown, suffix = "") {
+    if (value === null || value === undefined || value === "") return "-";
+
+    const num = Number(value);
+
+    if (Number.isNaN(num)) return "-";
+
+    return `${num}${suffix}`;
+}
+---
+
+<AppLayout title={`Valoraciones - ${client.full_name}`}>
+    <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <div
+            class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+        >
+            <div>
+                <a
+                    href={`/clients/${client.id}`}
+                    class="text-sm font-medium text-slate-500 hover:text-emerald-600"
+                >
+                    ← Volver al cliente
+                </a>
+
+                <h1
+                    class="mt-2 text-3xl font-bold tracking-tight text-slate-900"
+                >
+                    Historial de valoraciones
+                </h1>
+
+                <p class="mt-1 text-sm text-slate-600">
+                    Cliente: <strong>{client.full_name}</strong>
+                </p>
+            </div>
+
+            <a
+                href={`/clients/${client.id}/assessments/valoration_new`}
+                class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
+            >
+                + Nueva valoración
+            </a>
+        </div>
+
+        {
+            assessments.length === 0 ? (
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+                    <h2 class="text-lg font-bold text-slate-900">
+                        Aún no hay valoraciones registradas
+                    </h2>
+                    <p class="mt-2 text-sm text-slate-500">
+                        Crea la primera valoración física para empezar el
+                        seguimiento.
+                    </p>
+
+                    <a
+                        href={`/clients/${client.id}/assessments/valoration_new`}
+                        class="mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
+                    >
+                        Crear primera valoración
+                    </a>
+                </div>
+            ) : (
+                <div class="space-y-6">
+                    {assessments.map((assessment) => (
+                        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div class="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                        Valoración #{assessment.id}
+                                    </p>
+                                    <h2 class="mt-1 text-xl font-bold text-slate-900">
+                                       {formatDateOnly(assessment.assessment_date)}
+                                    </h2>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                                        IMC: {formatNumber(assessment.bmi)}
+                                    </span>
+                                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                        Peso:{" "}
+                                        {formatNumber(
+                                            assessment.weight_kg,
+                                            " kg",
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">
+                                <section>
+                                    <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                                        Datos principales
+                                    </h3>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Peso
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.weight_kg,
+                                                    " kg",
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Grasa corporal
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.body_fat_pct,
+                                                    " %",
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Masa muscular
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.muscle_pct,
+                                                    " %",
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Edad metabólica
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.metabolic_age,
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Grasa visceral
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.visceral_fat,
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Calorías diarias
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.daily_calories,
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                                        Medidas corporales
+                                    </h3>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Hombros
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.shoulders_cm,
+                                                    " cm",
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Pecho
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.chest_cm,
+                                                    " cm",
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Brazo derecho
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.right_arm_cm,
+                                                    " cm",
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Cintura
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.waist_cm,
+                                                    " cm",
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Cadera
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.hips_cm,
+                                                    " cm",
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Muslo derecho
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.right_thigh_cm,
+                                                    " cm",
+                                                )}
+                                            </p>
+                                        </div>
+
+                                        <div class="rounded-xl bg-slate-50 p-3 col-span-2 sm:col-span-1">
+                                            <p class="text-xs font-semibold text-slate-400">
+                                                Pantorrilla
+                                            </p>
+                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                                {formatNumber(
+                                                    assessment.calf_cm,
+                                                    " cm",
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+
+                            <section class="mt-5">
+                                <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                                    Notas
+                                </h3>
+
+                                <div class="rounded-xl bg-slate-50 p-4">
+                                    {assessment.notes ? (
+                                        <p class="text-sm leading-6 text-slate-700">
+                                            {assessment.notes}
+                                        </p>
+                                    ) : (
+                                        <p class="text-sm text-slate-500">
+                                            Esta valoración no tiene notas
+                                            registradas.
+                                        </p>
+                                    )}
+                                </div>
+                            </section>
+                        </article>
+                    ))}
+                </div>
+            )
+        }
+    </div>
+</AppLayout>
