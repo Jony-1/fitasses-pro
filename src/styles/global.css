@@ -1,17 +1,16 @@
 @import "tailwindcss";
 
+/* Activa dark mode por clase .dark en <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Fuente global */
 html {
   font-family: "Manrope", sans-serif;
 }
 
-/* Fondo base de la app */
+/* Fondo base global */
 body {
-  @apply bg-slate-50 text-slate-900;
-}
-
-/* Mejor render de texto */
-body {
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
