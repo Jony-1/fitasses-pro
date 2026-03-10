@@ -1,0 +1,722 @@
+---
+const {
+  clientId,
+  clientHeightM,
+  actionUrl,
+  submitLabel,
+  successRedirect,
+  cancelHref,
+  initialValues,
+} = Astro.props;
+---
+
+<div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:border-slate-800">
+  <form id="assessment-form" class="space-y-8" novalidate>
+    <input type="hidden" name="client_id" value={clientId} />
+    <input
+      type="hidden"
+      name="assessment_id"
+      value={initialValues.assessment_id ?? ""}
+    />
+
+    <section>
+      <h2 class="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">
+        Datos principales
+      </h2>
+
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label
+            for="assessment_date"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Fecha de valoración
+          </label>
+          <input
+            id="assessment_date"
+            name="assessment_date"
+            type="date"
+            value={initialValues.assessment_date ?? ""}
+            required
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+        </div>
+
+        <div>
+          <label
+            for="weight_kg"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Peso (kg)
+          </label>
+          <input
+            id="weight_kg"
+            name="weight_kg"
+            value={initialValues.weight_kg ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            required
+            placeholder="Ej: 78.50"
+            data-decimal="true"
+            data-max="300"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 30 a 300 kg
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="body_fat_pct"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Grasa corporal (%)
+          </label>
+          <input
+            id="body_fat_pct"
+            name="body_fat_pct"
+            value={initialValues.body_fat_pct ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ej: 18.20"
+            data-decimal="true"
+            data-max="60"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 3 a 60%
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="muscle_pct"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Masa muscular (%)
+          </label>
+          <input
+            id="muscle_pct"
+            name="muscle_pct"
+            value={initialValues.muscle_pct ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ej: 42.10"
+            data-decimal="true"
+            data-max="70"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 10 a 70%
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="daily_calories"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Calorías diarias
+          </label>
+          <input
+            id="daily_calories"
+            name="daily_calories"
+            value={initialValues.daily_calories ?? ""}
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Ej: 2200"
+            data-integer="true"
+            data-max="6000"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 800 a 6000
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="metabolic_age"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Edad metabólica
+          </label>
+          <input
+            id="metabolic_age"
+            name="metabolic_age"
+            value={initialValues.metabolic_age ?? ""}
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Ej: 28"
+            data-integer="true"
+            data-max="100"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 10 a 100
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="visceral_fat"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Grasa visceral
+          </label>
+          <input
+            id="visceral_fat"
+            name="visceral_fat"
+            value={initialValues.visceral_fat ?? ""}
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Ej: 7"
+            data-integer="true"
+            data-max="30"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 1 a 30
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">
+        Medidas corporales (cm)
+      </h2>
+
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <label
+            for="shoulders_cm"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Hombros
+          </label>
+          <input
+            id="shoulders_cm"
+            name="shoulders_cm"
+            value={initialValues.shoulders_cm ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ej: 118"
+            data-decimal="true"
+            data-max="180"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 60 a 180 cm
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="chest_cm"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Pecho
+          </label>
+          <input
+            id="chest_cm"
+            name="chest_cm"
+            value={initialValues.chest_cm ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ej: 98"
+            data-decimal="true"
+            data-max="180"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 60 a 180 cm
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="right_arm_cm"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Brazo derecho
+          </label>
+          <input
+            id="right_arm_cm"
+            name="right_arm_cm"
+            value={initialValues.right_arm_cm ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ej: 34"
+            data-decimal="true"
+            data-max="70"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 15 a 70 cm
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="waist_cm"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Cintura
+          </label>
+          <input
+            id="waist_cm"
+            name="waist_cm"
+            value={initialValues.waist_cm ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ej: 82"
+            data-decimal="true"
+            data-max="180"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 40 a 180 cm
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="hips_cm"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Cadera
+          </label>
+          <input
+            id="hips_cm"
+            name="hips_cm"
+            value={initialValues.hips_cm ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ej: 96"
+            data-decimal="true"
+            data-max="180"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 60 a 180 cm
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="right_thigh_cm"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Muslo derecho
+          </label>
+          <input
+            id="right_thigh_cm"
+            name="right_thigh_cm"
+            value={initialValues.right_thigh_cm ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ej: 56"
+            data-decimal="true"
+            data-max="120"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 30 a 120 cm
+          </p>
+        </div>
+
+        <div>
+          <label
+            for="calf_cm"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+          >
+            Pantorrilla
+          </label>
+          <input
+            id="calf_cm"
+            name="calf_cm"
+            value={initialValues.calf_cm ?? ""}
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="Ej: 38"
+            data-decimal="true"
+            data-max="80"
+            data-decimals="2"
+            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Rango recomendado: 20 a 80 cm
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">
+        Notas
+      </h2>
+
+      <textarea
+        id="notes"
+        name="notes"
+        rows="5"
+        maxlength="2000"
+        placeholder="Observaciones de la valoración..."
+        class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+      >{initialValues.notes ?? ""}</textarea>
+    </section>
+
+    <div
+      id="form-message"
+      class="hidden rounded-xl px-4 py-3 text-sm font-medium"
+    ></div>
+
+    <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <a
+        href={cancelHref}
+        class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+      >
+        Cancelar
+      </a>
+
+      <button
+        id="submit-button"
+        type="submit"
+        class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {submitLabel}
+      </button>
+    </div>
+  </form>
+</div>
+
+<script define:vars={{ clientId, clientHeightM, actionUrl, successRedirect, submitLabel }}>
+  const form = document.getElementById("assessment-form");
+  const messageBox = document.getElementById("form-message");
+  const submitButton = document.getElementById("submit-button");
+
+  const decimalInputs = document.querySelectorAll("input[data-decimal='true']");
+  const integerInputs = document.querySelectorAll("input[data-integer='true']");
+
+  form?.addEventListener("keydown", (event) => {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement)) return;
+
+    const isTextArea = target.tagName === "TEXTAREA";
+    const isSubmitButton =
+      target instanceof HTMLButtonElement && target.type === "submit";
+
+    if (event.key === "Enter" && !isTextArea && !isSubmitButton) {
+      event.preventDefault();
+    }
+  });
+
+  function showMessage(text, type = "error") {
+    if (!messageBox) return;
+
+    messageBox.textContent = text;
+    messageBox.classList.remove("hidden");
+    messageBox.className =
+      "rounded-xl px-4 py-3 text-sm font-medium " +
+      (type === "success"
+        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300");
+  }
+
+  function normalizeDecimalString(value, decimals = 2) {
+    if (!value) return "";
+
+    let normalized = String(value)
+      .replace(",", ".")
+      .replace(/[^0-9.]/g, "");
+
+    const firstDotIndex = normalized.indexOf(".");
+    if (firstDotIndex !== -1) {
+      normalized =
+        normalized.slice(0, firstDotIndex + 1) +
+        normalized.slice(firstDotIndex + 1).replace(/\./g, "");
+    }
+
+    const [integerPart, decimalPart] = normalized.split(".");
+    const safeInteger = integerPart || "0";
+
+    if (decimalPart === undefined) {
+      return safeInteger;
+    }
+
+    return `${safeInteger}.${decimalPart.slice(0, decimals)}`;
+  }
+
+  function clampDecimal(value, max) {
+    if (!value) return "";
+
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) return "";
+
+    if (typeof max === "number" && parsed > max) {
+      return max.toFixed(2).replace(/\.00$/, "");
+    }
+
+    if (parsed < 0) return "0";
+
+    return value;
+  }
+
+  function normalizeIntegerString(value) {
+    if (!value) return "";
+    return String(value).replace(/\D/g, "");
+  }
+
+  function clampInteger(value, max) {
+    if (!value) return "";
+
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) return "";
+
+    if (typeof max === "number" && parsed > max) {
+      return String(max);
+    }
+
+    if (parsed < 0) return "0";
+
+    return String(parsed);
+  }
+
+  function applyDecimalBehavior(input) {
+    const max = Number(input.dataset.max || "999.99");
+    const decimals = Number(input.dataset.decimals || "2");
+
+    input.addEventListener("input", () => {
+      input.value = normalizeDecimalString(input.value, decimals);
+    });
+
+    input.addEventListener("blur", () => {
+      let value = normalizeDecimalString(input.value, decimals);
+      value = clampDecimal(value, max);
+      input.value = value;
+    });
+  }
+
+  function applyIntegerBehavior(input) {
+    const max = Number(input.dataset.max || "99999");
+
+    input.addEventListener("input", () => {
+      input.value = normalizeIntegerString(input.value);
+    });
+
+    input.addEventListener("blur", () => {
+      input.value = clampInteger(input.value, max);
+    });
+  }
+
+  decimalInputs.forEach(applyDecimalBehavior);
+  integerInputs.forEach(applyIntegerBehavior);
+
+  function getDecimalValue(
+    name,
+    label,
+    { required = false, max = 999.99, min = 0 } = {},
+  ) {
+    const raw = String(form.elements[name]?.value ?? "").trim();
+
+    if (!raw) {
+      if (required) {
+        throw new Error(`${label} es obligatorio`);
+      }
+      return "";
+    }
+
+    const normalized = normalizeDecimalString(raw, 2);
+    const parsed = Number(normalized);
+
+    if (Number.isNaN(parsed)) {
+      throw new Error(`${label} debe ser un número válido`);
+    }
+
+    if (parsed < min) {
+      throw new Error(`${label} no puede ser menor que ${min}`);
+    }
+
+    if (parsed > max) {
+      throw new Error(`${label} no puede ser mayor que ${max}`);
+    }
+
+    return parsed.toFixed(2);
+  }
+
+  function getIntegerValue(
+    name,
+    label,
+    { required = false, max = 99999, min = 0 } = {},
+  ) {
+    const raw = String(form.elements[name]?.value ?? "").trim();
+
+    if (!raw) {
+      if (required) {
+        throw new Error(`${label} es obligatorio`);
+      }
+      return "";
+    }
+
+    const normalized = normalizeIntegerString(raw);
+    const parsed = Number(normalized);
+
+    if (!Number.isInteger(parsed)) {
+      throw new Error(`${label} debe ser un número entero válido`);
+    }
+
+    if (parsed < min) {
+      throw new Error(`${label} no puede ser menor que ${min}`);
+    }
+
+    if (parsed > max) {
+      throw new Error(`${label} no puede ser mayor que ${max}`);
+    }
+
+    return String(parsed);
+  }
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    try {
+      messageBox?.classList.add("hidden");
+
+      const assessmentDate = String(
+        form.elements["assessment_date"]?.value ?? "",
+      ).trim();
+
+      if (!assessmentDate) {
+        throw new Error("La fecha de valoración es obligatoria");
+      }
+
+      const payload = {
+        assessment_id: Number(form.elements["assessment_id"]?.value ?? 0),
+        client_id: Number(form.elements["client_id"]?.value ?? 0),
+        assessment_date: assessmentDate,
+        weight_kg: getDecimalValue("weight_kg", "Peso", {
+          required: true,
+          min: 30,
+          max: 300,
+        }),
+        body_fat_pct: getDecimalValue("body_fat_pct", "Grasa corporal", {
+          min: 3,
+          max: 60,
+        }),
+        muscle_pct: getDecimalValue("muscle_pct", "Masa muscular", {
+          min: 10,
+          max: 70,
+        }),
+        daily_calories: getIntegerValue("daily_calories", "Calorías diarias", {
+          min: 800,
+          max: 6000,
+        }),
+        metabolic_age: getIntegerValue("metabolic_age", "Edad metabólica", {
+          min: 10,
+          max: 100,
+        }),
+        visceral_fat: getIntegerValue("visceral_fat", "Grasa visceral", {
+          min: 1,
+          max: 30,
+        }),
+        shoulders_cm: getDecimalValue("shoulders_cm", "Hombros", {
+          min: 60,
+          max: 180,
+        }),
+        chest_cm: getDecimalValue("chest_cm", "Pecho", {
+          min: 60,
+          max: 180,
+        }),
+        right_arm_cm: getDecimalValue("right_arm_cm", "Brazo derecho", {
+          min: 15,
+          max: 70,
+        }),
+        waist_cm: getDecimalValue("waist_cm", "Cintura", {
+          min: 40,
+          max: 180,
+        }),
+        hips_cm: getDecimalValue("hips_cm", "Cadera", {
+          min: 60,
+          max: 180,
+        }),
+        right_thigh_cm: getDecimalValue("right_thigh_cm", "Muslo derecho", {
+          min: 30,
+          max: 120,
+        }),
+        calf_cm: getDecimalValue("calf_cm", "Pantorrilla", {
+          min: 20,
+          max: 80,
+        }),
+        notes: String(form.elements["notes"]?.value ?? "").trim(),
+      };
+
+      if (submitButton) {
+        submitButton.textContent = "Guardando...";
+        submitButton.setAttribute("disabled", "true");
+      }
+
+      const response = await fetch(actionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "No se pudo guardar la valoración");
+      }
+
+      const isEditing = Number(form.elements["assessment_id"]?.value ?? 0) > 0;
+
+      showMessage(
+        isEditing
+          ? "Valoración actualizada correctamente"
+          : "Valoración guardada correctamente",
+        "success",
+      );
+
+      setTimeout(() => {
+        window.location.href = successRedirect;
+      }, 700);
+    } catch (error) {
+      showMessage(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error inesperado al guardar",
+      );
+
+      if (submitButton) {
+        submitButton.textContent = submitLabel;
+        submitButton.removeAttribute("disabled");
+      }
+    }
+  });
+</script>

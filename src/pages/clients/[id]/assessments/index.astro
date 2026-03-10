@@ -24,6 +24,9 @@ if (!client) {
 
 const assessments = await sql`
   SELECT
+    ROW_NUMBER() OVER (
+      ORDER BY a.assessment_date DESC, a.id DESC
+    ) AS client_assessment_number,
     a.id,
     a.assessment_date,
     a.weight_kg,
@@ -48,8 +51,6 @@ const assessments = await sql`
   WHERE a.client_id = ${Number(id)}
   ORDER BY a.assessment_date DESC, a.id DESC
 `;
-
-
 
 function formatNumber(value: unknown, suffix = "") {
     if (value === null || value === undefined || value === "") return "-";
@@ -76,12 +77,12 @@ function formatNumber(value: unknown, suffix = "") {
                 </a>
 
                 <h1
-                    class="mt-2 text-3xl font-bold tracking-tight text-slate-900"
+                    class="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
                 >
                     Historial de valoraciones
                 </h1>
 
-                <p class="mt-1 text-sm text-slate-600">
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     Cliente: <strong>{client.full_name}</strong>
                 </p>
             </div>
@@ -96,11 +97,11 @@ function formatNumber(value: unknown, suffix = "") {
 
         {
             assessments.length === 0 ? (
-                <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
-                    <h2 class="text-lg font-bold text-slate-900">
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">
                         Aún no hay valoraciones registradas
                     </h2>
-                    <p class="mt-2 text-sm text-slate-500">
+                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
                         Crea la primera valoración física para empezar el
                         seguimiento.
                     </p>
@@ -115,43 +116,77 @@ function formatNumber(value: unknown, suffix = "") {
             ) : (
                 <div class="space-y-6">
                     {assessments.map((assessment) => (
-                        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <div class="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-start sm:justify-between">
-                                <div>
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                        Valoración #{assessment.id}
-                                    </p>
-                                    <h2 class="mt-1 text-xl font-bold text-slate-900">
-                                       {formatDateOnly(assessment.assessment_date)}
-                                    </h2>
+                        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                            <div class="flex flex-col gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                            Valoración #{assessment.client_assessment_number}
+                                        </p>
+                                        <h2 class="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">
+                                            {formatDateOnly(assessment.assessment_date)}
+                                        </h2>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-2">
+                                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                            IMC: {formatNumber(assessment.bmi)}
+                                        </span>
+                                        <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                            Peso:{" "}
+                                            {formatNumber(
+                                                assessment.weight_kg,
+                                                " kg",
+                                            )}
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <div class="flex flex-wrap gap-2">
-                                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                                        IMC: {formatNumber(assessment.bmi)}
-                                    </span>
-                                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                                        Peso:{" "}
-                                        {formatNumber(
-                                            assessment.weight_kg,
-                                            " kg",
-                                        )}
-                                    </span>
+                                <div class="flex flex-wrap gap-3">
+                                    <a
+                                        href={`/clients/${client.id}/assessments/valoration_edit?assessmentId=${assessment.id}`}
+                                        class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                                    >
+                                        Editar
+                                    </a>
+
+                                    <form
+                                        method="POST"
+                                        action="/api/assessments/valoracion_delete"
+                                        onsubmit="return confirm('¿Seguro que deseas eliminar esta valoración?');"
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="assessment_id"
+                                            value={assessment.id}
+                                        />
+                                        <input
+                                            type="hidden"
+                                            name="client_id"
+                                            value={client.id}
+                                        />
+                                        <button
+                                            type="submit"
+                                            class="inline-flex items-center rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:text-red-400 dark:hover:bg-red-950/30"
+                                        >
+                                            Eliminar
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
 
                             <div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">
                                 <section>
-                                    <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                                    <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                         Datos principales
                                     </h3>
 
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Peso
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.weight_kg,
                                                     " kg",
@@ -159,11 +194,11 @@ function formatNumber(value: unknown, suffix = "") {
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Grasa corporal
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.body_fat_pct,
                                                     " %",
@@ -171,11 +206,11 @@ function formatNumber(value: unknown, suffix = "") {
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Masa muscular
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.muscle_pct,
                                                     " %",
@@ -183,33 +218,33 @@ function formatNumber(value: unknown, suffix = "") {
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Edad metabólica
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.metabolic_age,
                                                 )}
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Grasa visceral
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.visceral_fat,
                                                 )}
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Calorías diarias
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.daily_calories,
                                                 )}
@@ -219,16 +254,16 @@ function formatNumber(value: unknown, suffix = "") {
                                 </section>
 
                                 <section>
-                                    <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                                    <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                         Medidas corporales
                                     </h3>
 
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Hombros
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.shoulders_cm,
                                                     " cm",
@@ -236,11 +271,11 @@ function formatNumber(value: unknown, suffix = "") {
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Pecho
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.chest_cm,
                                                     " cm",
@@ -248,11 +283,11 @@ function formatNumber(value: unknown, suffix = "") {
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Brazo derecho
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.right_arm_cm,
                                                     " cm",
@@ -260,11 +295,11 @@ function formatNumber(value: unknown, suffix = "") {
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Cintura
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.waist_cm,
                                                     " cm",
@@ -272,11 +307,11 @@ function formatNumber(value: unknown, suffix = "") {
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Cadera
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.hips_cm,
                                                     " cm",
@@ -284,11 +319,11 @@ function formatNumber(value: unknown, suffix = "") {
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Muslo derecho
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.right_thigh_cm,
                                                     " cm",
@@ -296,11 +331,11 @@ function formatNumber(value: unknown, suffix = "") {
                                             </p>
                                         </div>
 
-                                        <div class="rounded-xl bg-slate-50 p-3 col-span-2 sm:col-span-1">
+                                        <div class="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70 sm:col-span-1">
                                             <p class="text-xs font-semibold text-slate-400">
                                                 Pantorrilla
                                             </p>
-                                            <p class="mt-1 text-sm font-bold text-slate-900">
+                                            <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
                                                 {formatNumber(
                                                     assessment.calf_cm,
                                                     " cm",
@@ -312,17 +347,17 @@ function formatNumber(value: unknown, suffix = "") {
                             </div>
 
                             <section class="mt-5">
-                                <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                                <h3 class="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                     Notas
                                 </h3>
 
-                                <div class="rounded-xl bg-slate-50 p-4">
+                                <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/70">
                                     {assessment.notes ? (
-                                        <p class="text-sm leading-6 text-slate-700">
+                                        <p class="text-sm leading-6 text-slate-700 dark:text-slate-300">
                                             {assessment.notes}
                                         </p>
                                     ) : (
-                                        <p class="text-sm text-slate-500">
+                                        <p class="text-sm text-slate-500 dark:text-slate-400">
                                             Esta valoración no tiene notas
                                             registradas.
                                         </p>
