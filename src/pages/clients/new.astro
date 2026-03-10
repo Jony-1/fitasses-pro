@@ -18,7 +18,7 @@ import HeightInput from "../../components/HeightInput.astro";
                     <div>
                         <label
                             for="full_name"
-                            class="mb-2 block text-sm font-semibold text-slate-700"
+                            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
                         >
                             Nombre completo
                         </label>
@@ -35,7 +35,7 @@ import HeightInput from "../../components/HeightInput.astro";
                     <div>
                         <label
                             for="birth_date"
-                            class="mb-2 block text-sm font-semibold text-slate-700"
+                            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
                         >
                             Fecha de nacimiento
                         </label>
@@ -55,7 +55,7 @@ import HeightInput from "../../components/HeightInput.astro";
                 <div>
                     <label
                         for="notes"
-                        class="mb-2 block text-sm font-semibold text-slate-700"
+                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
                     >
                         Observaciones generales
                     </label>
@@ -63,7 +63,7 @@ import HeightInput from "../../components/HeightInput.astro";
                         id="notes"
                         name="notes"
                         rows="4"
-                        class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400"
+                        class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                         placeholder="Ej. Molestias, restricciones, notas iniciales..."
                     ></textarea>
                 </div>
@@ -71,14 +71,14 @@ import HeightInput from "../../components/HeightInput.astro";
                 <div class="flex items-center justify-end gap-3">
                     <a
                         href="/clients"
-                        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
                         Cancelar
                     </a>
 
                     <button
                         type="submit"
-                        class="rounded-lg bg-emerald-400 px-5 py-2 text-sm font-bold text-slate-900 hover:bg-emerald-300"
+                        class="rounded-lg bg-emerald-400 px-5 py-2 text-sm font-bold text-slate-900 hover:bg-emerald-300 dark:bg-emerald-600 dark:text-slate-100 dark:hover:bg-emerald-500"
                     >
                         Guardar cliente
                     </button>

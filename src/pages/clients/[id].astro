@@ -93,35 +93,35 @@ const createdAtFormatted = formatDateTime(client.created_at);
                 <dl class="space-y-4">
                     <div>
                         <dt class="text-sm font-semibold text-slate-500">ID</dt>
-                        <dd class="mt-1 text-base font-medium text-slate-900">
+                        <dd class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100">
                             {client.id}
                         </dd>
                     </div>
 
                     <div>
                         <dt class="text-sm font-semibold text-slate-500">Nombre</dt>
-                        <dd class="mt-1 text-base font-medium text-slate-900">
+                        <dd class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100">
                             {client.full_name}
                         </dd>
                     </div>
 
                     <div>
                         <dt class="text-sm font-semibold text-slate-500">Fecha de nacimiento</dt>
-                        <dd class="mt-1 text-base text-slate-700">
+                        <dd class="mt-1 text-base text-slate-700 dark:text-slate-100">
                             {formatDateOnly(client.birth_date)}
                         </dd>
                     </div>
 
                     <div>
                         <dt class="text-sm font-semibold text-slate-500">Altura</dt>
-                        <dd class="mt-1 text-base text-slate-700">
+                        <dd class="mt-1 text-base text-slate-700 dark:text-slate-100">
                             {client.height_m ? `${client.height_m} m` : "-"}
                         </dd>
                     </div>
 
                     <div>
                         <dt class="text-sm font-semibold text-slate-500">Fecha de registro</dt>
-                        <dd class="mt-1 text-base text-slate-700">
+                        <dd class="mt-1 text-base text-slate-700 dark:text-slate-100">
                             {createdAtFormatted}
                         </dd>
                     </div>
