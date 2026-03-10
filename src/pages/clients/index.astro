@@ -111,16 +111,16 @@ const clients = await sql`
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                             {clients.map((client) => (
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-700">
-                                    <td class="px-6 py-4 text-sm text-slate-700">
+                                    <td class="px-6 py-4 text-sm text-slate-700 dark:text-slate-100">
                                         {client.id}
                                     </td>
-                                    <td class="px-6 py-4 font-medium text-slate-900">
+                                    <td class="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">
                                         {client.full_name}
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-slate-700">
+                                    <td class="px-6 py-4 text-sm text-slate-700 dark:text-slate-100">
                                         {formatDateOnly(client.birth_date)}
                                     </td>
-                                    <td class="px-6 py-4 text-sm text-slate-700">
+                                    <td class="px-6 py-4 text-sm text-slate-700 dark:text-slate-100">
                                         {client.height_m
                                             ? `${client.height_m} m`
                                             : "-"}
