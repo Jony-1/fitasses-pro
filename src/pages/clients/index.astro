@@ -10,14 +10,12 @@ const clients = await sql`
 `;
 
 function genderEmoji(gender: string | null) {
-    if (!gender) return "🧑";
+  const g = String(gender || "").toLowerCase();
 
-    const g = String(gender).trim().toLowerCase();
+  if (g === "hombre") return "👨";
+  if (g === "mujer") return "👩";
 
-    if (g === "male") return "👨";
-    if (g === "female") return "👩";
-
-    return "🧑";
+  return "🧑";
 }
 ---
 

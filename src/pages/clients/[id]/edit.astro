@@ -26,14 +26,6 @@ if (!client) {
 
 const birthDateValue = dateOnlyInputValue(client.birth_date);
 
-function genderEmoji(gender: string | null) {
-  const g = String(gender || "").toLowerCase();
-
-  if (g === "male") return "👨";
-  if (g === "female") return "👩";
-
-  return "🧑";
-}
 ---
 
 <AppLayout title={`Editar cliente #${client.id}`}>

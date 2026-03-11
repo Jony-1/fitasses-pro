@@ -37,8 +37,8 @@ const createdAtFormatted = formatDateTime(client.created_at);
 function genderEmoji(gender: string | null) {
     const g = String(gender || "").toLowerCase();
 
-    if (g === "male") return "👨";
-    if (g === "female") return "👩";
+    if (g === "hombre") return "👨";
+    if (g === "mujer") return "👩";
 
     return "🧑";
 }
