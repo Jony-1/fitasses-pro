@@ -2,8 +2,7 @@
 import AppLayout from "../../layouts/layout.astro";
 import { sql } from "../../lib/db/client";
 import { formatDateOnly } from "../../lib/utils/date";
-import { setupClientDelete } from "../../lib/utils/client-delete";
-
+import { calculateAge } from "../../lib/utils/age";
 const { id } = Astro.params;
 
 if (!id || Number.isNaN(Number(id))) {
@@ -18,7 +17,7 @@ const result = await sql`
 `;
 
 const client = result[0];
-
+const age = calculateAge(client.birth_date);
 if (!client) {
     return new Response("Cliente no encontrado", { status: 404 });
 }
@@ -87,51 +86,88 @@ const createdAtFormatted = formatDateTime(client.created_at);
         </div>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-1 dark:border-slate-800 dark:bg-slate-900">
+            <div
+                class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-1 dark:border-slate-800 dark:bg-slate-900"
+            >
                 <h2 class="mb-4 text-lg font-bold">Datos del cliente</h2>
 
                 <dl class="space-y-4">
                     <div>
                         <dt class="text-sm font-semibold text-slate-500">ID</dt>
-                        <dd class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100">
+                        <dd
+                            class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100"
+                        >
                             {client.id}
                         </dd>
                     </div>
 
                     <div>
-                        <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">Nombre</dt>
-                        <dd class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100">
+                        <dt
+                            class="text-sm font-semibold text-slate-500 dark:text-slate-400"
+                        >
+                            Nombre
+                        </dt>
+                        <dd
+                            class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100"
+                        >
                             {client.full_name}
                         </dd>
                     </div>
 
                     <div>
-                        <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">Fecha de nacimiento</dt>
-                        <dd class="mt-1 text-base text-slate-700 dark:text-slate-100 ">
+                        <dt
+                            class="text-sm font-semibold text-slate-500 dark:text-slate-400"
+                        >
+                            Fecha de nacimiento
+                        </dt>
+                        <dd
+                            class="mt-1 text-base text-slate-700 dark:text-slate-100"
+                        >
                             {formatDateOnly(client.birth_date)}
+                            <p
+                                class="mt-1 text-base text-slate-700 dark:text-slate-400"
+                            >
+                                Edad: <strong>{age ?? "-"} años</strong>
+                            </p>
                         </dd>
                     </div>
 
                     <div>
-                        <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">Altura</dt>
-                        <dd class="mt-1 text-base text-slate-700 dark:text-slate-100">
+                        <dt
+                            class="text-sm font-semibold text-slate-500 dark:text-slate-400"
+                        >
+                            Altura
+                        </dt>
+                        <dd
+                            class="mt-1 text-base text-slate-700 dark:text-slate-100"
+                        >
                             {client.height_m ? `${client.height_m} m` : "-"}
                         </dd>
                     </div>
 
                     <div>
-                        <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">Fecha de registro</dt>
-                        <dd class="mt-1 text-base text-slate-700 dark:text-slate-100">
+                        <dt
+                            class="text-sm font-semibold text-slate-500 dark:text-slate-400"
+                        >
+                            Fecha de registro
+                        </dt>
+                        <dd
+                            class="mt-1 text-base text-slate-700 dark:text-slate-100"
+                        >
                             {createdAtFormatted}
                         </dd>
                     </div>
                 </dl>
             </div>
 
-            <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2 dark:border-slate-800 dark:bg-slate-900">
+            <div
+                class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2 dark:border-slate-800 dark:bg-slate-900"
+            >
                 <div class="mb-4 flex items-center justify-between">
                     <h2 class="text-lg font-bold">Observaciones generales</h2>
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                    <span
+                        class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                    >
                         cliente
                     </span>
                 </div>
@@ -139,10 +175,13 @@ const createdAtFormatted = formatDateTime(client.created_at);
                 <div class="rounded-lg border border-slate-100 bg-slate-50 p-4">
                     {
                         client.notes ? (
-                            <p class="leading-7 text-slate-700">{client.notes}</p>
+                            <p class="leading-7 text-slate-700">
+                                {client.notes}
+                            </p>
                         ) : (
                             <p class="text-slate-500">
-                                Este cliente no tiene observaciones registradas todavía.
+                                Este cliente no tiene observaciones registradas
+                                todavía.
                             </p>
                         )
                     }
@@ -152,7 +191,10 @@ const createdAtFormatted = formatDateTime(client.created_at);
     </div>
 
     <!-- MODAL -->
-    <div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+    <div
+        id="delete-modal"
+        class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4"
+    >
         <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h3 class="text-lg font-bold text-slate-900">Eliminar cliente</h3>
 
@@ -185,10 +227,9 @@ const createdAtFormatted = formatDateTime(client.created_at);
         </div>
     </div>
 
-<script>
-    import { setupClientDelete } from "../../lib/utils/client-delete";
+    <script>
+        import { setupClientDelete } from "../../lib/utils/client-delete";
 
-    setupClientDelete();
-</script>
-
+        setupClientDelete();
+    </script>
 </AppLayout>

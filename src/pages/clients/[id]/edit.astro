@@ -2,7 +2,7 @@
 import AppLayout from "../../../layouts/layout.astro";
 import { sql } from "../../../lib/db/client";
 import { dateOnlyInputValue } from "../../../lib/utils/date";
-
+import { calculateAge } from "../../../lib/utils/age";
 
 const { id } = Astro.params;
 
@@ -18,11 +18,11 @@ const result = await sql`
 `;
 
 const client = result[0];
+const age = calculateAge(client.birth_date);
 
 if (!client) {
     return new Response("Cliente no encontrado", { status: 404 });
 }
-
 
 const birthDateValue = dateOnlyInputValue(client.birth_date);
 ---
@@ -45,7 +45,9 @@ const birthDateValue = dateOnlyInputValue(client.birth_date);
             </p>
         </div>
 
-        <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div
+            class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+        >
             <form id="edit-client-form" class="space-y-6">
                 <div>
                     <label
@@ -78,6 +80,21 @@ const birthDateValue = dateOnlyInputValue(client.birth_date);
                             type="date"
                             value={birthDateValue}
                             class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            class="block text-sm font-semibold text-slate-700 dark:text-slate-300"
+                        >
+                            Edad
+                        </label>
+
+                        <input
+                            id="age_display"
+                            type="text"
+                            value={age ? `${age} años` : "-"}
+                            disabled
+                            class="mt-1 w-full rounded-xl border border-slate-300 bg-slate-100 px-4 py-3 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                         />
                     </div>
 
@@ -114,13 +131,15 @@ const birthDateValue = dateOnlyInputValue(client.birth_date);
                         name="notes"
                         rows="5"
                         class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
-                    >{client.notes ?? ""}</textarea>
+                        >{client.notes ?? ""}</textarea
+                    >
                 </div>
 
                 <div
                     id="form-message"
                     class="hidden rounded-lg px-4 py-3 text-sm font-medium"
-                ></div>
+                >
+                </div>
 
                 <div class="flex items-center justify-end gap-3">
                     <a
