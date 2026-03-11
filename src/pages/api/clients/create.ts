@@ -21,7 +21,7 @@ export const POST: APIRoute = async ({ request }) => {
         ${fullName},
         ${birthDate || null},
         ${heightM ? Number(heightM) : null},
-        ${notes || null}
+        ${notes || null},
         ${gender  || null}
       )
     `;

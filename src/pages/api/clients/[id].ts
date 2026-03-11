@@ -95,7 +95,7 @@ export const PUT: APIRoute = async ({ params, request }) => {
         full_name = ${full_name},
         birth_date = ${birth_date || null},
         height_m = ${height_m},
-        notes = ${notes || null}
+        notes = ${notes || null},
         gender = ${gender || null}
       WHERE id = ${id}
       RETURNING id, full_name, birth_date, height_m, notes, created_at
