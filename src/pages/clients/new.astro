@@ -12,7 +12,9 @@ import HeightInput from "../../components/HeightInput.astro";
             </p>
         </div>
 
-        <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div
+            class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+        >
             <form method="POST" action="/api/clients/create" class="space-y-6">
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div>
@@ -45,6 +47,40 @@ import HeightInput from "../../components/HeightInput.astro";
                             type="date"
                             class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                         />
+                    </div>
+                    <div>
+                        <p
+                            class="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300"
+                        >
+                            Género
+                        </p>
+
+                        <div class="flex gap-6">
+                            <label
+                                class="flex items-center gap-2 cursor-pointer"
+                            >
+                                <input
+                                    type="radio"
+                                    name="gender"
+                                    value="Hombre"
+                                    class="accent-emerald-500"
+                                    required
+                                />
+                                👨 Hombre
+                            </label>
+
+                            <label
+                                class="flex items-center gap-2 cursor-pointer"
+                            >
+                                <input
+                                    type="radio"
+                                    name="gender"
+                                    value="Mujer"
+                                    class="accent-emerald-500"
+                                />
+                                👩 Mujer
+                            </label>
+                        </div>
                     </div>
 
                     <div>

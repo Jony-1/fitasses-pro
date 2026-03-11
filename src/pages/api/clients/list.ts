@@ -4,7 +4,7 @@ import { sql } from "../../../lib/db/client";
 export const GET: APIRoute = async () => {
 
   const clients = await sql`
-    SELECT id, full_name, birth_date, height_m
+    SELECT id, full_name, birth_date, height_m, gender
     FROM clients
     ORDER BY id DESC
   `;

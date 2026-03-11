@@ -10,7 +10,7 @@ if (!id || Number.isNaN(Number(id))) {
 }
 
 const result = await sql`
-  SELECT id, full_name, birth_date, height_m, notes, created_at
+  SELECT id, full_name, birth_date, height_m, notes, gender, created_at
   FROM clients
   WHERE id = ${Number(id)}
   LIMIT 1
@@ -33,6 +33,15 @@ function formatDateTime(value: unknown) {
 }
 
 const createdAtFormatted = formatDateTime(client.created_at);
+
+function genderEmoji(gender: string | null) {
+    const g = String(gender || "").toLowerCase();
+
+    if (g === "male") return "👨";
+    if (g === "female") return "👩";
+
+    return "🧑";
+}
 ---
 
 <AppLayout title={`Cliente #${client.id}`}>
@@ -111,6 +120,18 @@ const createdAtFormatted = formatDateTime(client.created_at);
                             class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100"
                         >
                             {client.full_name}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt
+                            class="text-sm font-semibold text-slate-500 dark:text-slate-400"
+                        >
+                            Genero
+                        </dt>
+                        <dd
+                            class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100"
+                        >
+                            {genderEmoji(client.gender)}{" "}{client.gender}
                         </dd>
                     </div>
 

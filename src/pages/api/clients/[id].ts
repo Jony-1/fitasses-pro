@@ -31,7 +31,7 @@ export const GET: APIRoute = async ({ params }) => {
 
     try {
         const result = await sql`
-      SELECT id, full_name, birth_date, height_m, notes, created_at
+      SELECT id, full_name, birth_date, height_m, notes, gender, created_at
       FROM clients
       WHERE id = ${id}
       LIMIT 1
@@ -66,6 +66,8 @@ export const PUT: APIRoute = async ({ params, request }) => {
             typeof body.birth_date === "string" ? body.birth_date.trim() : null;
         const notes =
             typeof body.notes === "string" ? body.notes.trim() : null;
+        const gender =
+            typeof body.gender === "string" ? body.gender.trim() : null;
 
         let height_m: number | null = null;
 
@@ -94,6 +96,7 @@ export const PUT: APIRoute = async ({ params, request }) => {
         birth_date = ${birth_date || null},
         height_m = ${height_m},
         notes = ${notes || null}
+        gender = ${gender || null}
       WHERE id = ${id}
       RETURNING id, full_name, birth_date, height_m, notes, created_at
     `;

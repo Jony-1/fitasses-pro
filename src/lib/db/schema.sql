@@ -59,3 +59,6 @@ CREATE TABLE IF NOT EXISTS assessment_measurements (
     right_thigh_cm NUMERIC(5,2),
     calf_cm NUMERIC(5,2)
 );
+
+ALTER TABLE clients
+ADD COLUMN gender TEXT;

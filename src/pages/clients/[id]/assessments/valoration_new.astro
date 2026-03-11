@@ -104,7 +104,7 @@ const initialValues = {
             clientHeightM={client.height_m}
             actionUrl="/api/assessments/valoration_create"
             submitLabel="Guardar valoración"
-            successRedirect={`/clients/${client.id}`}
+            successRedirect={`/clients/${client.id}/assessments/`}
             cancelHref={`/clients/${client.id}`}
             initialValues={initialValues}
         />
