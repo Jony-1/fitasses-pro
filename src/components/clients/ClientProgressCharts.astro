@@ -1,0 +1,243 @@
+---
+const { progressHistory = [] } = Astro.props;
+const safeHistory = Array.isArray(progressHistory) ? progressHistory : [];
+
+const chartData = safeHistory.map((item: any) => {
+    const value = item.assessment_date;
+    const date = value instanceof Date ? value : new Date(String(value));
+
+    let label = "";
+    if (!Number.isNaN(date.getTime())) {
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        label = `${day}/${month}/${year}`;
+    }
+
+    return {
+        label,
+        weight:
+            item.weight_kg === null ||
+            item.weight_kg === undefined ||
+            item.weight_kg === ""
+                ? null
+                : Number(item.weight_kg),
+        bodyFat:
+            item.body_fat_pct === null ||
+            item.body_fat_pct === undefined ||
+            item.body_fat_pct === ""
+                ? null
+                : Number(item.body_fat_pct),
+        muscle:
+            item.muscle_pct === null ||
+            item.muscle_pct === undefined ||
+            item.muscle_pct === ""
+                ? null
+                : Number(item.muscle_pct),
+    };
+});
+
+const hasEnoughData = chartData.length > 0;
+const chartJson = JSON.stringify(chartData);
+---
+
+<section class="mt-8">
+    <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">
+        Evolución del cliente
+    </h2>
+
+    {
+        !hasEnoughData ? (
+            <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                Aún no hay valoraciones suficientes para mostrar gráficas.
+            </div>
+        ) : (
+            <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">
+                        Peso
+                    </h3>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        Evolución del peso por fecha
+                    </p>
+                    <div class="mt-4 h-80">
+                        <canvas id="weight-chart" />
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">
+                        Grasa corporal
+                    </h3>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        Evolución del porcentaje de grasa corporal
+                    </p>
+                    <div class="mt-4 h-80">
+                        <canvas id="bodyfat-chart" />
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:col-span-2">
+                    <h3 class="text-base font-bold text-slate-900 dark:text-slate-100">
+                        Masa muscular
+                    </h3>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        Evolución del porcentaje de masa muscular
+                    </p>
+                    <div class="mt-4 h-80">
+                        <canvas id="muscle-chart" />
+                    </div>
+                </div>
+            </div>
+        )
+    }
+</section>
+
+<script
+    type="application/json"
+    id="client-progress-data"
+    set:html={chartJson}
+/>
+
+<script type="module">
+    import {
+        Chart,
+        LineController,
+        LineElement,
+        PointElement,
+        LinearScale,
+        CategoryScale,
+        Tooltip,
+        Legend,
+        Filler,
+    } from "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm";
+
+    Chart.register(
+        LineController,
+        LineElement,
+        PointElement,
+        LinearScale,
+        CategoryScale,
+        Tooltip,
+        Legend,
+        Filler,
+    );
+
+    const dataElement = document.getElementById("client-progress-data");
+    const rawData = dataElement?.textContent ?? "[]";
+    const parsed = JSON.parse(rawData);
+
+    const labels = parsed.map((item) => item.label);
+    const weightData = parsed.map((item) => item.weight);
+    const bodyFatData = parsed.map((item) => item.bodyFat);
+    const muscleData = parsed.map((item) => item.muscle);
+
+    function isDarkMode() {
+        return document.documentElement.classList.contains("dark");
+    }
+
+    function axisColor() {
+        return isDarkMode() ? "#cbd5e1" : "#64748b";
+    }
+
+    function gridColor() {
+        return isDarkMode()
+            ? "rgba(148, 163, 184, 0.22)"
+            : "rgba(100, 116, 139, 0.15)";
+    }
+    function createLineChart(canvasId, label, data, suffix = "") {
+        const canvas = document.getElementById(canvasId);
+        if (!(canvas instanceof HTMLCanvasElement)) return;
+
+        const existing = Chart.getChart(canvas);
+        if (existing) existing.destroy();
+
+        new Chart(canvas, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label,
+                        data,
+                        borderWidth: 3,
+                        tension: 0.35,
+                        fill: false,
+                        spanGaps: true,
+                        borderColor: isDarkMode() ? "#34d399" : "#10b981",
+                        backgroundColor: isDarkMode() ? "#34d399" : "#10b981",
+                        pointBackgroundColor: isDarkMode()
+                            ? "#34d399"
+                            : "#10b981",
+                        pointBorderColor: isDarkMode() ? "#ecfeff" : "#ffffff",
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: axisColor(),
+                        },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label(context) {
+                                const value = context.raw;
+                                if (value === null || value === undefined)
+                                    return `${label}: -`;
+                                return `${label}: ${value}${suffix}`;
+                            },
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: axisColor(),
+                        },
+                        grid: {
+                            color: gridColor(),
+                        },
+                    },
+                    y: {
+                        ticks: {
+                            color: axisColor(),
+                            callback(value) {
+                                return `${value}${suffix}`;
+                            },
+                        },
+                        grid: {
+                            color: gridColor(),
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    function renderCharts() {
+        createLineChart("weight-chart", "Peso", weightData, " kg");
+        createLineChart("bodyfat-chart", "Grasa corporal", bodyFatData, " %");
+        createLineChart("muscle-chart", "Masa muscular", muscleData, " %");
+    }
+
+    renderCharts();
+
+    const observer = new MutationObserver(() => {
+        renderCharts();
+    });
+
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+    });
+</script>

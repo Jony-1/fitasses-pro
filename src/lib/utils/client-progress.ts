@@ -2,6 +2,8 @@ import { sql } from "../db/client";
 import { calculateChange } from "./client";
 
 export async function getClientProgressSummary(clientId: number) {
+
+    
     const latestAssessmentRows = await sql`
     SELECT
       assessment_date,
