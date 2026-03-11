@@ -2,21 +2,13 @@
 import AppLayout from "../../layouts/layout.astro";
 import { sql } from "../../lib/db/client";
 import { formatDateOnly } from "../../lib/utils/date";
+import {genderEmoji} from  "../../lib/utils/client";
 
 const clients = await sql`
   SELECT id, full_name, birth_date, height_m, gender
   FROM clients
   ORDER BY id DESC
 `;
-
-function genderEmoji(gender: string | null) {
-  const g = String(gender || "").toLowerCase();
-
-  if (g === "hombre") return "👨";
-  if (g === "mujer") return "👩";
-
-  return "🧑";
-}
 ---
 
 <AppLayout title="Clientes">

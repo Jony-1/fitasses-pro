@@ -35,3 +35,12 @@ export function dateOnlyInputValue(value: unknown): string {
     const [, year, month, day] = match;
     return `${year}-${month}-${day}`;
 }
+
+export function formatDateTimeLocal(value: unknown) {
+    if (!value) return "-";
+
+    const date = value instanceof Date ? value : new Date(String(value));
+    if (Number.isNaN(date.getTime())) return "-";
+
+    return date.toLocaleDateString("es-CO");
+}

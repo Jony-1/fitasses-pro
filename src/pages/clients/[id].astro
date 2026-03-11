@@ -1,47 +1,41 @@
 ---
 import AppLayout from "../../layouts/layout.astro";
-import { sql } from "../../lib/db/client";
-import { formatDateOnly } from "../../lib/utils/date";
+import { formatDateOnly, formatDateTimeLocal } from "../../lib/utils/date";
 import { calculateAge } from "../../lib/utils/age";
+import {
+    genderEmoji,
+    formatMetric,
+    formatChange,
+    changeColor,
+} from "../../lib/utils/client";
+import { getClientById } from "../../lib/utils/client-profile";
+import { getClientProgressSummary } from "../../lib/utils/client-progress";
+
 const { id } = Astro.params;
 
 if (!id || Number.isNaN(Number(id))) {
     return Astro.redirect("/clients");
 }
 
-const result = await sql`
-  SELECT id, full_name, birth_date, height_m, notes, gender, created_at
-  FROM clients
-  WHERE id = ${Number(id)}
-  LIMIT 1
-`;
+const clientId = Number(id);
+const client = await getClientById(clientId);
 
-const client = result[0];
-const age = calculateAge(client.birth_date);
 if (!client) {
     return new Response("Cliente no encontrado", { status: 404 });
 }
 
-function formatDateTime(value: unknown) {
-    if (!value) return "-";
+const age = calculateAge(client.birth_date);
 
-    const date = value instanceof Date ? value : new Date(String(value));
+const createdAtFormatted = formatDateTimeLocal(client.created_at);
 
-    if (Number.isNaN(date.getTime())) return "-";
-
-    return date.toLocaleDateString("es-CO");
-}
-
-const createdAtFormatted = formatDateTime(client.created_at);
-
-function genderEmoji(gender: string | null) {
-    const g = String(gender || "").toLowerCase();
-
-    if (g === "hombre") return "👨";
-    if (g === "mujer") return "👩";
-
-    return "🧑";
-}
+const {
+    latestAssessment,
+    firstAssessment,
+    totalAssessments,
+    weightChange,
+    bodyFatChange,
+    muscleChange,
+} = await getClientProgressSummary(clientId);
 ---
 
 <AppLayout title={`Cliente #${client.id}`}>
@@ -207,10 +201,109 @@ function genderEmoji(gender: string | null) {
                         )
                     }
                 </div>
+                <section class="mt-8">
+                    <h2
+                        class="text-xl font-bold text-slate-900 dark:text-slate-100"
+                    >
+                        Resumen de progreso
+                    </h2>
+
+                    <div
+                        class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                    >
+                        <div
+                            class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+                        >
+                            <p
+                                class="text-sm text-slate-500 dark:text-slate-400"
+                            >
+                                Total valoraciones
+                            </p>
+                            <p class="text-2xl font-bold">
+                                {totalAssessments}
+                            </p>
+                        </div>
+
+                        <div
+                            class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+                        >
+                            <p
+                                class="text-sm text-slate-500 dark:text-slate-400"
+                            >
+                                Peso actual
+                            </p>
+                            <p class="text-2xl font-bold">
+                                {
+                                    formatMetric(
+                                        latestAssessment?.weight_kg,
+                                        " kg",
+                                    )
+                                }
+                            </p>
+                            <p class={`text-sm ${changeColor(weightChange)}`}>
+                                Cambio: {formatChange(weightChange, " kg")}
+                            </p>
+                        </div>
+
+                        <div
+                            class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+                        >
+                            <p
+                                class="text-sm text-slate-500 dark:text-slate-400"
+                            >
+                                Grasa corporal
+                            </p>
+                            <p class="text-2xl font-bold">
+                                {
+                                    formatMetric(
+                                        latestAssessment?.body_fat_pct,
+                                        " %",
+                                    )
+                                }
+                            </p>
+                            <p class={`text-sm ${changeColor(weightChange)}`}>
+                                Cambio: {formatChange(bodyFatChange, " %")}
+                            </p>
+                        </div>
+
+                        <div
+                            class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+                        >
+                            <p
+                                class="text-sm text-slate-500 dark:text-slate-400"
+                            >
+                                Masa muscular
+                            </p>
+                            <p class="text-2xl font-bold">
+                                {
+                                    formatMetric(
+                                        latestAssessment?.muscle_pct,
+                                        " %",
+                                    )
+                                }
+                            </p>
+                            <p class={`text-sm ${changeColor(weightChange)}`}>
+                                Cambio: {formatChange(muscleChange, " %")}
+                            </p>
+                        </div>
+
+                        <div
+                            class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+                        >
+                            <p
+                                class="text-sm text-slate-500 dark:text-slate-400"
+                            >
+                                IMC actual
+                            </p>
+                            <p class="text-2xl font-bold">
+                                {formatMetric(latestAssessment?.bmi)}
+                            </p>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
-
     <!-- MODAL -->
     <div
         id="delete-modal"
