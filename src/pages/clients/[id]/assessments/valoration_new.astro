@@ -76,6 +76,16 @@ const initialValues = {
   calf_cm: String(lastAssessment?.calf_cm ?? ""),
   notes: "",
 };
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (user.role !== "trainer") {
+  return Astro.redirect("/login?error=forbidden");
+}
 ---
 
 <AppLayout title={`Nueva valoración - ${client.full_name}`}>

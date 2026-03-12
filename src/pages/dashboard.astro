@@ -1,6 +1,6 @@
 ---
 import AppLayout from "../layouts/layout.astro";
-
+import { sql } from "../lib/db/client";
 const title = "FitAssess Pro | Dashboard";
 
 const quickLinks = [
@@ -29,6 +29,27 @@ const quickLinks = [
         icon: "⚙️",
     },
 ];
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (user.role === "client") {
+  const result = await sql`
+    SELECT id
+    FROM clients
+    WHERE user_id = ${user.id}
+    LIMIT 1
+  `;
+
+  const linkedClient = result[0];
+
+  if (linkedClient) {
+    return Astro.redirect(`/clients/${linkedClient.id}`);
+  }
+}
 ---
 
 <AppLayout title={title}>

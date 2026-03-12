@@ -1,6 +1,17 @@
 ---
 import AppLayout from "../../layouts/layout.astro";
 import HeightInput from "../../components/HeightInput.astro";
+
+const user = Astro.locals.user;
+
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (user.role !== "trainer") {
+  return Astro.redirect("/login?error=forbidden");
+}
 ---
 
 <AppLayout title="Nuevo cliente">

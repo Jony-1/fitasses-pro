@@ -20,7 +20,7 @@ export type ProgressHistoryItem = {
 
 export async function getClientById(id: number): Promise<Client | null> {
     const result = await sql`
-    SELECT id, full_name, birth_date, height_m, notes, gender, created_at
+    SELECT id, full_name, birth_date, height_m, notes, gender, user_id, created_at
     FROM clients
     WHERE id = ${id}
     LIMIT 1

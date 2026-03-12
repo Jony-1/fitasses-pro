@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
+import { requireTrainer } from "../../../lib/auth/guards";
 
 function json(data: unknown, status = 200) {
     return new Response(JSON.stringify(data), {
@@ -22,16 +23,18 @@ function parseId(id: string | undefined) {
     return parsed;
 }
 
-export const GET: APIRoute = async ({ params }) => {
-    const id = parseId(params.id);
+export const GET: APIRoute = async (context) => {
+    const id = parseId(context.params.id);
 
     if (!id) {
         return json({ error: "ID de cliente inválido" }, 400);
     }
 
     try {
+        requireTrainer(context);
+
         const result = await sql`
-      SELECT id, full_name, birth_date, height_m, notes, gender, created_at
+      SELECT id, full_name, birth_date, height_m, notes, gender, user_id, created_at
       FROM clients
       WHERE id = ${id}
       LIMIT 1
@@ -46,19 +49,29 @@ export const GET: APIRoute = async ({ params }) => {
         return json(client, 200);
     } catch (error) {
         console.error("Error obteniendo cliente:", error);
+
+        if (
+            error instanceof Error &&
+            (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+        ) {
+            return json({ error: "No autorizado" }, 403);
+        }
+
         return json({ error: "Error al obtener cliente" }, 500);
     }
 };
 
-export const PUT: APIRoute = async ({ params, request }) => {
-    const id = parseId(params.id);
+export const PUT: APIRoute = async (context) => {
+    const id = parseId(context.params.id);
 
     if (!id) {
         return json({ error: "ID de cliente inválido" }, 400);
     }
 
     try {
-        const body = await request.json();
+        requireTrainer(context);
+
+        const body = await context.request.json();
 
         const full_name =
             typeof body.full_name === "string" ? body.full_name.trim() : "";
@@ -71,7 +84,11 @@ export const PUT: APIRoute = async ({ params, request }) => {
 
         let height_m: number | null = null;
 
-        if (body.height_m !== undefined && body.height_m !== null && body.height_m !== "") {
+        if (
+            body.height_m !== undefined &&
+            body.height_m !== null &&
+            body.height_m !== ""
+        ) {
             const parsedHeight = Number(body.height_m);
 
             if (Number.isNaN(parsedHeight)) {
@@ -79,7 +96,10 @@ export const PUT: APIRoute = async ({ params, request }) => {
             }
 
             if (parsedHeight < 0.5 || parsedHeight > 2.5) {
-                return json({ error: "La altura debe estar entre 0.5 y 2.5 metros" }, 400);
+                return json(
+                    { error: "La altura debe estar entre 0.5 y 2.5 metros" },
+                    400
+                );
             }
 
             height_m = parsedHeight;
@@ -98,7 +118,7 @@ export const PUT: APIRoute = async ({ params, request }) => {
         notes = ${notes || null},
         gender = ${gender || null}
       WHERE id = ${id}
-      RETURNING id, full_name, birth_date, height_m, notes, created_at
+      RETURNING id, full_name, birth_date, height_m, notes, gender, created_at
     `;
 
         const updatedClient = result[0];
@@ -116,18 +136,28 @@ export const PUT: APIRoute = async ({ params, request }) => {
         );
     } catch (error) {
         console.error("Error actualizando cliente:", error);
+
+        if (
+            error instanceof Error &&
+            (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+        ) {
+            return json({ error: "No autorizado" }, 403);
+        }
+
         return json({ error: "Error al actualizar cliente" }, 500);
     }
 };
 
-export const DELETE: APIRoute = async ({ params }) => {
-    const id = parseId(params.id);
+export const DELETE: APIRoute = async (context) => {
+    const id = parseId(context.params.id);
 
     if (!id) {
         return json({ error: "ID de cliente inválido" }, 400);
     }
 
     try {
+        requireTrainer(context);
+
         const result = await sql`
       DELETE FROM clients
       WHERE id = ${id}
@@ -149,6 +179,13 @@ export const DELETE: APIRoute = async ({ params }) => {
     } catch (error: any) {
         console.error("Error eliminando cliente:", error);
 
+        if (
+            error instanceof Error &&
+            (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")
+        ) {
+            return json({ error: "No autorizado" }, 403);
+        }
+
         if (error?.code === "23503") {
             return json(
                 {
@@ -158,9 +195,6 @@ export const DELETE: APIRoute = async ({ params }) => {
             );
         }
 
-        return json(
-            { error: "No se pudo eliminar el cliente" },
-            500
-        );
+        return json({ error: "No se pudo eliminar el cliente" }, 500);
     }
 };

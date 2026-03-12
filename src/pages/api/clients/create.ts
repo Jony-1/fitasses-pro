@@ -1,9 +1,12 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
+import { requireTrainer } from "../../../lib/auth/guards";
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ( context ) => {
     try {
-        const formData = await request.formData();
+        requireTrainer(context);
+        
+        const formData = await context.request.formData();
 
         const fullName = String(formData.get("full_name") || "").trim();
         const birthDate = String(formData.get("birth_date") || "").trim();

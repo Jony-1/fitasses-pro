@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
+import { requireTrainer } from "../../../lib/auth/guards";
 
 function json(data: unknown, status = 200) {
     return new Response(JSON.stringify(data), {
@@ -88,9 +89,10 @@ function validateIntegerField(
     return null;
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ( context ) => {
     try {
-        const body = await request.json();
+        requireTrainer(context);
+        const body = await context.request.json();
 
         const client_id = Number(body.client_id);
         const assessment_date =

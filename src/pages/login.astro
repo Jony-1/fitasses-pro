@@ -1,63 +1,97 @@
 ---
-const title = "FitAssess Pro | Login";
+import AppLayout from "../layouts/layout.astro";
+
+const user = Astro.locals.user;
+
+if (user) {
+    return Astro.redirect("/dashboard");
+}
+
+const error = Astro.url.searchParams.get("error");
+
+let errorMessage = "";
+
+if (error === "missing_fields") {
+    errorMessage = "Debes ingresar correo y contraseña.";
+} else if (error === "invalid_credentials") {
+    errorMessage = "Correo o contraseña incorrectos.";
+} else if (error === "server_error") {
+    errorMessage = "Ocurrió un error interno al iniciar sesión.";
+} else if (error === "unauthorized") {
+    errorMessage = "Debes iniciar sesión para continuar.";
+} else if (error === "forbidden") {
+    errorMessage = "No tienes permisos para acceder a esa sección.";
+}
 ---
 
-<html lang="es">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width" />
-        <title>{title}</title>
-    </head>
-    <body class="min-h-screen bg-slate-50 text-slate-900">
-        <main class="flex min-h-screen items-center justify-center px-6">
-            <section class="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-slate-900">
-                <div class="mb-6">
-                    <h1 class="text-3xl font-bold">FitAssess Pro</h1>
-                    <p class="mt-2 text-sm text-slate-600">
-                        Inicia sesión para gestionar clientes y valoraciones.
-                    </p>
+<AppLayout title="Iniciar sesión | FitAssess Pro">
+    <div class="mx-auto max-w-md">
+        <div class="mb-6 text-center">
+            <h1
+                class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white"
+            >
+                Iniciar sesión
+            </h1>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                Accede a tu cuenta para continuar en FitAssess Pro.
+            </p>
+        </div>
+
+        {
+            errorMessage && (
+                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+                    {errorMessage}
+                </div>
+            )
+        }
+
+        <div
+            class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+        >
+            <form action="/api/auth/login" method="POST" class="space-y-5">
+                <div>
+                    <label
+                        for="email"
+                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+                    >
+                        Correo electrónico
+                    </label>
+                    <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        autocomplete="email"
+                        class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                        placeholder="ejemplo@correo.com"
+                    />
                 </div>
 
-                <form class="space-y-4" method="post" action="/api/auth/login">
-                    <div>
-                        <label
-                            for="email"
-                            class="mb-1 block text-sm font-medium">Correo</label
-                        >
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500"
-                            placeholder="trainer@gym.com"
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label
-                            for="password"
-                            class="mb-1 block text-sm font-medium"
-                            >Contraseña</label
-                        >
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500"
-                            placeholder="********"
-                            required
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        class="w-full rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-white transition hover:bg-emerald-600"
+                <div>
+                    <label
+                        for="password"
+                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
                     >
-                        Ingresar
-                    </button>
-                </form>
-            </section>
-        </main>
-    </body>
-</html>
+                        Contraseña
+                    </label>
+                    <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        required
+                        autocomplete="current-password"
+                        class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
+                        placeholder="Ingresa tu contraseña"
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-600"
+                >
+                    Entrar
+                </button>
+            </form>
+        </div>
+    </div>
+</AppLayout>

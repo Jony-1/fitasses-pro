@@ -1,0 +1,21 @@
+import type { APIContext } from "astro";
+
+export function requireUser(context: APIContext) {
+    const user = context.locals.user;
+
+    if (!user) {
+        throw new Error("UNAUTHORIZED");
+    }
+
+    return user;
+}
+
+export function requireTrainer(context: APIContext) {
+    const user = requireUser(context);
+
+    if (user.role !== "trainer") {
+        throw new Error("FORBIDDEN");
+    }
+
+    return user;
+}

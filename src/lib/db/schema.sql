@@ -3,8 +3,16 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    role TEXT DEFAULT 'trainer',
+    role TEXT NOT NULL CHECK (role IN ('trainer', 'client')),
     created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS clients (
@@ -14,6 +22,7 @@ CREATE TABLE IF NOT EXISTS clients (
     birth_date DATE,
     height_m NUMERIC(5,2),
     notes TEXT,
+    gender TEXT,
     active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -61,4 +70,4 @@ CREATE TABLE IF NOT EXISTS assessment_measurements (
 );
 
 ALTER TABLE clients
-ADD COLUMN gender TEXT;
+ADD COLUMN IF NOT EXISTS user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE SET NULL;

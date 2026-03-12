@@ -1,9 +1,11 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
+import { requireTrainer } from "../../../lib/auth/guards";
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ( context ) => {
     try {
-        const formData = await request.formData();
+        requireTrainer(context);
+        const formData = await context.request.formData();
 
         const assessmentId = Number(formData.get("assessment_id"));
         const clientId = Number(formData.get("client_id"));
