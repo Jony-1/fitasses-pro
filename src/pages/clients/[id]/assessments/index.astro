@@ -28,7 +28,7 @@ if (!client) {
 const assessments = await sql`
   SELECT
     ROW_NUMBER() OVER (
-      ORDER BY a.assessment_date DESC, a.id DESC
+      ORDER BY a.assessment_date ASC, a.id ASC
     ) AS client_assessment_number,
     a.id,
     a.assessment_date,
