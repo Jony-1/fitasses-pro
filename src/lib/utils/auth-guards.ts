@@ -13,7 +13,7 @@ export function requireUser(context: APIContext) {
 export function requireTrainer(context: APIContext) {
     const user = requireUser(context);
 
-    if (user.role !== "trainer") {
+    if (user.role !== "trainer" && user.role !== "admin") {
         throw new Error("FORBIDDEN");
     }
 

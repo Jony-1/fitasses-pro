@@ -4,7 +4,7 @@ type AppUser = {
     id: number;
     name: string;
     email: string;
-    role: "trainer" | "client";
+    role: "admin" | "trainer" | "client";
   } | null;
   
   declare namespace App {

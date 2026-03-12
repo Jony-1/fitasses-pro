@@ -1,0 +1,188 @@
+---
+import AppLayout from "../../../../layouts/layout.astro";
+import { sql } from "../../../../lib/db/client";
+
+const user = Astro.locals.user;
+const { id } = Astro.params;
+
+if (!user) {
+    return Astro.redirect("/login?error=unauthorized");
+}
+
+if (user.role !== "admin") {
+    return Astro.redirect("/dashboard?error=forbidden");
+}
+
+if (!id || Number.isNaN(Number(id))) {
+    return Astro.redirect(
+        "/admin/trainers?status=error&message=Trainer%20inválido",
+    );
+}
+
+const status = Astro.url.searchParams.get("status");
+const message = Astro.url.searchParams.get("message");
+
+const trainerRows = await sql`
+  SELECT id, name, email, role, created_at
+  FROM users
+  WHERE id = ${Number(id)}
+    AND role = 'trainer'
+  LIMIT 1
+`;
+
+const trainer = trainerRows[0];
+
+if (!trainer) {
+    return new Response("Trainer no encontrado", { status: 404 });
+}
+---
+
+<AppLayout title={`Editar trainer - ${trainer.name}`}>
+    <div class="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
+        <div class="mb-6">
+            <a
+                href="/admin/trainers"
+                class="text-sm font-medium text-slate-500 hover:text-emerald-600"
+            >
+                ← Volver a trainers
+            </a>
+
+            <h1
+                class="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
+            >
+                Editar trainer
+            </h1>
+
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                Administra la cuenta de <strong>{trainer.name}</strong>.
+            </p>
+        </div>
+
+        {
+            status && message && (
+                <div
+                    class={`mb-6 rounded-xl border px-4 py-3 text-sm ${
+                        status === "success"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300"
+                            : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300"
+                    }`}
+                >
+                    {message}
+                </div>
+            )
+        }
+
+        <div class="grid grid-cols-1 gap-6">
+            <div
+                class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+            >
+                <h2
+                    class="text-lg font-bold text-slate-900 dark:text-slate-100"
+                >
+                    Datos del trainer
+                </h2>
+
+                <form
+                    method="POST"
+                    action="/api/admin/trainers/update"
+                    class="mt-5 space-y-5"
+                >
+                    <input type="hidden" name="id" value={trainer.id} />
+
+                    <div>
+                        <label
+                            for="name"
+                            class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200"
+                        >
+                            Nombre completo
+                        </label>
+                        <input
+                            id="name"
+                            name="name"
+                            type="text"
+                            required
+                            value={trainer.name}
+                            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-0 focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        />
+                    </div>
+
+                    <div>
+                        <label
+                            for="email"
+                            class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200"
+                        >
+                            Correo electrónico
+                        </label>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            required
+                            value={trainer.email}
+                            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-0 focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        />
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 pt-2">
+                        <button
+                            type="submit"
+                            class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
+                        >
+                            Guardar cambios
+                        </button>
+
+                        <a
+                            href="/admin/trainers"
+                            class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        >
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <div
+                class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+            >
+                <h2
+                    class="text-lg font-bold text-slate-900 dark:text-slate-100"
+                >
+                    Restablecer contraseña
+                </h2>
+
+                <form
+                    method="POST"
+                    action="/api/admin/trainers/reset-password"
+                    class="mt-5 space-y-5"
+                >
+                    <input type="hidden" name="id" value={trainer.id} />
+
+                    <div>
+                        <label
+                            for="password"
+                            class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200"
+                        >
+                            Nueva contraseña temporal
+                        </label>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            required
+                            minlength="6"
+                            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                            placeholder="Mínimo 6 caracteres"
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="inline-flex items-center justify-center rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 text-sm font-bold text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50"
+                    >
+                        Restablecer contraseña
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</AppLayout>

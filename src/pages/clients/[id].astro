@@ -43,7 +43,12 @@ const {
 
 const progressHistory = await getProgressHistory(Number(id));
 const user = Astro.locals.user;
-const isTrainer = user?.role === "trainer";
+
+
+
+const isTrainer = user?.role === "trainer" || user?.role === "admin";
+
+
 ---
 
 <AppLayout title={`Cliente #${client.id}`}>

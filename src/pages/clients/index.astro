@@ -10,7 +10,7 @@ if (!user) {
     return Astro.redirect("/login");
 }
 
-if (user.role !== "trainer") {
+if (user.role !== "trainer" && user.role !== "admin") {
   return Astro.redirect("/login?error=forbidden");
 }
 
@@ -20,7 +20,6 @@ const clients = await sql`
   ORDER BY id DESC
 `;
 
-const isTrainer = user?.role === "trainer";
 ---
 
 <AppLayout title="Clientes">

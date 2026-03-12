@@ -4,11 +4,11 @@ import { hashPassword } from "../../lib/auth/password";
 
 export const GET: APIRoute = async () => {
     try {
-        const passwordHash = await hashPassword("root");
+        const passwordHash = await hashPassword("admin");
 
         await sql`
       INSERT INTO users (name, email, password_hash, role)
-      VALUES ('Trainer', 'trainer@gmail.com', ${passwordHash}, 'trainer')
+      VALUES ('Admin', 'admin@gmail.com', ${passwordHash}, 'admin')
       ON CONFLICT (email)
       DO UPDATE SET
         name = EXCLUDED.name,

@@ -7,18 +7,37 @@ interface Props {
 
 const { title = "FitAssess Pro" } = Astro.props;
 const currentPath = Astro.url.pathname;
+const user = Astro.locals.user;
+
+const isAdmin = user?.role === "admin";
+const isTrainer = user?.role === "trainer";
+const isClient = user?.role === "client";
+const canManageClients = isTrainer || isAdmin;
+
+const panelTitle = isAdmin
+  ? "Admin Panel"
+  : isTrainer
+    ? "Trainer Panel"
+    : isClient
+      ? "Client Panel"
+      : "FitAssess Pro";
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: "📊" },
-  { label: "Clients", href: "/", icon: "👥" },
-  { label: "New Client", href: "/clients/new", icon: "➕" },
-];
+  { label: "Dashboard", href: "/dashboard", icon: "📊", visible: !!user },
+  { label: "Clients", href: "/clients", icon: "👥", visible: canManageClients },
+  {
+    label: "New Client",
+    href: "/clients/new",
+    icon: "➕",
+    visible: canManageClients,
+  },
+  { label: "Administración", href: "/admin", icon: "🏴‍☠️", visible: isAdmin },
+].filter((item) => item.visible);
 
 function isActive(href: string) {
   if (href === "/") return currentPath === "/";
   return currentPath === href || currentPath.startsWith(`${href}/`);
 }
-const user = Astro.locals.user;
 ---
 
 <!doctype html>
@@ -53,7 +72,6 @@ const user = Astro.locals.user;
     class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100"
   >
     <div class="min-h-screen md:flex">
-      <!-- Sidebar desktop -->
       <aside
         class="hidden w-72 shrink-0 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:flex md:flex-col"
       >
@@ -72,7 +90,7 @@ const user = Astro.locals.user;
               <h1
                 class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100"
               >
-                Trainer Panel
+                {panelTitle}
               </h1>
             </div>
           </div>
@@ -103,13 +121,18 @@ const user = Astro.locals.user;
               FitAssess Pro
             </p>
             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Gestión de clientes, valoraciones y seguimiento.
+              {
+                isAdmin
+                  ? "Gestión administrativa de entrenadores y plataforma."
+                  : isClient
+                    ? "Consulta de progreso, valoraciones y seguimiento."
+                    : "Gestión de clientes, valoraciones y seguimiento."
+              }
             </p>
           </div>
         </div>
       </aside>
 
-      <!-- Main area -->
       <div class="flex min-h-screen flex-1 flex-col">
         <header
           class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
@@ -129,7 +152,7 @@ const user = Astro.locals.user;
                 <h1
                   class="text-base font-extrabold text-slate-900 dark:text-slate-100"
                 >
-                  Trainer Panel
+                  {panelTitle}
                 </h1>
               </div>
             </div>
@@ -149,36 +172,31 @@ const user = Astro.locals.user;
                 id="theme-toggle"
                 class="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
-                
                 <span class="dark:hidden">🌙</span>
                 <span class="hidden dark:inline">☀️</span>
               </button>
 
-             
-              <div class="flex items-center gap-3">
-                {
-                  user && (
-                    <>
-                      <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        {user.name}
-                      </span>
-              
-                      <form action="/api/auth/logout" method="POST">
-                        <button
-                          type="submit"
-                          class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                        >
-                          Cerrar sesión
-                        </button>
-                      </form>
-                    </>
-                  )
-                }
-              </div>
+              {
+                user && (
+                  <div class="flex items-center gap-3">
+                    <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                      {user.name}
+                    </span>
+
+                    <form action="/api/auth/logout" method="POST">
+                      <button
+                        type="submit"
+                        class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        Cerrar sesión
+                      </button>
+                    </form>
+                  </div>
+                )
+              }
             </div>
           </div>
 
-          <!-- Navegación móvil -->
           <div
             class="border-t border-slate-200 px-4 py-3 dark:border-slate-800 md:hidden"
           >

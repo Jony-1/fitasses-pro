@@ -5,6 +5,17 @@ import { sql } from "../../../../lib/db/client";
 
 const { id } = Astro.params;
 const assessmentId = Number(Astro.url.searchParams.get("assessmentId"));
+const user = Astro.locals.user;
+
+if (!user) {
+    return Astro.redirect("/login?error=unauthorized");
+}
+
+const canManageAssessments = user.role === "trainer" || user.role === "admin";
+
+if (!canManageAssessments) {
+    return Astro.redirect("/dashboard?error=forbidden");
+}
 
 if (!id || Number.isNaN(Number(id))) {
     return Astro.redirect("/clients");
