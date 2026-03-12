@@ -16,6 +16,9 @@ const clientRows = await sql`
   LIMIT 1
 `;
 
+const user = Astro.locals.user;
+const canManageAssessments = user?.role === "trainer";
+
 const client = clientRows[0];
 
 if (!client) {
@@ -87,12 +90,16 @@ function formatNumber(value: unknown, suffix = "") {
                 </p>
             </div>
 
-            <a
-                href={`/clients/${client.id}/assessments/valoration_new`}
-                class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
-            >
-                + Nueva valoración
-            </a>
+            {
+                canManageAssessments && (
+                    <a
+                        href={`/clients/${client.id}/assessments/valoration_new`}
+                        class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
+                    >
+                        + Nueva valoración
+                    </a>
+                )
+            }
         </div>
 
         {
@@ -106,12 +113,14 @@ function formatNumber(value: unknown, suffix = "") {
                         seguimiento.
                     </p>
 
-                    <a
-                        href={`/clients/${client.id}/assessments/valoration_new`}
-                        class="mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
-                    >
-                        Crear primera valoración
-                    </a>
+                    {canManageAssessments && (
+                        <a
+                            href={`/clients/${client.id}/assessments/valoration_new`}
+                            class="mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
+                        >
+                            Crear primera valoración
+                        </a>
+                    )}
                 </div>
             ) : (
                 <div class="space-y-6">
@@ -121,10 +130,15 @@ function formatNumber(value: unknown, suffix = "") {
                                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
                                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                            Valoración #{assessment.client_assessment_number}
+                                            Valoración #
+                                            {
+                                                assessment.client_assessment_number
+                                            }
                                         </p>
                                         <h2 class="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">
-                                            {formatDateOnly(assessment.assessment_date)}
+                                            {formatDateOnly(
+                                                assessment.assessment_date,
+                                            )}
                                         </h2>
                                     </div>
 
@@ -142,37 +156,39 @@ function formatNumber(value: unknown, suffix = "") {
                                     </div>
                                 </div>
 
-                                <div class="flex flex-wrap gap-3">
-                                    <a
-                                        href={`/clients/${client.id}/assessments/valoration_edit?assessmentId=${assessment.id}`}
-                                        class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                                    >
-                                        Editar
-                                    </a>
-
-                                    <form
-                                        method="POST"
-                                        action="/api/assessments/valoracion_delete"
-                                        onsubmit="return confirm('¿Seguro que deseas eliminar esta valoración?');"
-                                    >
-                                        <input
-                                            type="hidden"
-                                            name="assessment_id"
-                                            value={assessment.id}
-                                        />
-                                        <input
-                                            type="hidden"
-                                            name="client_id"
-                                            value={client.id}
-                                        />
-                                        <button
-                                            type="submit"
-                                            class="inline-flex items-center rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:text-red-400 dark:hover:bg-red-950/30"
+                                {canManageAssessments && (
+                                    <div class="flex flex-wrap gap-3">
+                                        <a
+                                            href={`/clients/${client.id}/assessments/valoration_edit?assessmentId=${assessment.id}`}
+                                            class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                                         >
-                                            Eliminar
-                                        </button>
-                                    </form>
-                                </div>
+                                            Editar
+                                        </a>
+
+                                        <form
+                                            method="POST"
+                                            action="/api/assessments/valoracion_delete"
+                                            onsubmit="return confirm('¿Seguro que deseas eliminar esta valoración?');"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="assessment_id"
+                                                value={assessment.id}
+                                            />
+                                            <input
+                                                type="hidden"
+                                                name="client_id"
+                                                value={client.id}
+                                            />
+                                            <button
+                                                type="submit"
+                                                class="inline-flex items-center rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:text-red-400 dark:hover:bg-red-950/30"
+                                            >
+                                                Eliminar
+                                            </button>
+                                        </form>
+                                    </div>
+                                )}
                             </div>
 
                             <div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">

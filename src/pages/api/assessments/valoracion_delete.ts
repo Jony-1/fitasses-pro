@@ -2,39 +2,43 @@ import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
 import { requireTrainer } from "../../../lib/auth/guards";
 
-export const POST: APIRoute = async ( context ) => {
+export const POST: APIRoute = async (context) => {
     try {
         requireTrainer(context);
-        const formData = await context.request.formData();
 
+        const formData = await context.request.formData();
         const assessmentId = Number(formData.get("assessment_id"));
         const clientId = Number(formData.get("client_id"));
 
-        if (!assessmentId || Number.isNaN(assessmentId)) {
-            return new Response("Valoración inválida", { status: 400 });
+        if (!assessmentId || !clientId) {
+            return new Response(null, {
+                status: 303,
+                headers: {
+                    Location: `/clients/${clientId}/assessments?error=invalid_request`,
+                },
+            });
         }
-
-        await sql`
-      DELETE FROM assessment_measurements
-      WHERE assessment_id = ${assessmentId}
-    `;
 
         await sql`
       DELETE FROM assessments
       WHERE id = ${assessmentId}
+      AND client_id = ${clientId}
     `;
 
         return new Response(null, {
             status: 303,
             headers: {
-                Location: `/clients/${clientId}/assessments`,
+                Location: `/clients/${clientId}/assessments?success=assessment_deleted`,
             },
         });
     } catch (error) {
-        console.error("Error eliminando valoración:", error);
+        console.error("Error deleting assessment:", error);
 
-        return new Response("No se pudo eliminar la valoración", {
-            status: 500,
+        return new Response(null, {
+            status: 303,
+            headers: {
+                Location: `/dashboard?error=forbidden`,
+            },
         });
     }
 };

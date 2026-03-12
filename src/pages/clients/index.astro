@@ -19,6 +19,8 @@ const clients = await sql`
   FROM clients
   ORDER BY id DESC
 `;
+
+const isTrainer = user?.role === "trainer";
 ---
 
 <AppLayout title="Clientes">
