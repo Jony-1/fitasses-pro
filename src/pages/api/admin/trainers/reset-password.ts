@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { requireAdmin } from "../../../../lib/auth/guards";
-import { hashPassword } from "../../../../lib/auth/password
+import { hashPassword } from "../../../../lib/auth/password";
 import { sql } from "../../../../lib/db/client";
 
 export const POST: APIRoute = async (context) => {
