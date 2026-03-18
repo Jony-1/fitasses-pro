@@ -1,21 +1,13 @@
 ---
+import { formatDateOnly } from "../../lib/utils/date";
+
+
 const { progressHistory = [] } = Astro.props;
 const safeHistory = Array.isArray(progressHistory) ? progressHistory : [];
 
 const chartData = safeHistory.map((item: any) => {
-    const value = item.assessment_date;
-    const date = value instanceof Date ? value : new Date(String(value));
-
-    let label = "";
-    if (!Number.isNaN(date.getTime())) {
-        const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const year = date.getFullYear();
-        label = `${day}/${month}/${year}`;
-    }
-
     return {
-        label,
+        label: formatDateOnly(item.assessment_date),
         weight:
             item.weight_kg === null ||
             item.weight_kg === undefined ||
