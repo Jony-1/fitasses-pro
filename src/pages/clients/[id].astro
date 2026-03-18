@@ -10,26 +10,38 @@ import {
 } from "../../lib/utils/client";
 import ClientProgressCharts from "../../components/clients/ClientProgressCharts.astro";
 import {
-    getClientById,
+    getClientByIdForUser,
     getProgressHistory,
 } from "../../lib/utils/client-profile";
 import { getClientProgressSummary } from "../../lib/utils/client-progress";
 
 const { id } = Astro.params;
+const user = Astro.locals.user;
+
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+if (
+    user.role !== "trainer" &&
+    user.role !== "admin" &&
+    user.role !== "client"
+) {
+    return Astro.redirect("/login?error=forbidden");
+}
 
 if (!id || Number.isNaN(Number(id))) {
     return Astro.redirect("/clients");
 }
 
 const clientId = Number(id);
-const client = await getClientById(clientId);
+const client = await getClientByIdForUser(clientId, user);
 
 if (!client) {
     return new Response("Cliente no encontrado", { status: 404 });
 }
 
 const age = calculateAge(client.birth_date);
-
 const createdAtFormatted = formatDateTimeLocal(client.created_at);
 
 const {
@@ -41,14 +53,9 @@ const {
     muscleChange,
 } = await getClientProgressSummary(clientId);
 
-const progressHistory = await getProgressHistory(Number(id));
-const user = Astro.locals.user;
+const progressHistory = await getProgressHistory(clientId);
 
-
-
-const isTrainer = user?.role === "trainer" || user?.role === "admin";
-
-
+const isTrainer = user.role === "trainer" || user.role === "admin";
 ---
 
 <AppLayout title={`Cliente #${client.id}`}>
@@ -156,7 +163,8 @@ const isTrainer = user?.role === "trainer" || user?.role === "admin";
                         <dd
                             class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100"
                         >
-                            {genderEmoji(client.gender)}{" "}{client.gender}
+                            {genderEmoji(client.gender)}
+                            {client.gender}
                         </dd>
                     </div>
 
@@ -292,7 +300,7 @@ const isTrainer = user?.role === "trainer" || user?.role === "admin";
                                     )
                                 }
                             </p>
-                            <p class={`text-sm ${changeColor(weightChange)}`}>
+                            <p class={`text-sm ${changeColor(bodyFatChange)}`}>
                                 Cambio: {formatChange(bodyFatChange, " %")}
                             </p>
                         </div>
@@ -313,7 +321,7 @@ const isTrainer = user?.role === "trainer" || user?.role === "admin";
                                     )
                                 }
                             </p>
-                            <p class={`text-sm ${changeColor(weightChange)}`}>
+                            <p class={`text-sm ${changeColor(muscleChange)}`}>
                                 Cambio: {formatChange(muscleChange, " %")}
                             </p>
                         </div>
@@ -336,7 +344,7 @@ const isTrainer = user?.role === "trainer" || user?.role === "admin";
         </div>
         <ClientProgressCharts progressHistory={progressHistory} />
     </div>
-    <!-- MODAL -->
+
     <div
         id="delete-modal"
         class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4"
@@ -375,7 +383,6 @@ const isTrainer = user?.role === "trainer" || user?.role === "admin";
 
     <script>
         import { setupClientDelete } from "../../lib/utils/client-delete";
-
         setupClientDelete();
     </script>
 </AppLayout>
