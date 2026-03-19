@@ -11,7 +11,8 @@ A nivel técnico, el proyecto está desarrollado con Astro en el frontend y Node
 ## 🔗 Demo
 
 👉 [https://fitasses.cubepath.app ](https://fitassess.devjonathan.org/)*
-
+password:admin
+user: admin@gmail.com
 ---
 
 ## 📦 Repositorio
