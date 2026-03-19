@@ -14,10 +14,13 @@ A nivel técnico, el proyecto está desarrollado con Astro en el frontend y Node
 
 ## 🔐 Acceso de prueba
 
-Usuario: `admin@gmail.com`  
-Password: `********`
+## 🔐 Acceso de prueba
 
-> 🔒 La contraseña estará disponible el 31 de marzo.
+Usuario: `ooooonoooo@gmail.com`  
+Password: `YWRtaW4=`
+
+> 🔒 Pista: está codificada en base64 😉  
+> Revelación oficial: 31 de marzo
 ---
 
 ## 📦 Repositorio
