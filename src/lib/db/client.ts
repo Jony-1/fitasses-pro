@@ -1,17 +1,16 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 
-const connectionString = import.meta.env.DATABASE_URL;
+const connectionString =
+  import.meta.env.DATABASE_URL || process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error('DATABASE_URL environment variable is not set');
+  throw new Error("DATABASE_URL environment variable is not set");
 }
 
-export const sql = postgres(connectionString, {
-  ssl: "require"
+const client = postgres(connectionString, {
+  ssl: false,
 });
 
-
-const client = postgres(connectionString);
-
+export const sql = client;
 export const db = drizzle(client);
