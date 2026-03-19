@@ -617,7 +617,7 @@ para que cada trainer administre solo sus clientes y admin pueda reasignarlos.
 
 ---
 
-# RESUMEN CORTO PARA PEGAR RÁPIDO
+# RESUMEN CORTO
 
 ```text
 Estamos trabajando en FitAssess Pro con Astro + TS + Tailwind + PostgreSQL + Railway.
@@ -671,5 +671,3 @@ Hay que revisar ese archivo, seguramente un import mal cerrado.
 No reinventar estructura:
 auth está en src/auth, no en src/lib/auth.
 ```
-
-Si quieres, también te lo convierto en una versión aún más corta tipo **prompt maestro de continuidad**.
