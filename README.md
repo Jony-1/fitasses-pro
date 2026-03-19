@@ -12,9 +12,12 @@ A nivel técnico, el proyecto está desarrollado con Astro en el frontend y Node
 
 👉 [https://fitasses.cubepath.app ](https://fitassess.devjonathan.org/)*
 
-password: admin
+## 🔐 Acceso de prueba
 
-user: admin@gmail.com
+Usuario: `admin@gmail.com`  
+Password: `********`
+
+> 🔒 La contraseña estará disponible el 31 de marzo.
 ---
 
 ## 📦 Repositorio
