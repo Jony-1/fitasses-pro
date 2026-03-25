@@ -16,11 +16,7 @@ A nivel técnico, el proyecto está desarrollado con Astro en el frontend y Node
 
 ## 🔐 Acceso de prueba
 
-Usuario: `ooooonoooo@gmail.com`  
-Password: `YWRtaW4=`
-
-> 🔒 Pista: está codificada en base64 😉  
-> Revelación oficial: 31 de marzo
+Se pueden registrar la idea es que sea como entrenador, ya que el usuario cliente solo puede ver estadisticas y hacer login
 ---
 
 ## 📦 Repositorio
