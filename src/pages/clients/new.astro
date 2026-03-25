@@ -1,177 +1,65 @@
 ---
 import AppLayout from "../../layouts/layout.astro";
-import HeightInput from "../../components/HeightInput.astro";
 import { sql } from "../../lib/db/client";
+import ClientFormFields from "../../components/clients/ClientFormFields.astro";
 
 const user = Astro.locals.user;
 
 if (!user) {
-    return Astro.redirect("/login");
+  return Astro.redirect("/login");
 }
 
 if (user.role !== "trainer" && user.role !== "admin") {
-    return Astro.redirect("/login?error=forbidden");
+  return Astro.redirect("/login?error=forbidden");
 }
 
 const trainers =
-    user.role === "admin"
-        ? await sql`
+  user.role === "admin"
+    ? await sql`
         SELECT id, name, email
         FROM users
         WHERE role = 'trainer'
         ORDER BY name ASC, id ASC
       `
-        : [];
+    : [];
 ---
 
 <AppLayout title="Nuevo cliente">
-    <div class="mx-auto max-w-3xl">
-        <div class="mb-6">
-            <h1 class="text-3xl font-bold tracking-tight">Nuevo cliente</h1>
-            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                {
-                    user.role === "admin"
-                        ? "Registra un nuevo cliente y asígnalo a un trainer."
-                        : "Registra un nuevo cliente para comenzar sus valoraciones."
-                }
-            </p>
-        </div>
-
-        <div
-            class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
-        >
-            <form method="POST" action="/api/clients/create" class="space-y-6">
-                {
-                    user.role === "admin" && (
-                        <div>
-                            <label
-                                for="trainer_id"
-                                class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
-                            >
-                                Trainer asignado
-                            </label>
-                            <select
-                                id="trainer_id"
-                                name="trainer_id"
-                                required
-                                class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                            >
-                                <option value="">Selecciona un trainer</option>
-                                {trainers.map((trainer) => (
-                                    <option value={trainer.id}>
-                                        {trainer.name} ({trainer.email})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )
-                }
-
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div>
-                        <label
-                            for="full_name"
-                            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
-                        >
-                            Nombre completo
-                        </label>
-                        <input
-                            id="full_name"
-                            name="full_name"
-                            type="text"
-                            required
-                            class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                            placeholder="Ej. Juan Rincón"
-                        />
-                    </div>
-
-                    <div>
-                        <label
-                            for="birth_date"
-                            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
-                        >
-                            Fecha de nacimiento
-                        </label>
-                        <input
-                            id="birth_date"
-                            name="birth_date"
-                            type="date"
-                            class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                        />
-                    </div>
-
-                    <div>
-                        <p
-                            class="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300"
-                        >
-                            Género
-                        </p>
-
-                        <div class="flex gap-6">
-                            <label
-                                class="flex cursor-pointer items-center gap-2"
-                            >
-                                <input
-                                    type="radio"
-                                    name="gender"
-                                    value="Hombre"
-                                    class="accent-emerald-500"
-                                    required
-                                />
-                                👨 Hombre
-                            </label>
-
-                            <label
-                                class="flex cursor-pointer items-center gap-2"
-                            >
-                                <input
-                                    type="radio"
-                                    name="gender"
-                                    value="Mujer"
-                                    class="accent-emerald-500"
-                                />
-                                👩 Mujer
-                            </label>
-                        </div>
-                    </div>
-
-                    <div>
-                        <HeightInput name="height_m" label="Altura (m)" />
-                    </div>
-                </div>
-
-                <div>
-                    <label
-                        for="notes"
-                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
-                    >
-                        Observaciones generales
-                    </label>
-                    <textarea
-                        id="notes"
-                        name="notes"
-                        rows="4"
-                        class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                        placeholder="Ej. Molestias, restricciones, notas iniciales..."
-                    ></textarea>
-                </div>
-
-                <div class="flex items-center justify-end gap-3">
-                    <a
-                        href="/clients"
-                        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                        Cancelar
-                    </a>
-
-                    <button
-                        type="submit"
-                        class="rounded-lg bg-emerald-400 px-5 py-2 text-sm font-bold text-slate-900 hover:bg-emerald-300 dark:bg-emerald-600 dark:text-slate-100 dark:hover:bg-emerald-500"
-                    >
-                        Guardar cliente
-                    </button>
-                </div>
-            </form>
-        </div>
+  <div class="mx-auto max-w-3xl">
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold tracking-tight">Nuevo cliente</h1>
+      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+        {
+          user.role === "admin"
+            ? "Registra un nuevo cliente y asígnalo a un trainer."
+            : "Registra un nuevo cliente para comenzar sus valoraciones."
+        }
+      </p>
     </div>
+
+    <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <form method="POST" action="/api/clients/create" class="space-y-6">
+        <ClientFormFields
+          showTrainerSelect={user.role === "admin"}
+          trainers={trainers}
+        />
+
+        <div class="flex items-center justify-end gap-3">
+          <a
+            href="/clients"
+            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cancelar
+          </a>
+
+          <button
+            type="submit"
+            class="rounded-lg bg-emerald-400 px-5 py-2 text-sm font-bold text-slate-900 hover:bg-emerald-300 dark:bg-emerald-600 dark:text-slate-100 dark:hover:bg-emerald-500"
+          >
+            Guardar cliente
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </AppLayout>

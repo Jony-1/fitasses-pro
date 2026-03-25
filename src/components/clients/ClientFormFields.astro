@@ -1,0 +1,150 @@
+---
+import HeightInput from "../HeightInput.astro";
+
+type TrainerOption = {
+    id: number;
+    name: string;
+    email: string;
+};
+
+interface Props {
+    showTrainerSelect?: boolean;
+    trainers?: TrainerOption[];
+    values?: {
+        trainer_id?: number | string | null;
+        full_name?: string;
+        birth_date?: string;
+        gender?: string;
+        height_m?: string | number | null;
+        notes?: string;
+    };
+}
+
+const { showTrainerSelect = false, trainers = [], values = {} } = Astro.props;
+---
+
+{
+    showTrainerSelect && (
+        <div>
+            <label
+                for="trainer_id"
+                class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+            >
+                Trainer asignado
+            </label>
+            <select
+                id="trainer_id"
+                name="trainer_id"
+                required
+                class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            >
+                <option value="">Selecciona un trainer</option>
+                {trainers.map((trainer) => (
+                    <option
+                        value={trainer.id}
+                        selected={
+                            String(values.trainer_id ?? "") ===
+                            String(trainer.id)
+                        }
+                    >
+                        {trainer.name} ({trainer.email})
+                    </option>
+                ))}
+            </select>
+        </div>
+    )
+}
+
+<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+    <div>
+        <label
+            for="full_name"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+        >
+            Nombre completo
+        </label>
+        <input
+            id="full_name"
+            name="full_name"
+            type="text"
+            required
+            value={values.full_name ?? ""}
+            class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            placeholder="Ej. Juan Rincón"
+        />
+    </div>
+
+    <div>
+        <label
+            for="birth_date"
+            class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+        >
+            Fecha de nacimiento
+        </label>
+        <input
+            id="birth_date"
+            name="birth_date"
+            type="date"
+            value={values.birth_date ?? ""}
+            class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+        />
+    </div>
+
+    <div>
+        <p
+            class="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300"
+        >
+            Género
+        </p>
+
+        <div class="flex gap-6">
+            <label class="flex cursor-pointer items-center gap-2">
+                <input
+                    type="radio"
+                    name="gender"
+                    value="Hombre"
+                    class="accent-emerald-500"
+                    checked={values.gender === "Hombre"}
+                    required
+                />
+                👨 Hombre
+            </label>
+
+            <label class="flex cursor-pointer items-center gap-2">
+                <input
+                    type="radio"
+                    name="gender"
+                    value="Mujer"
+                    class="accent-emerald-500"
+                    checked={values.gender === "Mujer"}
+                />
+                👩 Mujer
+            </label>
+        </div>
+    </div>
+
+    <div>
+        <HeightInput
+            name="height_m"
+            label="Altura (m)"
+            value={values.height_m ?? ""}
+        />
+    </div>
+</div>
+
+<div>
+    <label
+        for="notes"
+        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+    >
+        Observaciones generales
+    </label>
+    <textarea
+        id="notes"
+        name="notes"
+        rows="4"
+        class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+        placeholder="Ej. Molestias, restricciones, notas iniciales..."
+        >{values.notes ?? ""}</textarea
+    >
+</div>

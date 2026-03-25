@@ -1,42 +1,75 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
-import { requireTrainer } from "../../../lib/auth/guards";
 
-export const POST: APIRoute = async ( context ) => {
-    try {
-        requireTrainer(context);
-        
-        const formData = await context.request.formData();
+export const POST: APIRoute = async (context) => {
+    const { request, redirect, locals } = context;
 
-        const fullName = String(formData.get("full_name") || "").trim();
-        const birthDate = String(formData.get("birth_date") || "").trim();
-        const heightM = String(formData.get("height_m") || "").trim();
-        const notes = String(formData.get("notes") || "").trim();
-        const gender = String(formData.get("gender") || "").trim();
+    const user = locals.user;
 
-        if (!fullName) {
-            return new Response("El nombre es obligatorio", { status: 400 });
+    if (!user) {
+        return redirect("/login");
+    }
+
+    if (user.role !== "trainer" && user.role !== "admin") {
+        return redirect("/login?error=forbidden");
+    }
+
+    const formData = await request.formData();
+
+    const fullName = String(formData.get("full_name") ?? "").trim();
+    const birthDate = String(formData.get("birth_date") ?? "").trim() || null;
+    const gender = String(formData.get("gender") ?? "").trim() || null;
+    const heightRaw = String(formData.get("height_m") ?? "").trim();
+    const notes = String(formData.get("notes") ?? "").trim() || null;
+
+    if (!fullName) {
+        return redirect("/clients/new?error=missing_name");
+    }
+
+    const height =
+        heightRaw === "" ? null : Number(heightRaw);
+
+    if (heightRaw !== "" && Number.isNaN(height!)) {
+        return redirect("/clients/new?error=invalid_height");
+    }
+
+    let trainerId: number;
+
+    // 🔥 CLAVE
+    if (user.role === "trainer") {
+        trainerId = user.id;
+    } else {
+        const trainerIdRaw = String(formData.get("trainer_id") ?? "").trim();
+
+        if (!trainerIdRaw) {
+            return redirect("/clients/new?error=missing_trainer");
         }
 
-        await sql`
-      INSERT INTO clients (full_name, birth_date, height_m, notes, gender)
-      VALUES (
-        ${fullName},
-        ${birthDate || null},
-        ${heightM ? Number(heightM) : null},
-        ${notes || null},
-        ${gender  || null}
-      )
+        trainerId = Number(trainerIdRaw);
+
+        if (Number.isNaN(trainerId)) {
+            return redirect("/clients/new?error=invalid_trainer");
+        }
+    }
+
+    await sql`
+        INSERT INTO clients (
+            trainer_id,
+            full_name,
+            birth_date,
+            height_m,
+            notes,
+            gender
+        )
+        VALUES (
+            ${trainerId},
+            ${fullName},
+            ${birthDate},
+            ${height},
+            ${notes},
+            ${gender}
+        )
     `;
 
-        return new Response(null, {
-            status: 303,
-            headers: {
-                Location: "/clients",
-            },
-        });
-    } catch (error) {
-        console.error("Error creating client:", error);
-        return new Response("Error al crear cliente", { status: 500 });
-    }
+    return redirect("/clients");
 };

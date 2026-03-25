@@ -1,0 +1,172 @@
+---
+import AppLayout from "../../../layouts/layout.astro";
+
+const error = Astro.url.searchParams.get("error");
+
+const errorMessages: Record<string, string> = {
+    missing_fields: "Completa todos los campos obligatorios.",
+    invalid_name: "El nombre debe tener entre 3 y 120 caracteres.",
+    invalid_email: "Ingresa un correo válido.",
+    password_mismatch: "Las contraseñas no coinciden.",
+    weak_password:
+        "La contraseña debe tener al menos 8 caracteres, incluyendo mayúscula, minúscula, número y símbolo.",
+    email_exists: "Ese correo ya está registrado.",
+};
+
+const errorMessage = error ? errorMessages[error] : null;
+---
+
+<AppLayout title="Registro de trainer">
+    <div class="mx-auto max-w-2xl px-4 py-10">
+        <div class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">
+                Crear cuenta de trainer
+            </h1>
+            <p class="mt-2 text-slate-600 dark:text-slate-400">
+                Regístrate para administrar clientes, valoraciones y progreso.
+            </p>
+        </div>
+
+        <div
+            class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+        >
+            {
+                errorMessage && (
+                    <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                        {errorMessage}
+                    </div>
+                )
+            }
+
+            <form
+                method="POST"
+                action="/api/auth/register-trainer"
+                class="space-y-5"
+            >
+                <div>
+                    <label
+                        for="name"
+                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200"
+                    >
+                        Nombre
+                    </label>
+                    <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        required
+                        minlength="3"
+                        maxlength="120"
+                        autocomplete="name"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                        placeholder="Tu nombre o nombre profesional"
+                    />
+                </div>
+
+                <div>
+                    <label
+                        for="email"
+                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200"
+                    >
+                        Correo electrónico
+                    </label>
+                    <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        maxlength="160"
+                        autocomplete="email"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                        placeholder="ejemplo@correo.com"
+                    />
+                </div>
+
+                <div>
+                    <label
+                        for="password"
+                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200"
+                    >
+                        Contraseña
+                    </label>
+                    <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        required
+                        minlength="8"
+                        maxlength="72"
+                        autocomplete="new-password"
+                        pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,72}$"
+                        title="Debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo."
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                        placeholder="Crea una contraseña segura"
+                    />
+                </div>
+
+                <div>
+                    <label
+                        for="confirm_password"
+                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200"
+                    >
+                        Confirmar contraseña
+                    </label>
+                    <input
+                        id="confirm_password"
+                        name="confirm_password"
+                        type="password"
+                        required
+                        minlength="8"
+                        maxlength="72"
+                        autocomplete="new-password"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                        placeholder="Repite tu contraseña"
+                    />
+                </div>
+
+                <div
+                    class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-400"
+                >
+                    <p class="font-semibold text-slate-900 dark:text-slate-200">
+                        Requisitos de la contraseña
+                    </p>
+                    <ul class="mt-2 space-y-1">
+                        <li>• Mínimo 8 caracteres</li>
+                        <li>• Al menos una mayúscula</li>
+                        <li>• Al menos una minúscula</li>
+                        <li>• Al menos un número</li>
+                        <li>• Al menos un símbolo</li>
+                    </ul>
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <a
+                        href="/register"
+                        class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                        Volver
+                    </a>
+
+                    <button
+                        type="submit"
+                        class="w-full rounded-xl bg-emerald-500 px-4 py-3 font-bold text-white hover:bg-emerald-400"
+                    >
+                        Crear cuenta
+                    </button>
+                </div>
+
+                <p
+                    class="text-center text-sm text-slate-600 dark:text-slate-400"
+                >
+                    ¿Ya tienes cuenta?
+                    <a
+                        href="/login"
+                        class="font-semibold text-emerald-600 hover:text-emerald-500 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                    >
+                        Inicia sesión
+                    </a>
+                </p>
+            </form>
+        </div>
+    </div>
+</AppLayout>
