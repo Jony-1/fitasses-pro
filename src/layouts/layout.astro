@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { sql } from "../lib/db/client";
 
 interface Props {
   title?: string;
@@ -7,15 +8,46 @@ interface Props {
 
 const { title = "FitAssess Pro" } = Astro.props;
 const currentPath = Astro.url.pathname;
-const user = Astro.locals.user;
+type LayoutUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: "admin" | "gym_manager" | "trainer" | "client";
+  gymId: number | null;
+} | null;
+
+const rawUser = Astro.locals.user as any;
+const user = rawUser
+  ? {
+      id: rawUser.id as number,
+      name: rawUser.name as string,
+      email: rawUser.email as string,
+      role: rawUser.role as "admin" | "gym_manager" | "trainer" | "client",
+      gymId: (rawUser.gymId ?? null) as number | null,
+    }
+  : null;
 
 const isAdmin = user?.role === "admin";
+const isGymManager = user?.role === "gym_manager";
 const isTrainer = user?.role === "trainer";
 const isClient = user?.role === "client";
 const canManageClients = isTrainer || isAdmin;
+const canManageTrainers = isAdmin || isGymManager;
+const canManageRoutines = isTrainer || isAdmin;
+const dashboardHref = isGymManager ? "/gym-manager" : "/dashboard";
+const clientRecord = isClient && user ? await sql`
+  SELECT id
+  FROM clients
+  WHERE user_id = ${user.id}
+  LIMIT 1
+` : [];
+const clientId = isClient ? (clientRecord[0]?.id as number | undefined) ?? null : null;
+const clientProfileHref = clientId ? `/clients/${clientId}` : "/dashboard";
 
 const panelTitle = isAdmin
   ? "Admin Panel"
+  : isGymManager
+    ? "Gym Manager Panel"
   : isTrainer
     ? "Trainer Panel"
     : isClient
@@ -23,14 +55,31 @@ const panelTitle = isAdmin
       : "FitAssess Pro";
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: "📊", visible: !!user },
+  { label: "Dashboard", href: dashboardHref, icon: "📊", visible: !!user && !isClient },
+  { label: "Mi rutina", href: clientId ? `/clients/${clientId}#rutina-actual` : "/dashboard", icon: "🗓️", visible: isClient },
+  { label: "Mi progreso", href: clientId ? `/clients/${clientId}#progreso` : "/dashboard", icon: "📈", visible: isClient },
+  { label: "Valoraciones", href: clientId ? `/clients/${clientId}/assessments` : "/dashboard", icon: "🧾", visible: isClient },
   { label: "Clients", href: "/clients", icon: "👥", visible: canManageClients },
+  { label: "Ejercicios", href: "/exercises", icon: "🎴", visible: canManageRoutines },
   {
     label: "New Client",
     href: "/clients/new",
     icon: "➕",
     visible: canManageClients,
   },
+  {
+    label: "Rutinas",
+    href: "/routines",
+    icon: "🗓️",
+    visible: canManageRoutines,
+  },
+  {
+    label: "Trainers",
+    href: "/admin/trainers",
+    icon: "🏋️",
+    visible: canManageTrainers,
+  },
+  { label: "Gimnasios", href: "/admin/gyms", icon: "🏢", visible: isAdmin },
   { label: "Administración", href: "/admin", icon: "🏴‍☠️", visible: isAdmin },
 ].filter((item) => item.visible);
 
@@ -69,11 +118,11 @@ function isActive(href: string) {
   </head>
 
   <body
-    class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100"
+    class="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100"
   >
     <div class="min-h-screen md:flex">
       <aside
-        class="hidden w-72 shrink-0 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:flex md:flex-col"
+        class="hidden w-72 shrink-0 border-r border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 md:sticky md:top-0 md:flex md:h-screen md:flex-col"
       >
         <div class="border-b border-slate-200 px-6 py-5 dark:border-slate-800">
           <div class="flex items-center gap-3">
@@ -124,6 +173,8 @@ function isActive(href: string) {
               {
                 isAdmin
                   ? "Gestión administrativa de entrenadores y plataforma."
+                  : isGymManager
+                    ? "Gestión de entrenadores y gimnasio asignado."
                   : isClient
                     ? "Consulta de progreso, valoraciones y seguimiento."
                     : "Gestión de clientes, valoraciones y seguimiento."
@@ -135,9 +186,9 @@ function isActive(href: string) {
 
       <div class="flex min-h-screen flex-1 flex-col">
         <header
-          class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+          class="border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90"
         >
-          <div class="flex items-center justify-between px-4 py-4 md:px-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-6">
             <div class="flex items-center gap-3 md:hidden">
               <div
                 class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 font-extrabold text-slate-900"
@@ -166,11 +217,11 @@ function isActive(href: string) {
               </h2>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center justify-end gap-3">
               <button
                 type="button"
                 id="theme-toggle"
-                class="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 <span class="dark:hidden">🌙</span>
                 <span class="hidden dark:inline">☀️</span>
@@ -178,7 +229,7 @@ function isActive(href: string) {
 
               {
                 user && (
-                  <div class="flex items-center gap-3">
+                  <div class="flex flex-wrap items-center justify-end gap-3">
                     <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                       {user.name}
                     </span>
@@ -221,7 +272,7 @@ function isActive(href: string) {
           </div>
         </header>
 
-        <main class="flex-1 p-4 md:p-6">
+        <main class="min-w-0 flex-1 p-4 md:p-6">
           <slot />
         </main>
       </div>
@@ -230,9 +281,7 @@ function isActive(href: string) {
     <footer
       class="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
     >
-      <div
-        class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-6 py-4 text-sm text-slate-500 dark:text-slate-400 md:flex-row"
-      >
+      <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-sm text-slate-500 dark:text-slate-400 sm:px-6 md:flex-row">
         <span>© {new Date().getFullYear()} FitAssess Pro</span>
         <span>Desarrollado por Jonathan Sierra</span>
       </div>

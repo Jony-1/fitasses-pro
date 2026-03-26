@@ -9,7 +9,11 @@ type TrainerOption = {
 
 interface Props {
     showTrainerSelect?: boolean;
-    trainers?: TrainerOption[];
+    trainers?: Array<{
+        id: number;
+        name: string;
+        email: string;
+    }>;
     values?: {
         trainer_id?: number | string | null;
         full_name?: string;
@@ -97,7 +101,7 @@ const { showTrainerSelect = false, trainers = [], values = {} } = Astro.props;
             Género
         </p>
 
-        <div class="flex gap-6">
+        <div class="flex flex-wrap gap-4 sm:gap-6">
             <label class="flex cursor-pointer items-center gap-2">
                 <input
                     type="radio"
@@ -127,7 +131,7 @@ const { showTrainerSelect = false, trainers = [], values = {} } = Astro.props;
         <HeightInput
             name="height_m"
             label="Altura (m)"
-            value={values.height_m ?? ""}
+            value={String(values.height_m ?? "")}
         />
     </div>
 </div>

@@ -1,0 +1,52 @@
+---
+import StatCard from "../ui/StatCard.astro";
+import { changeColor, formatChange, formatMetric } from "../../lib/utils/client";
+
+type AssessmentSummary = {
+  weight_kg: number | null;
+  body_fat_pct: number | null;
+  muscle_pct: number | null;
+  bmi: number | null;
+};
+
+interface Props {
+  totalAssessments: number;
+  latestAssessment: AssessmentSummary | null;
+  weightChange: number | null;
+  bodyFatChange: number | null;
+  muscleChange: number | null;
+}
+
+const { totalAssessments, latestAssessment, weightChange, bodyFatChange, muscleChange } = Astro.props as Props;
+---
+
+<section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+  <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Resumen de progreso</h2>
+
+  <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <StatCard label="Total valoraciones" value={totalAssessments} />
+
+    <StatCard
+      label="Peso actual"
+      value={formatMetric(latestAssessment?.weight_kg, " kg")}
+      note={`Cambio: ${formatChange(weightChange, " kg")}`}
+      noteClass={changeColor(weightChange)}
+    />
+
+    <StatCard
+      label="Grasa corporal"
+      value={formatMetric(latestAssessment?.body_fat_pct, " %")}
+      note={`Cambio: ${formatChange(bodyFatChange, " %")}`}
+      noteClass={changeColor(bodyFatChange)}
+    />
+
+    <StatCard
+      label="Masa muscular"
+      value={formatMetric(latestAssessment?.muscle_pct, " %")}
+      note={`Cambio: ${formatChange(muscleChange, " %")}`}
+      noteClass={changeColor(muscleChange)}
+    />
+
+    <StatCard label="IMC actual" value={formatMetric(latestAssessment?.bmi)} />
+  </div>
+</section>

@@ -1,0 +1,273 @@
+---
+import AppLayout from "../../layouts/layout.astro";
+import SectionHeader from "../../components/ui/SectionHeader.astro";
+import EmptyState from "../../components/ui/EmptyState.astro";
+import { getClientsForUser } from "../../lib/utils/client-profile";
+import {
+  ensureRoutineSchema,
+  getRoutineDetailsForUser,
+} from "../../lib/utils/routines";
+import { getExerciseLibraryItem } from "../../lib/utils/exercise-library";
+
+const { id } = Astro.params;
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (user.role !== "trainer" && user.role !== "admin") {
+  return Astro.redirect("/login?error=forbidden");
+}
+
+if (!id || Number.isNaN(Number(id))) {
+  return Astro.redirect("/routines");
+}
+
+await ensureRoutineSchema();
+
+const routine = await getRoutineDetailsForUser(Number(id), user);
+
+if (!routine) {
+  return new Response("Rutina no encontrada", { status: 404 });
+}
+
+const clients = routine.is_template ? await getClientsForUser(user) : [];
+const completedDays = routine.days.filter((day) => day.completed_at).length;
+---
+
+<AppLayout title={routine.name}>
+  <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <SectionHeader
+      eyebrow={routine.is_template ? "Plantilla de rutina" : "Rutina asignada"}
+      title={routine.name}
+      description={routine.objective ?? "Rutina personalizada por días."}
+    >
+      {routine.is_template && (
+        <a
+          slot="actions"
+          href={`/routines/${routine.id}/edit`}
+          class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          Editar plantilla
+        </a>
+      )}
+
+      {routine.is_template && (
+        <form slot="actions" method="POST" action="/api/routines/clone">
+          <input type="hidden" name="routine_id" value={routine.id} />
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-emerald-300"
+          >
+            Clonar
+          </button>
+        </form>
+      )}
+
+      <a slot="actions" href="/routines" class="text-sm font-medium text-slate-500 hover:text-emerald-600">
+        ← Volver a rutinas
+      </a>
+    </SectionHeader>
+
+    <div class="grid gap-6 xl:grid-cols-3">
+      <div class="space-y-6 xl:col-span-2">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Estado</p>
+            <p class="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{routine.active ? "Activa" : "Pausada"}</p>
+          </div>
+
+          <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Nivel</p>
+            <p class="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{routine.level ?? "Libre"}</p>
+          </div>
+
+          <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Días</p>
+            <p class="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{routine.days.length}</p>
+          </div>
+
+          <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Completados</p>
+            <p class="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{completedDays}</p>
+          </div>
+        </div>
+
+        {routine.days.length === 0 ? (
+          <EmptyState title="Sin días" description="Esta rutina todavía no tiene días configurados." />
+        ) : (
+          <div class="space-y-4">
+            {routine.days.map((day) => (
+              <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Día {day.day_number}</p>
+                    <h2 class="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">{day.title}</h2>
+                    {day.focus && <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{day.focus}</p>}
+                  </div>
+
+                  <div class="flex items-center gap-3">
+                    {day.completed_at ? (
+                      <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                        Completado
+                      </span>
+                    ) : (
+                      <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                        Pendiente
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {day.notes && <p class="mt-4 text-sm text-slate-600 dark:text-slate-400">{day.notes}</p>}
+
+                <div class="mt-5 space-y-3">
+                  {day.exercises.map((exercise) => {
+                    const exerciseWithKey = exercise as unknown as { exercise_key?: string | null; name: string };
+                    const libraryItem = getExerciseLibraryItem(exerciseWithKey.exercise_key ?? exerciseWithKey.name);
+
+                    return (
+                        <article class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-800 dark:bg-slate-950/80 dark:hover:border-emerald-500/30">
+                          <div class="grid gap-0 md:grid-cols-[180px_1fr]">
+                            <img
+                              src={libraryItem?.image ?? "/favicon.png"}
+                              alt={exercise.name}
+                              class="h-44 w-full object-cover md:h-full"
+                            />
+
+                          <div class="bg-white p-4 dark:bg-slate-900/70">
+                            <div class="flex items-start justify-between gap-3">
+                              <div>
+                                <p class="text-sm font-bold text-slate-900 dark:text-slate-100">{exercise.name}</p>
+                                <div class="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+                                  <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                                    {exercise.sets ? `${exercise.sets} series` : "Series libre"}
+                                  </span>
+                                  {exercise.reps && (
+                                    <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                                      {exercise.reps} reps
+                                    </span>
+                                  )}
+                                  {exercise.rest_seconds && (
+                                    <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                                      {exercise.rest_seconds}s descanso
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <span class="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                #{exercise.position}
+                              </span>
+                            </div>
+
+                            <div class="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                              <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">{libraryItem?.muscle ?? "Personalizado"}</span>
+                              <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-900">{libraryItem?.equipment ?? "Libre"}</span>
+                            </div>
+
+                            {exercise.notes && <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">{exercise.notes}</p>}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <form method="POST" action="/api/routines/complete-day" class="mt-5 flex flex-wrap items-center gap-3">
+                  <input type="hidden" name="routine_day_id" value={day.id} />
+                  <input type="hidden" name="client_id" value={routine.client_id ?? ""} />
+                  <input
+                    name="notes"
+                    class="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
+                    placeholder="Nota rápida del día"
+                  />
+                  <button
+                    type="submit"
+                    class:list={[
+                      "rounded-xl px-4 py-3 text-sm font-bold transition",
+                      day.completed_at
+                        ? "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                        : "bg-emerald-400 text-slate-900 hover:bg-emerald-300 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400",
+                    ]}
+                  >
+                    {day.completed_at ? "Ya completado" : "Marcar completado"}
+                  </button>
+                </form>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <aside class="space-y-6">
+        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+          <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Detalles</h2>
+
+          <dl class="mt-4 space-y-3 text-sm">
+            <div class="flex items-center justify-between gap-4">
+              <dt class="text-slate-500 dark:text-slate-400">Duración</dt>
+              <dd class="font-semibold text-slate-900 dark:text-slate-100">{routine.duration_weeks ? `${routine.duration_weeks} semanas` : "-"}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <dt class="text-slate-500 dark:text-slate-400">Inicio</dt>
+              <dd class="font-semibold text-slate-900 dark:text-slate-100">{routine.start_date ? new Date(routine.start_date).toLocaleDateString("es-ES") : "-"}</dd>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <dt class="text-slate-500 dark:text-slate-400">Cliente</dt>
+              <dd class="font-semibold text-slate-900 dark:text-slate-100">{routine.client_name ?? "Sin asignar"}</dd>
+            </div>
+          </dl>
+
+          {routine.notes && <p class="mt-4 text-sm text-slate-600 dark:text-slate-400">{routine.notes}</p>}
+        </div>
+
+        {routine.is_template ? (
+          <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Asignar a cliente</h2>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Crea una copia personalizada de esta plantilla.</p>
+
+            {clients.length === 0 ? (
+              <div class="mt-4">
+                <EmptyState title="Sin clientes" description="Necesitas clientes registrados para poder asignar la rutina." />
+              </div>
+            ) : (
+              <form method="POST" action="/api/routines/assign" class="mt-4 space-y-4">
+                <input type="hidden" name="routine_id" value={routine.id} />
+
+                <label class="block space-y-2">
+                  <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Cliente</span>
+                  <select name="client_id" required class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+                    <option value="">Selecciona un cliente</option>
+                    {clients.map((client) => (
+                      <option value={client.id}>{client.full_name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label class="block space-y-2">
+                  <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Fecha de inicio</span>
+                  <input type="date" name="start_date" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+                </label>
+
+                <button type="submit" class="w-full rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-bold text-slate-900 hover:bg-emerald-300">
+                  Asignar rutina
+                </button>
+              </form>
+            )}
+          </div>
+        ) : (
+          <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Rutina asignada</h2>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Esta copia ya está vinculada a un cliente.</p>
+            <div class="mt-4 rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/60">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Cliente</p>
+              <p class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{routine.client_name ?? "Sin asignar"}</p>
+            </div>
+          </div>
+        )}
+      </aside>
+    </div>
+  </div>
+</AppLayout>

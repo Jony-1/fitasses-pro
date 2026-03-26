@@ -1,0 +1,329 @@
+---
+import AppLayout from "../../../layouts/layout.astro";
+import SectionHeader from "../../../components/ui/SectionHeader.astro";
+import EmptyState from "../../../components/ui/EmptyState.astro";
+import TabNav from "../../../components/ui/TabNav.astro";
+import { getExerciseLibraryItem } from "../../../lib/utils/exercise-library";
+import { ensureRoutineSchema, getActiveRoutineForClient } from "../../../lib/utils/routines";
+import { getClientByIdForUser } from "../../../lib/utils/client-profile";
+
+type ClientSummary = {
+    id: number;
+    full_name: string;
+};
+
+type AttendanceTimeSlot = "morning" | "midday" | "night" | "other";
+
+function getAttendanceTimeSlotLabel(timeSlot: AttendanceTimeSlot | null) {
+    switch (timeSlot) {
+        case "morning":
+            return "Mañana";
+        case "midday":
+            return "Mediodía";
+        case "night":
+            return "Noche";
+        case "other":
+            return "Otro horario";
+        default:
+            return "Sin horario";
+    }
+}
+
+function getTodayRoutine(routine: { days: any[]; start_date: string | Date | null }) {
+    if (!routine.days.length) {
+        return { day: null };
+    }
+
+    if (!routine.start_date) {
+        return { day: routine.days[0] ?? null };
+    }
+
+    const start = new Date(routine.start_date);
+    const now = new Date();
+    const startLocal = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const diffDays = Math.floor((nowLocal.getTime() - startLocal.getTime()) / (1000 * 60 * 60 * 24));
+    const index = ((diffDays % routine.days.length) + routine.days.length) % routine.days.length;
+
+    return { day: routine.days[index] ?? null };
+}
+
+const { id } = Astro.params;
+const user = Astro.locals.user;
+
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+if (!["trainer", "admin", "client"].includes(String(user.role))) {
+    return Astro.redirect("/login?error=forbidden");
+}
+
+if (!id || Number.isNaN(Number(id))) {
+    return Astro.redirect("/clients");
+}
+
+const clientId = Number(id);
+const client = (await getClientByIdForUser(clientId, user)) as ClientSummary | null;
+
+if (!client) {
+    return new Response("Cliente no encontrado", { status: 404 });
+}
+
+await ensureRoutineSchema();
+const activeRoutine: any = await getActiveRoutineForClient(clientId);
+const todayDay: any = activeRoutine ? getTodayRoutine(activeRoutine).day : null;
+const todayExercises: any[] = (todayDay?.exercises ?? []).slice(0, 3);
+const routineDays: any[] = activeRoutine?.days ?? [];
+const todayDayId = todayDay?.id ?? null;
+const completedRoutineDays = routineDays.filter((day: any) => day.completed_at).length;
+const isClientView = user.role === "client";
+---
+
+<AppLayout title={`Rutina - ${client.full_name}`}>
+    <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <SectionHeader
+            title={client.full_name}
+            description="Vista limpia de tu rutina: solo lo que tienes que hacer hoy."
+        >
+            <a
+                slot="actions"
+                href={`/clients/${client.id}/progress`}
+                class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto"
+            >
+                Mi progreso
+            </a>
+
+            <a
+                slot="actions"
+                href={`/clients/${client.id}/assessments`}
+                class="inline-flex w-full items-center justify-center rounded-xl bg-blue-400 px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-blue-300 dark:bg-blue-600 dark:text-slate-100 dark:hover:bg-blue-500 sm:w-auto"
+            >
+                Valoraciones
+            </a>
+        </SectionHeader>
+
+        <TabNav
+            items={[
+                { href: `/clients/${client.id}/routine`, label: "Mi rutina", active: true },
+                { href: `/clients/${client.id}/progress`, label: "Mi progreso" },
+                { href: `/clients/${client.id}/assessments`, label: "Valoraciones" },
+            ]}
+        />
+
+        {!activeRoutine ? (
+            <EmptyState
+                title="Sin rutina asignada"
+                description="Cuando tu entrenador cargue una rutina, la verás aquí de forma clara y directa."
+            />
+        ) : (
+            <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+                <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                        <p class="text-sm font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Rutina activa</p>
+                        <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">{activeRoutine.name}</h2>
+                        <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                            {isClientView
+                                ? "Ves el estado general de tu rutina y puedes confirmar asistencia por horario."
+                                : activeRoutine.objective ?? "Hoy toca cumplir tu sesión."}
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{routineDays.length} días</span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{completedRoutineDays} completados</span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{activeRoutine.start_date ? new Date(activeRoutine.start_date).toLocaleDateString("es-ES") : "Sin inicio"}</span>
+                    </div>
+                </div>
+
+                {todayDay ? (
+                    <div class="mt-5 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Hoy</p>
+                                <h3 class="mt-2 text-xl font-bold text-emerald-950 dark:text-emerald-100">{todayDay.title}</h3>
+                                <p class="mt-1 text-sm text-emerald-800/80 dark:text-emerald-200/80">{todayDay.focus ?? "Sesión del día"}</p>
+                            </div>
+
+                            {todayDay.attendance_status && (
+                                <span class:list={[
+                                    "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
+                                    todayDay.attendance_status === "going"
+                                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200"
+                                        : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+                                ]}>
+                                    {todayDay.attendance_status === "going" ? "Asistiré hoy" : "No asistiré hoy"}
+                                </span>
+                            )}
+                        </div>
+
+                        {todayExercises.length > 0 && !isClientView && (
+                            <div class="mt-4 grid gap-2">
+                                {todayExercises.map((exercise: any) => {
+                                    const libraryItem = getExerciseLibraryItem(exercise.name);
+
+                                    return (
+                                        <article class="rounded-2xl bg-white/80 p-3 text-sm text-slate-700 shadow-sm dark:bg-slate-950/50 dark:text-slate-200">
+                                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+                                                <div class="overflow-hidden rounded-xl bg-slate-100 sm:w-24 sm:shrink-0">
+                                                    <img src={libraryItem?.image ?? "/favicon.png"} alt={exercise.name} class="h-24 w-full object-cover" />
+                                                </div>
+
+                                                <div class="min-w-0 flex-1">
+                                                    <p class="font-semibold text-slate-900 dark:text-slate-100">{exercise.name}</p>
+                                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                                        {exercise.sets ? `${exercise.sets} series` : "Series libre"}
+                                                        {exercise.reps ? ` · ${exercise.reps} reps` : ""}
+                                                        {exercise.rest_seconds ? ` · ${exercise.rest_seconds}s descanso` : ""}
+                                                    </p>
+                                                    {libraryItem?.muscle && <p class="mt-1 text-xs text-slate-400">{libraryItem.muscle}</p>}
+                                                </div>
+                                            </div>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {isClientView && todayDayId && (
+                            <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                                <form method="POST" action="/api/routines/attendance" class="space-y-2">
+                                    <input type="hidden" name="routine_day_id" value={todayDayId} />
+                                    <input type="hidden" name="client_id" value={client.id} />
+                                    <input type="hidden" name="status" value="going" />
+                                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                        Horario
+                                        <select name="time_slot" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                                            <option value="morning">Mañana</option>
+                                            <option value="midday">Mediodía</option>
+                                            <option value="night">Noche</option>
+                                            <option value="other">Otro horario</option>
+                                        </select>
+                                    </label>
+                                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-emerald-300 sm:w-auto">
+                                        Voy a asistir
+                                    </button>
+                                </form>
+
+                                <form method="POST" action="/api/routines/attendance" class="space-y-2">
+                                    <input type="hidden" name="routine_day_id" value={todayDayId} />
+                                    <input type="hidden" name="client_id" value={client.id} />
+                                    <input type="hidden" name="status" value="not_going" />
+                                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                        Horario
+                                        <select name="time_slot" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                                            <option value="morning">Mañana</option>
+                                            <option value="midday">Mediodía</option>
+                                            <option value="night">Noche</option>
+                                            <option value="other">Otro horario</option>
+                                        </select>
+                                    </label>
+                                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto">
+                                        No voy a asistir
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div class="mt-5">
+                        <EmptyState title="Sin día activo" description="Tu rutina existe, pero todavía no hay un día actual definido." />
+                    </div>
+                )}
+
+                <details class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+                    <summary class="cursor-pointer list-none text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        {isClientView ? "Ver días y estados" : "Ver días de la rutina"}
+                    </summary>
+
+                    <div class="mt-4 space-y-3">
+                        {routineDays.map((day: any) => (
+                            <div class:list={[
+                                "rounded-2xl border p-4",
+                                day.id === todayDayId
+                                    ? "border-emerald-300 bg-emerald-50/70 dark:border-emerald-800 dark:bg-emerald-950/20"
+                                    : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900",
+                            ]}>
+                                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Día {day.day_number}</p>
+                                        <p class="mt-1 font-bold text-slate-900 dark:text-slate-100">{day.title}</p>
+                                        {day.focus && <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{day.focus}</p>}
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-2">
+                                        {day.id === todayDayId && <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">Hoy</span>}
+                                        <span class:list={[
+                                            "rounded-full px-3 py-1 text-xs font-semibold",
+                                            day.completed_at
+                                                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                                                : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+                                        ]}>
+                                            {day.completed_at ? "Completado" : "Pendiente"}
+                                        </span>
+
+                                        {day.attendance_status && (
+                                            <span class:list={[
+                                                "rounded-full px-3 py-1 text-xs font-semibold",
+                                                day.attendance_status === "going"
+                                                    ? "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300"
+                                                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+                                            ]}>
+                                                {day.attendance_status === "going" ? "Asistirá" : "No asistirá"}
+                                            </span>
+                                        )}
+
+                                        {day.attendance_time_slot && (
+                                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                                {getAttendanceTimeSlotLabel(day.attendance_time_slot)}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {!isClientView ? (
+                                    <div class="mt-3 space-y-2">
+                                        {day.exercises.map((exercise: any) => {
+                                            const libraryItem = getExerciseLibraryItem(exercise.name);
+
+                                            return (
+                                                <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/60">
+                                                    <div class="grid gap-0 md:grid-cols-[112px_1fr]">
+                                                        <img src={libraryItem?.image ?? "/favicon.png"} alt={exercise.name} class="h-28 w-full object-cover md:h-full" />
+                                                        <div class="p-3">
+                                                            <div class="flex items-start justify-between gap-3">
+                                                                <div>
+                                                                    <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{exercise.name}</p>
+                                                                    <div class="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                                                                        <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-900">{exercise.sets ? `${exercise.sets} series` : "Series libre"}</span>
+                                                                        {exercise.reps && <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-900">{exercise.reps} reps</span>}
+                                                                    </div>
+                                                                </div>
+
+                                                                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">#{exercise.position}</span>
+                                                            </div>
+                                                            <div class="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                                                <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-900">{libraryItem?.muscle ?? "Personalizado"}</span>
+                                                                <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-900">{libraryItem?.equipment ?? "Libre"}</span>
+                                                            </div>
+                                                            {exercise.notes && <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">{exercise.notes}</p>}
+                                                        </div>
+                                                    </div>
+                                                </article>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div class="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">
+                                        Tu entrenador mantiene oculto el detalle de ejercicios para esta vista.
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </details>
+            </section>
+        )}
+    </div>
+</AppLayout>

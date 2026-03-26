@@ -44,6 +44,25 @@ export const POST: APIRoute = async (context) => {
 
         const session = await createSession(user.id);
 
+        let redirectTo = "/dashboard";
+
+        if (String(user.role) === "gym_manager") {
+            redirectTo = "/gym-manager";
+        } else if (String(user.role) === "client") {
+            const clientRows = await sql`
+                SELECT id
+                FROM clients
+                WHERE user_id = ${user.id}
+                LIMIT 1
+            `;
+
+            if (clientRows[0]?.id) {
+                redirectTo = `/clients/${clientRows[0].id}/routine`;
+            } else {
+                redirectTo = "/client-home";
+            }
+        }
+
         context.cookies.set("session", session.token, {
             path: "/",
             httpOnly: true,
@@ -55,7 +74,7 @@ export const POST: APIRoute = async (context) => {
         return new Response(null, {
             status: 303,
             headers: {
-                Location: "/dashboard",
+                Location: redirectTo,
             },
         });
     } catch (error) {

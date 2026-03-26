@@ -1,11 +1,11 @@
 import type { APIRoute } from "astro";
-import { requireAdmin } from "../../../../lib/auth/guards";
+import { requireAdminOrGymManager } from "../../../../lib/auth/guards";
 import { hashPassword } from "../../../../lib/auth/password";
 import { sql } from "../../../../lib/db/client";
 
 export const POST: APIRoute = async (context) => {
     try {
-        requireAdmin(context);
+        const user = requireAdminOrGymManager(context);
 
         const formData = await context.request.formData();
 
@@ -24,13 +24,23 @@ export const POST: APIRoute = async (context) => {
             );
         }
 
-        const trainerRows = await sql`
-      SELECT id
-      FROM users
-      WHERE id = ${id}
-        AND role = 'trainer'
-      LIMIT 1
-    `;
+        const trainerRows =
+            user.role === "admin"
+                ? await sql`
+                      SELECT id
+                      FROM users
+                      WHERE id = ${id}
+                        AND role = 'trainer'
+                      LIMIT 1
+                  `
+                : await sql`
+                      SELECT id
+                      FROM users
+                      WHERE id = ${id}
+                        AND role = 'trainer'
+                        AND gym_id = ${user.gymId}
+                      LIMIT 1
+                  `;
 
         if (trainerRows.length === 0) {
             return context.redirect(
@@ -45,6 +55,7 @@ export const POST: APIRoute = async (context) => {
       SET password_hash = ${passwordHash}
       WHERE id = ${id}
         AND role = 'trainer'
+        ${user.role === "gym_manager" ? sql`AND gym_id = ${user.gymId}` : sql``}
     `;
 
         return context.redirect(

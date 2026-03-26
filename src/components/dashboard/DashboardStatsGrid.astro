@@ -1,0 +1,28 @@
+---
+import StatCard from "../ui/StatCard.astro";
+import type { DashboardStatValue } from "../../lib/utils/dashboard";
+
+interface Props {
+    stats: DashboardStatValue;
+    role: "admin" | "gym_manager" | "trainer";
+}
+
+const { stats, role } = Astro.props as Props;
+---
+
+<section class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <StatCard label="Clientes totales" value={stats.totalClients} />
+    <StatCard label="Clientes activos" value={stats.activeClients} />
+    <StatCard label="Valoraciones totales" value={stats.totalAssessments} />
+    <StatCard label="Valoraciones este mes" value={stats.assessmentsThisMonth} />
+    <StatCard label="Sin seguimiento 30 días" value={stats.clientsWithoutRecentAssessment} />
+
+    {(role === "admin" || role === "gym_manager") && (
+        <>
+            <StatCard label="Trainers" value={stats.trainersTotal ?? 0} />
+            {role === "admin" && (
+                <StatCard label="Usuarios cliente" value={stats.clientUsersTotal ?? 0} />
+            )}
+        </>
+    )}
+</section>

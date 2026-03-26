@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { sql } from "../db/client";
+import { ensureGymSchema } from "../db/ensure-gym-schema";
 
 const SESSION_DAYS = 7;
 
@@ -49,6 +50,8 @@ export async function createSession(userId: number) {
 }
 
 export async function getSessionUser(token: string) {
+    await ensureGymSchema();
+
     const result = await sql`
     SELECT
       s.token,
@@ -56,7 +59,8 @@ export async function getSessionUser(token: string) {
       u.id,
       u.name,
       u.email,
-      u.role
+      u.role,
+      u.gym_id
     FROM sessions s
     JOIN users u ON u.id = s.user_id
     WHERE s.token = ${token}
@@ -76,7 +80,8 @@ export async function getSessionUser(token: string) {
         id: row.id,
         name: row.name,
         email: row.email,
-        role: row.role as "trainer" | "client",
+        role: row.role as "admin" | "gym_manager" | "trainer" | "client",
+        gymId: row.gym_id ?? null,
     };
 }
 

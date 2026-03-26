@@ -1,15 +1,43 @@
 ---
 import AppLayout from "../../../layouts/layout.astro";
+import { sql } from "../../../lib/db/client";
 
-const user = Astro.locals.user;
+const rawUser = Astro.locals.user as any;
+const user = rawUser
+    ? {
+          id: rawUser.id as number,
+          name: rawUser.name as string,
+          email: rawUser.email as string,
+          role: rawUser.role as "admin" | "gym_manager" | "trainer" | "client",
+          gymId: (rawUser.gymId ?? null) as number | null,
+      }
+    : null;
 
 if (!user) {
     return Astro.redirect("/login?error=unauthorized");
 }
 
-if (user.role !== "admin") {
+if (!["admin", "gym_manager"].includes(String(user.role))) {
     return Astro.redirect("/dashboard?error=forbidden");
 }
+
+const gyms =
+    user.role === "admin"
+        ? await sql`
+              SELECT id, name
+              FROM gyms
+              ORDER BY name ASC, id ASC
+          `
+        : [];
+
+const selectedGymId = Astro.url.searchParams.get("gym_id") ?? String(user.gymId ?? "");
+
+const roles = user.role === "admin"
+    ? [
+          { value: "trainer", label: "Trainer" },
+          { value: "gym_manager", label: "Gym manager" },
+      ]
+    : [{ value: "trainer", label: "Trainer" }];
 ---
 
 <AppLayout title="Nuevo trainer">
@@ -26,20 +54,55 @@ if (user.role !== "admin") {
                 Nuevo trainer
             </h1>
 
-            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                Crea una nueva cuenta de entrenador para la plataforma.
-            </p>
-        </div>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    {user.role === "admin"
+                        ? "Crea una nueva cuenta de entrenador para cualquier gimnasio."
+                        : "Crea una nueva cuenta de entrenador para tu gimnasio."}
+                </p>
+            </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <form
-                method="POST"
-                action="/api/admin/trainers/create"
-                class="space-y-5"
-            >
-                <div>
-                    <label
-                        for="name"
+        <div class="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-800/95 sm:p-8">
+            <form method="POST" action="/api/admin/trainers/create" class="space-y-5">
+                    {user.role === "admin" && (
+                        <div>
+                            <label for="role" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
+                                Rol
+                            </label>
+                            <select id="role" name="role" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-0 focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                                {roles.map((item) => (
+                                    <option value={item.value}>{item.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {user.role === "admin" ? (
+                        <div>
+                            <label
+                                for="gym_id"
+                                class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200"
+                            >
+                                Gimnasio
+                            </label>
+                            <select
+                                id="gym_id"
+                                name="gym_id"
+                                required
+                                class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-0 focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                            >
+                                <option value="">Selecciona un gimnasio</option>
+                                {gyms.map((gym) => (
+                                    <option value={gym.id} selected={selectedGymId === String(gym.id)}>{gym.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : (
+                        <input type="hidden" name="gym_id" value={user.gymId ?? ""} />
+                    )}
+
+                    <div>
+                        <label
+                            for="name"
                         class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200"
                     >
                         Nombre completo
@@ -92,17 +155,14 @@ if (user.role !== "admin") {
                     </p>
                 </div>
 
-                <div class="flex flex-wrap gap-3 pt-2">
-                    <button
-                        type="submit"
-                        class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
-                    >
-                        Crear trainer
+                <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 sm:w-auto">
+                        Crear cuenta
                     </button>
 
                     <a
                         href="/admin/trainers"
-                        class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto"
                     >
                         Cancelar
                     </a>

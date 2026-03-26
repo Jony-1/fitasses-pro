@@ -1,0 +1,63 @@
+---
+import { calculateAge } from "../../lib/utils/age";
+import { formatDateOnly, formatDateTimeLocal } from "../../lib/utils/date";
+import { genderEmoji } from "../../lib/utils/client";
+
+type ClientSummary = {
+  id: number;
+  full_name: string;
+  gender: string | null;
+  birth_date: string | null;
+  height_m: string | number | null;
+  created_at: string | Date;
+};
+
+interface Props {
+  client: ClientSummary;
+}
+
+const { client } = Astro.props as Props;
+const age = calculateAge(client.birth_date);
+const createdAtFormatted = formatDateTimeLocal(client.created_at);
+---
+
+<div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+  <h2 class="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">Datos del cliente</h2>
+
+  <dl class="space-y-4">
+    <div>
+      <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">ID</dt>
+      <dd class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100">{client.id}</dd>
+    </div>
+
+    <div>
+      <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">Nombre</dt>
+      <dd class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100">{client.full_name}</dd>
+    </div>
+
+    <div>
+      <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">Género</dt>
+      <dd class="mt-1 text-base font-medium text-slate-900 dark:text-slate-100">
+        {genderEmoji(client.gender)} {client.gender ?? "-"}
+      </dd>
+    </div>
+
+    <div>
+      <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">Fecha de nacimiento</dt>
+      <dd class="mt-1 text-base text-slate-700 dark:text-slate-100">
+        {formatDateOnly(client.birth_date)}
+        <p class="mt-1 text-base text-slate-700 dark:text-slate-400">Edad: <strong>{age ?? "-"} años</strong></p>
+      </dd>
+    </div>
+
+    <div>
+      <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">Altura</dt>
+      <dd class="mt-1 text-base text-slate-700 dark:text-slate-100">{client.height_m ? `${client.height_m} m` : "-"}</dd>
+    </div>
+
+    <div>
+      <dt class="text-sm font-semibold text-slate-500 dark:text-slate-400">Fecha de registro</dt>
+      <dd class="mt-1 text-base text-slate-700 dark:text-slate-100">{createdAtFormatted}</dd>
+    </div>
+  </dl>
+</div>

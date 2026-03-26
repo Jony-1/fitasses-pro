@@ -1,6 +1,6 @@
 import { sql } from "../db/client";
 
-export type AppUserRole = "admin" | "trainer" | "client";
+export type AppUserRole = "admin" | "gym_manager" | "trainer" | "client";
 
 export type AppUser = {
   id: number;

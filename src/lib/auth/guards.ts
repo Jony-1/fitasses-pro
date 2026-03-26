@@ -29,3 +29,13 @@ export function requireAdmin(context: APIContext) {
 
     return user;
 }
+
+export function requireAdminOrGymManager(context: APIContext) {
+    const user = requireUser(context);
+
+    if (user.role !== "admin" && user.role !== "gym_manager") {
+        throw new Error("FORBIDDEN");
+    }
+
+    return user;
+}

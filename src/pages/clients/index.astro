@@ -3,6 +3,8 @@ import AppLayout from "../../layouts/layout.astro";
 import { formatDateOnly } from "../../lib/utils/date";
 import { genderEmoji } from "../../lib/utils/client";
 import { getClientsForUser } from "../../lib/utils/client-profile";
+import SectionHeader from "../../components/ui/SectionHeader.astro";
+import EmptyState from "../../components/ui/EmptyState.astro";
 
 const user = Astro.locals.user;
 
@@ -19,25 +21,22 @@ const clients = await getClientsForUser(user);
 
 <AppLayout title="Clientes">
     <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <h1
-            class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
-        >
-            Client Directory
-        </h1>
-        <p class="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
-            {
+        <SectionHeader
+            title="Client Directory"
+            description={
                 user.role === "admin"
                     ? "Gestiona y consulta todos los clientes registrados."
                     : "Gestiona y consulta únicamente los clientes asignados a tu cuenta."
             }
-        </p>
-
-        <a
-            href="/clients/new"
-            class="inline-flex items-center justify-center rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-900 hover:bg-emerald-300 sm:w-auto mt-6"
         >
-            + Nuevo cliente
-        </a>
+            <a
+                slot="actions"
+                href="/clients/new"
+                class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-900 hover:bg-emerald-300 sm:w-auto"
+            >
+                + Nuevo cliente
+            </a>
+        </SectionHeader>
 
         <div class="mb-6 mt-6">
             <div class="relative">
@@ -51,20 +50,19 @@ const clients = await getClientsForUser(user);
                     id="client-search"
                     type="text"
                     placeholder="Buscar cliente..."
-                    class="w-full rounded-xl border border-slate-300 bg-white px-10 py-3 text-sm
-                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200
-                dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                />
+                    class="w-full rounded-xl border border-slate-300 bg-white px-10 py-3 text-sm text-slate-900 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    />
             </div>
         </div>
 
         <!-- MOBILE CARDS -->
-        <div class="space-y-4 md:hidden mt-8">
+        <div class="mt-8 space-y-4 md:hidden">
             {
                 clients.length === 0 ? (
-                    <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
-                        No hay clientes registrados todavía.
-                    </div>
+                    <EmptyState
+                        title="No hay clientes registrados todavía."
+                        description="Crea el primer cliente para empezar a registrar su progreso."
+                    />
                 ) : (
                     clients.map((client) => (
                         <a
@@ -88,7 +86,7 @@ const clients = await getClientsForUser(user);
                                 </span>
                             </div>
 
-                            <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <div class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                                 <div class="rounded-xl bg-slate-50 p-3">
                                     <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
                                         Nacimiento
@@ -129,14 +127,13 @@ const clients = await getClientsForUser(user);
         </div>
 
         <!-- DESKTOP TABLE -->
-        <div
-            class="hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block mt-8 dark:border-slate-700 dark:bg-slate-800"
-        >
+        <div class="mt-8 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:block dark:border-slate-700 dark:bg-slate-800">
             {
                 clients.length === 0 ? (
-                    <div class="p-8 text-center text-slate-500">
-                        No hay clientes registrados todavía.
-                    </div>
+                    <EmptyState
+                        title="No hay clientes registrados todavía."
+                        description="Crea el primer cliente para empezar a registrar su progreso."
+                    />
                 ) : (
                     <table class="min-w-full dark:text-slate-100">
                         <thead class="bg-slate-50 dark:bg-slate-800">
@@ -227,19 +224,20 @@ const clients = await getClientsForUser(user);
 
     <script>
         const searchInput = document.getElementById("client-search");
-        const clientCards = document.querySelectorAll(".client-card");
+        const clientCards = document.querySelectorAll<HTMLElement>(".client-card");
 
         searchInput?.addEventListener("input", () => {
+            if (!(searchInput instanceof HTMLInputElement)) return;
+
             const term = searchInput.value.toLowerCase().trim();
 
             clientCards.forEach((client) => {
-                const element = client;
-                const name = element.dataset.name || "";
-                const gender = element.dataset.gender || "";
+                const name = client.dataset.name || "";
+                const gender = client.dataset.gender || "";
 
                 const matches = name.includes(term) || gender.includes(term);
 
-                element.style.display = matches ? "" : "none";
+                client.style.display = matches ? "" : "none";
             });
         });
     </script>

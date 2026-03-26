@@ -1,0 +1,188 @@
+---
+import type { DashboardTrendPoint } from "../../lib/utils/dashboard";
+
+interface Props {
+    trends: DashboardTrendPoint[];
+}
+
+const { trends } = Astro.props as Props;
+const hasData = trends.some((item) => item.assessments > 0);
+const chartJson = JSON.stringify(trends);
+---
+
+<section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="mb-4 flex items-start justify-between gap-3">
+        <div>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Tendencias de 6 meses</h2>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Promedios mensuales de peso, grasa corporal y masa muscular.</p>
+        </div>
+    </div>
+
+    {!hasData ? (
+        <div class="rounded-2xl border border-dashed border-slate-300 px-4 py-5 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+            Aún no hay suficientes valoraciones para construir tendencias.
+        </div>
+    ) : (
+        <div class="h-72 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:h-[22rem] dark:border-slate-800 dark:bg-slate-950/40">
+            <canvas id="dashboard-trends-chart" class="h-full w-full" />
+        </div>
+    )}
+
+    <script type="application/json" id="dashboard-trends-data" set:html={chartJson} />
+
+    <script type="module">
+        import {
+            Chart,
+            LineController,
+            LineElement,
+            PointElement,
+            LinearScale,
+            CategoryScale,
+            Tooltip,
+            Legend,
+            Filler,
+        } from "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm";
+
+        Chart.register(
+            LineController,
+            LineElement,
+            PointElement,
+            LinearScale,
+            CategoryScale,
+            Tooltip,
+            Legend,
+            Filler,
+        );
+
+        const dataElement = document.getElementById("dashboard-trends-data");
+        const rawData = dataElement?.textContent ?? "[]";
+        const parsed = JSON.parse(rawData);
+
+        const labels = parsed.map((item) => item.label);
+        const weightData = parsed.map((item) => item.weight);
+        const bodyFatData = parsed.map((item) => item.bodyFat);
+        const muscleData = parsed.map((item) => item.muscle);
+
+        function isDarkMode() {
+            return document.documentElement.classList.contains("dark");
+        }
+
+        function axisColor() {
+            return isDarkMode() ? "#cbd5e1" : "#64748b";
+        }
+
+        function gridColor() {
+            return isDarkMode()
+                ? "rgba(148, 163, 184, 0.22)"
+                : "rgba(100, 116, 139, 0.15)";
+        }
+
+        const canvas = document.getElementById("dashboard-trends-chart");
+
+        function renderChart() {
+            if (!(canvas instanceof HTMLCanvasElement)) return;
+
+            const existing = Chart.getChart(canvas);
+            if (existing) existing.destroy();
+
+            new Chart(canvas, {
+                type: "line",
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: "Peso",
+                            data: weightData,
+                            borderColor: isDarkMode() ? "#34d399" : "#10b981",
+                            backgroundColor: isDarkMode() ? "#34d399" : "#10b981",
+                            pointBackgroundColor: isDarkMode() ? "#34d399" : "#10b981",
+                            pointBorderColor: isDarkMode() ? "#ecfeff" : "#ffffff",
+                            borderWidth: 3,
+                            tension: 0.35,
+                            spanGaps: true,
+                            fill: false,
+                        },
+                        {
+                            label: "Grasa corporal",
+                            data: bodyFatData,
+                            borderColor: isDarkMode() ? "#f59e0b" : "#f97316",
+                            backgroundColor: isDarkMode() ? "#f59e0b" : "#f97316",
+                            pointBackgroundColor: isDarkMode() ? "#f59e0b" : "#f97316",
+                            pointBorderColor: isDarkMode() ? "#fffbeb" : "#ffffff",
+                            borderWidth: 3,
+                            tension: 0.35,
+                            spanGaps: true,
+                            fill: false,
+                        },
+                        {
+                            label: "Masa muscular",
+                            data: muscleData,
+                            borderColor: isDarkMode() ? "#60a5fa" : "#3b82f6",
+                            backgroundColor: isDarkMode() ? "#60a5fa" : "#3b82f6",
+                            pointBackgroundColor: isDarkMode() ? "#60a5fa" : "#3b82f6",
+                            pointBorderColor: isDarkMode() ? "#eff6ff" : "#ffffff",
+                            borderWidth: 3,
+                            tension: 0.35,
+                            spanGaps: true,
+                            fill: false,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: "index",
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: axisColor(),
+                            },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label(context) {
+                                    const value = context.raw;
+                                    if (value === null || value === undefined) return `${context.dataset.label}: -`;
+                                    const suffix = context.dataset.label === "Peso" ? " kg" : " %";
+                                    return `${context.dataset.label}: ${value}${suffix}`;
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: axisColor(),
+                            },
+                            grid: {
+                                color: gridColor(),
+                            },
+                        },
+                        y: {
+                            ticks: {
+                                color: axisColor(),
+                            },
+                            grid: {
+                                color: gridColor(),
+                            },
+                        },
+                    },
+                },
+            });
+        }
+
+        renderChart();
+
+        const observer = new MutationObserver(() => {
+            renderChart();
+        });
+
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ["class"],
+        });
+    </script>
+</section>

@@ -3,31 +3,55 @@
 /* Activa dark mode por clase .dark en <html> */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Fuente global */
 html {
   font-family: "Manrope", sans-serif;
+  scroll-behavior: smooth;
 }
 
-/* Fondo base global */
 body {
   @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  background-image:
+    radial-gradient(circle at top, rgba(16, 185, 129, 0.08), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.06), transparent 28%);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+html.dark body {
+  background-color: #020617;
+  background-image:
+    radial-gradient(circle at top, rgba(16, 185, 129, 0.12), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.98), rgba(15, 23, 42, 0.98));
+}
+
+::selection {
+  @apply bg-emerald-200 text-emerald-950 dark:bg-emerald-500/30 dark:text-emerald-50;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
 }
 
 /* Inputs consistentes */
 input,
 textarea,
 select {
-  @apply outline-none;
+  @apply outline-none transition focus-visible:ring-2 focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-500/30;
 }
 
 /* Botones más suaves */
 button {
-  @apply transition;
+  @apply transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-500/30;
 }
 
 /* Links base */
 a {
-  @apply transition;
+  @apply transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-500/30;
 }

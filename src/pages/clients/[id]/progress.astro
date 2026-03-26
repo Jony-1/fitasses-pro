@@ -1,0 +1,98 @@
+---
+import AppLayout from "../../../layouts/layout.astro";
+import SectionHeader from "../../../components/ui/SectionHeader.astro";
+import ClientProgressSummary from "../../../components/clients/ClientProgressSummary.astro";
+import ClientProgressCharts from "../../../components/clients/ClientProgressCharts.astro";
+import ClientSummaryCard from "../../../components/clients/ClientSummaryCard.astro";
+import TabNav from "../../../components/ui/TabNav.astro";
+import { getClientByIdForUser, getProgressHistory } from "../../../lib/utils/client-profile";
+import { getClientProgressSummary } from "../../../lib/utils/client-progress";
+
+type ClientDetails = {
+    id: number;
+    full_name: string;
+    gender: string | null;
+    birth_date: string | null;
+    height_m: string | number | null;
+    created_at: string | Date;
+    notes: string | null;
+};
+
+type AssessmentSummary = {
+    weight_kg: number | null;
+    body_fat_pct: number | null;
+    muscle_pct: number | null;
+    bmi: number | null;
+};
+
+const { id } = Astro.params;
+const user = Astro.locals.user;
+
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+if (!["trainer", "admin", "client"].includes(String(user.role))) {
+    return Astro.redirect("/login?error=forbidden");
+}
+
+if (!id || Number.isNaN(Number(id))) {
+    return Astro.redirect("/clients");
+}
+
+const clientId = Number(id);
+const client = (await getClientByIdForUser(clientId, user)) as ClientDetails | null;
+
+if (!client) {
+    return new Response("Cliente no encontrado", { status: 404 });
+}
+
+const {
+    latestAssessment,
+    totalAssessments,
+    weightChange,
+    bodyFatChange,
+    muscleChange,
+} = await getClientProgressSummary(clientId);
+
+const summaryLatestAssessment = latestAssessment as AssessmentSummary | null;
+const progressHistory = await getProgressHistory(clientId);
+---
+
+<AppLayout title={`Progreso - ${client.full_name}`}>
+    <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <SectionHeader title={client.full_name} description={`Cliente #${client.id}`}>
+            <a slot="actions" href={`/clients/${client.id}/routine`} class="text-sm font-medium text-slate-500 hover:text-emerald-600">
+                Mi rutina
+            </a>
+
+            <a slot="actions" href={`/clients/${client.id}/assessments`} class="inline-flex w-full items-center justify-center rounded-lg bg-blue-400 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-blue-300 dark:bg-blue-600 dark:text-slate-100 dark:hover:bg-blue-500 sm:w-auto">
+                Valoraciones
+            </a>
+        </SectionHeader>
+
+        <TabNav
+            items={[
+                { href: `/clients/${client.id}/routine`, label: "Mi rutina" },
+                { href: `/clients/${client.id}/progress`, label: "Mi progreso", active: true },
+                { href: `/clients/${client.id}/assessments`, label: "Valoraciones" },
+            ]}
+        />
+
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <ClientSummaryCard client={client} />
+
+            <div class="lg:col-span-2 space-y-6">
+                <ClientProgressSummary
+                    totalAssessments={totalAssessments}
+                    latestAssessment={summaryLatestAssessment}
+                    weightChange={weightChange}
+                    bodyFatChange={bodyFatChange}
+                    muscleChange={muscleChange}
+                />
+
+                <ClientProgressCharts progressHistory={progressHistory} />
+            </div>
+        </div>
+    </div>
+</AppLayout>

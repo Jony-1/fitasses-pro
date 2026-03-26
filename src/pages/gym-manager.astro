@@ -1,0 +1,120 @@
+---
+import AppLayout from "../layouts/layout.astro";
+import SectionHeader from "../components/ui/SectionHeader.astro";
+import DashboardStatsGrid from "../components/dashboard/DashboardStatsGrid.astro";
+import DashboardRiskClients from "../components/dashboard/DashboardRiskClients.astro";
+import DashboardRecentAssessments from "../components/dashboard/DashboardRecentAssessments.astro";
+import DashboardRecentClients from "../components/dashboard/DashboardRecentClients.astro";
+import DashboardAttendanceSummary from "../components/dashboard/DashboardAttendanceSummary.astro";
+import DashboardRecentNotifications from "../components/dashboard/DashboardRecentNotifications.astro";
+import DashboardQuickActions from "../components/dashboard/DashboardQuickActions.astro";
+import { getDashboardData } from "../lib/utils/dashboard";
+import { sql } from "../lib/db/client";
+
+const rawUser = Astro.locals.user as any;
+const user = rawUser
+    ? {
+          id: rawUser.id as number,
+          name: rawUser.name as string,
+          email: rawUser.email as string,
+          role: rawUser.role as "admin" | "gym_manager" | "trainer" | "client",
+          gymId: (rawUser.gymId ?? null) as number | null,
+      }
+    : null;
+
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+if (String(user.role) !== "gym_manager") {
+    return Astro.redirect("/dashboard");
+}
+
+const dashboardUser: any = {
+    id: user.id,
+    name: user.name,
+    role: "gym_manager",
+    gymId: user.gymId,
+};
+
+const dashboard: any = await getDashboardData(dashboardUser);
+
+const gymRows = await sql`
+    SELECT id, name, created_at
+    FROM gyms
+    WHERE id = ${user.gymId}
+    LIMIT 1
+`;
+
+const gym = gymRows[0];
+
+const trainerRows = await sql`
+    SELECT id, name, email, created_at
+    FROM users
+    WHERE gym_id = ${user.gymId}
+      AND role = 'trainer'
+    ORDER BY created_at DESC, id DESC
+`;
+---
+
+<AppLayout title="Gym Manager Panel">
+    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <SectionHeader
+            eyebrow={gym ? gym.name : "Mi gimnasio"}
+            title={`Hola, ${user.name}`}
+            description="Resumen del gimnasio, entrenadores asignados y clientes que necesitan seguimiento."
+        >
+            <a
+                slot="actions"
+                href="/admin/trainers/new"
+                class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 sm:w-auto"
+            >
+                Nuevo trainer
+            </a>
+
+            <a
+                slot="actions"
+                href="/admin/gyms"
+                class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto"
+            >
+                Ver gimnasio
+            </a>
+        </SectionHeader>
+
+        <div class="grid gap-6 xl:grid-cols-3">
+            <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:col-span-1">
+                <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">{gym?.name ?? "Gimnasio"}</h2>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Entrenadores asignados: <strong>{trainerRows.length}</strong></p>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Clientes activos del gimnasio: <strong>{dashboard.stats.activeClients}</strong></p>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Clientes en riesgo: <strong>{dashboard.stats.clientsWithoutRecentAssessment}</strong></p>
+
+                <div class="mt-5 space-y-3">
+                    {trainerRows.length === 0 ? (
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Aún no tienes trainers asignados.</p>
+                    ) : (
+                        trainerRows.map((trainer) => (
+                            <a href="/admin/trainers" class="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800">
+                                <p class="font-semibold text-slate-900 dark:text-slate-100">{trainer.name}</p>
+                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{trainer.email}</p>
+                            </a>
+                        ))
+                    )}
+                </div>
+            </div>
+
+            <div class="xl:col-span-2 space-y-6">
+                <DashboardStatsGrid stats={dashboard.stats} role={dashboard.role} />
+                <div class="grid gap-6 xl:grid-cols-2">
+                    <DashboardAttendanceSummary items={dashboard.attendanceSummary} />
+                    <DashboardRecentNotifications items={dashboard.recentNotifications} />
+                </div>
+                <DashboardRiskClients items={dashboard.riskClients} />
+                <div class="grid gap-6 xl:grid-cols-2">
+                    <DashboardRecentAssessments items={dashboard.recentAssessments} />
+                    <DashboardRecentClients items={dashboard.recentClients} />
+                </div>
+                <DashboardQuickActions items={dashboard.quickActions} />
+            </div>
+        </div>
+    </div>
+</AppLayout>

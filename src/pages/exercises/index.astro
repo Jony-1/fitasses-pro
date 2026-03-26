@@ -1,0 +1,563 @@
+---
+import AppLayout from "../../layouts/layout.astro";
+import SectionHeader from "../../components/ui/SectionHeader.astro";
+import {
+  ensureExerciseSchema,
+  getExerciseCatalog,
+} from "../../lib/utils/exercise-library";
+
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+await ensureExerciseSchema();
+
+type ExerciseCardData = {
+  id?: number;
+  key: string;
+  name: string;
+  category: string;
+  muscle: string;
+  equipment: string;
+  image: string;
+  imageUrl?: string | null;
+  accent: string;
+  glyph: string;
+  source?: "static" | "custom";
+};
+
+const exerciseCatalog = (await getExerciseCatalog()) as ExerciseCardData[];
+const categories = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.category))];
+const muscles = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.muscle))];
+const equipments = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.equipment))];
+const sourceFilters = ["Todos", "Base", "Personalizados"];
+const categoryCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercise) => {
+  acc[exercise.category] = (acc[exercise.category] ?? 0) + 1;
+  return acc;
+}, {});
+const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercise) => {
+  const source = exercise.source === "custom" ? "Personalizados" : "Base";
+  acc[source] = (acc[source] ?? 0) + 1;
+  return acc;
+}, {});
+---
+
+<AppLayout title="Biblioteca de ejercicios">
+  <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <SectionHeader
+      eyebrow="Catálogo visual"
+      title="Biblioteca de ejercicios"
+      description="Crea, edita y usa ejercicios en un solo lugar."
+    >
+      <button
+        slot="actions"
+        type="button"
+        data-open-modal="create"
+        class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300 sm:w-auto"
+      >
+        + Nuevo ejercicio
+      </button>
+    </SectionHeader>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {categories.map((category) => {
+        const count = category === "Todos" ? exerciseCatalog.length : categoryCount[category] ?? 0;
+
+        return (
+          <button
+            type="button"
+            data-exercise-filter={category}
+            class:list={[
+              "rounded-3xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg",
+              category === "Todos"
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100",
+            ]}
+          >
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] opacity-70">{category}</p>
+            <p class="mt-2 text-2xl font-bold">{count}</p>
+            <p class="mt-1 text-sm opacity-80">Ejercicios</p>
+          </button>
+        );
+      })}
+    </div>
+
+    <div class="mt-6 grid gap-3 lg:grid-cols-[1fr_auto]">
+      <label class="block space-y-2">
+        <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Buscar ejercicio</span>
+        <input
+          type="search"
+          data-exercise-search
+          placeholder="Sentadilla, press, core..."
+          class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10"
+        />
+      </label>
+
+      <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+        El botón <span class="font-semibold text-slate-900 dark:text-slate-100">Usar en rutina</span> abre el creador con ese ejercicio.
+      </div>
+    </div>
+
+    <div class="mt-8 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Filtros avanzados</p>
+          <h3 class="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">Refina la lista</h3>
+        </div>
+
+        <div class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+          Vista rápida: abre detalles
+        </div>
+      </div>
+
+      <div class="mt-4 grid gap-3 lg:grid-cols-2">
+        <label class="space-y-2">
+          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Filtrar por músculo</span>
+          <select data-exercise-muscle-filter class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10">
+            {muscles.map((muscle) => <option value={muscle}>{muscle}</option>)}
+          </select>
+        </label>
+
+        <label class="space-y-2">
+          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Filtrar por equipo</span>
+          <select data-exercise-equipment-filter class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10">
+            {equipments.map((equipment) => <option value={equipment}>{equipment}</option>)}
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {exerciseCatalog.map((exercise) => (
+        <article
+          data-exercise-card
+          data-category={exercise.category}
+          data-name={exercise.name}
+          data-source={exercise.source === "custom" ? "Personalizados" : "Base"}
+          class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.16)] dark:border-slate-800 dark:bg-slate-950"
+        >
+          <div class="relative">
+            <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
+            <div class="flex h-44 items-end bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4 text-white">
+              <div class="flex w-full items-end justify-between gap-3 rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                <div>
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">{exercise.category}</p>
+                  <h3 class="mt-1 text-lg font-bold leading-tight text-white">{exercise.name}</h3>
+                </div>
+
+                <span class="rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold text-white">
+                  {exercise.source === "custom" ? "Custom" : "Base"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 px-4 py-4 text-white">
+            <div class="flex flex-wrap gap-2 text-[11px] font-semibold">
+              <span class="rounded-full bg-white/10 px-2.5 py-1 text-white/85">{exercise.category}</span>
+              <span class="rounded-full bg-white/10 px-2.5 py-1 text-white/85">{exercise.muscle}</span>
+              <span class="rounded-full bg-white/10 px-2.5 py-1 text-white/85">{exercise.equipment}</span>
+            </div>
+
+            <p class="mt-3 text-sm text-white/70">
+              {exercise.source === "custom" ? "Personalizado" : "Biblioteca base"}
+            </p>
+
+            <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <a href={`/routines/new?exercise=${exercise.key}`} class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-300 sm:w-auto">
+                Usar en rutina
+              </a>
+
+              <a href={`/exercises/${exercise.key}`} class="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 sm:w-auto">
+                Detalles
+              </a>
+
+              {exercise.source === "custom" ? (
+                <button
+                  type="button"
+                  data-open-modal="edit"
+                  data-exercise-id={exercise.id ?? ""}
+                  data-exercise-key={exercise.key}
+                  data-exercise-name={exercise.name}
+                  data-exercise-category={exercise.category}
+                  data-exercise-muscle={exercise.muscle}
+                  data-exercise-equipment={exercise.equipment}
+                  data-exercise-accent={exercise.accent}
+                  data-exercise-glyph={exercise.glyph}
+                  data-exercise-image-url={exercise.imageUrl ?? ""}
+                  class="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 sm:w-auto"
+                >
+                  Editar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  data-open-modal="create"
+                  class="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 sm:w-auto"
+                >
+                  Crear ejercicio
+                </button>
+              )}
+
+              {exercise.source === "custom" && exercise.id && (
+                <form method="POST" action="/api/exercises/delete" onsubmit="return confirm('Eliminar este ejercicio?');">
+                  <input type="hidden" name="id" value={exercise.id} />
+                  <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 hover:bg-red-500/20 sm:w-auto">
+                    Eliminar
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+
+  <dialog id="exercise-modal" class="exercise-modal fixed inset-0 m-0 h-[100dvh] w-[100vw] max-w-none bg-transparent p-4 backdrop:bg-slate-950/70 dark:backdrop:bg-slate-950/80">
+    <form method="POST" action="/api/exercises/save" class="overflow-hidden rounded-3xl">
+      <div class="flex items-start justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/40">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Biblioteca</p>
+          <h2 id="exercise-modal-title" class="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">Nuevo ejercicio</h2>
+        </div>
+
+        <button type="button" data-close-modal class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          Cerrar
+        </button>
+      </div>
+
+      <div class="grid gap-6 p-5 lg:grid-cols-[1.05fr_0.95fr]">
+        <input type="hidden" name="id" value="" data-field="id" />
+        <input type="hidden" name="key" value="" data-field="key" />
+
+        <div class="space-y-4 lg:order-first">
+          <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/50 lg:sticky lg:top-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Vista previa</p>
+                <h3 data-preview-name class="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">Ejercicio</h3>
+              </div>
+
+              <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-200">3D demo</span>
+            </div>
+
+            <div class="mt-4 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <img data-preview-image src="" alt="Vista previa" class="h-72 w-full object-cover sm:h-80 lg:h-[28rem]" />
+              <div class="p-4">
+                <div class="flex flex-wrap gap-2 text-[11px] font-semibold">
+                  <span data-preview-category class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-200"></span>
+                  <span data-preview-muscle class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-200"></span>
+                  <span data-preview-equipment class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-200"></span>
+                </div>
+              </div>
+            </div>
+
+            <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">Si no agregas URL, se genera una ilustración automática con pose específica para el ejercicio.</p>
+          </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2 lg:order-last">
+          <label class="space-y-2 md:col-span-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nombre</span>
+            <input name="name" required data-field="name" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Sentadilla libre" />
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Categoría</span>
+            <select name="category" required data-field="category" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+              <option>Fuerza</option>
+              <option>Push</option>
+              <option>Pull</option>
+              <option>Pierna</option>
+              <option>Core</option>
+              <option>Cardio</option>
+              <option>Accesorio</option>
+              <option>Posterior</option>
+              <option>Movilidad</option>
+            </select>
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Músculo</span>
+            <input name="muscle" required data-field="muscle" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Piernas" />
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Equipo</span>
+            <input name="equipment" required data-field="equipment" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Barra" />
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Color</span>
+            <input name="accent" required data-field="accent" type="color" class="h-12 w-full rounded-2xl border border-slate-300 bg-white p-2 shadow-sm dark:border-slate-700 dark:bg-slate-950" value="#14b8a6" />
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Sigla</span>
+            <input name="glyph" required data-field="glyph" maxlength="3" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm uppercase dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="SQ" />
+          </label>
+
+          <label class="space-y-2 md:col-span-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Imagen URL (opcional)</span>
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
+              <input
+                type="file"
+                accept="image/*"
+                data-field="imageFile"
+                class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-800 dark:text-slate-300"
+              />
+              <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Sube una imagen o deja vacío para usar la ilustración de ejemplo con figura sin rostro.</p>
+            </div>
+            <input name="image_url" data-field="imageUrl" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="https://..." />
+          </label>
+        </div>
+
+        
+      </div>
+
+      <div class="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/40">
+        <button type="button" data-close-modal class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          Cancelar
+        </button>
+
+        <button type="submit" class="rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300">
+          Guardar ejercicio
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <style>
+    .exercise-modal {
+      max-height: calc(100dvh - 2rem);
+    }
+
+    .exercise-modal[open] {
+      display: grid;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .exercise-modal::backdrop {
+      background: rgba(15, 23, 42, 0.72);
+    }
+
+    .exercise-modal > form {
+      width: 100%;
+      max-height: calc(100dvh - 2rem);
+      overflow: auto;
+    }
+  </style>
+
+  <script>
+    const searchInput = document.querySelector("[data-exercise-search]");
+    const filterButtons = document.querySelectorAll("[data-exercise-filter]");
+    const sourceFilterButtons = document.querySelectorAll("[data-exercise-source-filter]");
+    const muscleFilter = document.querySelector("[data-exercise-muscle-filter]");
+    const equipmentFilter = document.querySelector("[data-exercise-equipment-filter]");
+    const cards = document.querySelectorAll("[data-exercise-card]");
+    const modal = document.querySelector("#exercise-modal");
+    const modalTitle = document.querySelector("#exercise-modal-title");
+    const closeButtons = document.querySelectorAll("[data-close-modal]");
+    const openButtons = document.querySelectorAll("[data-open-modal]");
+    const previewImage = document.querySelector("[data-preview-image]");
+    const previewName = document.querySelector("[data-preview-name]");
+    const previewCategory = document.querySelector("[data-preview-category]");
+    const previewMuscle = document.querySelector("[data-preview-muscle]");
+    const previewEquipment = document.querySelector("[data-preview-equipment]");
+    const imageFileInput = document.querySelector('[data-field="imageFile"]');
+    const imageUrlInput = document.querySelector('[data-field="imageUrl"]');
+    const fields = {
+      id: document.querySelector('[data-field="id"]'),
+      key: document.querySelector('[data-field="key"]'),
+      name: document.querySelector('[data-field="name"]'),
+      category: document.querySelector('[data-field="category"]'),
+      muscle: document.querySelector('[data-field="muscle"]'),
+      equipment: document.querySelector('[data-field="equipment"]'),
+      accent: document.querySelector('[data-field="accent"]'),
+      glyph: document.querySelector('[data-field="glyph"]'),
+      imageUrl: imageUrlInput,
+    };
+
+    const normalize = (value) => value.trim().toLowerCase();
+    const isLikelyImageUrl = (value) => {
+      const raw = String(value || "").trim();
+      if (!raw) return false;
+      if (raw.startsWith("data:image/")) return true;
+
+      try {
+        const url = new URL(raw);
+        const host = url.hostname.toLowerCase();
+        const path = url.pathname.toLowerCase();
+        if (host.includes("source.unsplash.com") || host.includes("images.unsplash.com")) return true;
+        return /\.(png|jpe?g|gif|webp|avif|svg)$/.test(path);
+      } catch {
+        return false;
+      }
+    };
+    let activeCategory = "Todos";
+    let activeSource = "Todos";
+
+    const activeButtonClasses = [
+      "border-slate-900",
+      "bg-slate-900",
+      "text-white",
+      "dark:border-slate-100",
+      "dark:bg-slate-100",
+      "dark:text-slate-950",
+      "shadow-md",
+    ];
+
+    const inactiveButtonClasses = [
+      "border-slate-200",
+      "bg-white",
+      "text-slate-700",
+      "dark:border-slate-800",
+      "dark:bg-slate-900",
+      "dark:text-slate-100",
+    ];
+
+    const setButtonState = (button, active) => {
+      button.classList.remove(...activeButtonClasses, ...inactiveButtonClasses);
+      button.classList.add(...(active ? activeButtonClasses : inactiveButtonClasses));
+      button.dataset.active = active ? "true" : "false";
+    };
+
+    const makeExampleArtwork = (name, accent, glyph) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" fill="none"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}" stop-opacity="0.95"/><stop offset="100%" stop-color="#0f172a" stop-opacity="0.95"/></linearGradient><linearGradient id="figure" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f8fafc"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient></defs><rect width="480" height="320" rx="32" fill="url(#bg)"/><ellipse cx="235" cy="225" rx="88" ry="18" fill="#020617" fill-opacity="0.24"/><g transform="translate(160 72)"><ellipse cx="54" cy="157" rx="54" ry="16" fill="#0f172a" fill-opacity="0.35"/><circle cx="54" cy="34" r="20" fill="#f8fafc" fill-opacity="0.9"/><path d="M44 58C44 51 64 51 64 58V116C64 126 44 126 44 116Z" fill="url(#figure)"/><path d="M19 76C27 67 34 67 42 76L26 116C18 119 12 115 10 109Z" fill="#dbeafe"/><path d="M66 76C74 67 81 67 89 76L110 109C108 115 102 119 94 116Z" fill="#dbeafe"/><path d="M43 118L30 156" stroke="url(#figure)" stroke-width="14" stroke-linecap="round"/><path d="M65 118L78 156" stroke="url(#figure)" stroke-width="14" stroke-linecap="round"/><path d="M27 146L12 171" stroke="url(#figure)" stroke-width="14" stroke-linecap="round"/><path d="M81 146L96 171" stroke="url(#figure)" stroke-width="14" stroke-linecap="round"/><path d="M16 88C28 79 39 74 54 74C69 74 80 79 92 88" stroke="#e2e8f0" stroke-width="8" stroke-linecap="round" opacity="0.95"/></g><g transform="translate(282 100)"><rect x="0" y="41" width="86" height="10" rx="5" fill="#e2e8f0" fill-opacity="0.95"/><rect x="-10" y="33" width="16" height="26" rx="6" fill="#cbd5e1"/><rect x="80" y="33" width="16" height="26" rx="6" fill="#cbd5e1"/></g><text x="104" y="138" font-size="84" font-weight="800" fill="white" font-family="Arial, Helvetica, sans-serif">${glyph}</text><text x="104" y="180" font-size="18" font-weight="700" fill="white" fill-opacity="0.92" font-family="Arial, Helvetica, sans-serif">Ejemplo visual</text><text x="104" y="210" font-size="15" font-weight="600" fill="white" fill-opacity="0.72" font-family="Arial, Helvetica, sans-serif">${name}</text></svg>`)}`;
+
+    const applyFilters = () => {
+      const term = normalize(searchInput?.value ?? "");
+      const selectedMuscle = muscleFilter?.value ?? "Todos";
+      const selectedEquipment = equipmentFilter?.value ?? "Todos";
+
+      cards.forEach((card) => {
+        const category = card.dataset.category ?? "";
+        const name = card.dataset.name ?? "";
+        const muscle = card.dataset.muscle ?? "";
+        const equipment = card.dataset.equipment ?? "";
+        const source = card.dataset.source ?? "";
+        const matchesCategory = activeCategory === "Todos" || category === activeCategory;
+        const matchesSource = activeSource === "Todos" || source === activeSource;
+        const matchesMuscle = selectedMuscle === "Todos" || muscle === selectedMuscle;
+        const matchesEquipment = selectedEquipment === "Todos" || equipment === selectedEquipment;
+        const matchesTerm = !term || `${name} ${category} ${muscle} ${equipment} ${source}`.toLowerCase().includes(term);
+
+        card.classList.toggle("hidden", !(matchesCategory && matchesSource && matchesMuscle && matchesEquipment && matchesTerm));
+      });
+    };
+
+    const previewFromFields = () => {
+      if (!fields.name || !fields.category || !fields.muscle || !fields.equipment || !fields.accent || !fields.glyph || !fields.imageUrl) return;
+
+      const name = fields.name.value || "Ejercicio";
+      const category = fields.category.value || "";
+      const muscle = fields.muscle.value || "";
+      const equipment = fields.equipment.value || "";
+      const imageUrl = fields.imageUrl.value || "";
+      const accent = fields.accent.value || "#14b8a6";
+      const glyph = fields.glyph.value || "FX";
+
+      if (previewName) previewName.textContent = name || "Ejercicio";
+      if (previewCategory) previewCategory.textContent = category;
+      if (previewMuscle) previewMuscle.textContent = muscle;
+      if (previewEquipment) previewEquipment.textContent = equipment;
+      if (previewImage) previewImage.src = isLikelyImageUrl(imageUrl) ? imageUrl : makeExampleArtwork(name, accent, glyph);
+    };
+
+    const openModal = (mode, data = {}) => {
+      if (!modal || !modalTitle || !fields.id || !fields.key || !fields.name || !fields.category || !fields.muscle || !fields.equipment || !fields.accent || !fields.glyph || !fields.imageUrl) return;
+
+      modalTitle.textContent = mode === "edit" ? "Editar ejercicio" : data.id ? "Duplicar ejercicio" : "Nuevo ejercicio";
+      fields.id.value = data.id || "";
+      fields.key.value = data.key || "";
+      fields.name.value = data.name || "";
+      fields.category.value = data.category || "Fuerza";
+      fields.muscle.value = data.muscle || "";
+      fields.equipment.value = data.equipment || "";
+      fields.accent.value = data.accent || "#14b8a6";
+      fields.glyph.value = data.glyph || "FX";
+      fields.imageUrl.value = data.imageUrl || "";
+      if (imageFileInput) imageFileInput.value = "";
+
+      previewFromFields();
+      modal.showModal();
+    };
+
+    const readFileAsDataUrl = (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+
+    searchInput?.addEventListener("input", applyFilters);
+    muscleFilter?.addEventListener("change", applyFilters);
+    equipmentFilter?.addEventListener("change", applyFilters);
+
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeCategory = button.dataset.exerciseFilter || "Todos";
+        filterButtons.forEach((item) => {
+          setButtonState(item, item === button);
+        });
+        applyFilters();
+      });
+    });
+
+    sourceFilterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeSource = button.dataset.exerciseSourceFilter || "Todos";
+        sourceFilterButtons.forEach((item) => {
+          setButtonState(item, item === button);
+        });
+        applyFilters();
+      });
+    });
+
+    openButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        openModal(button.dataset.openModal || "create", {
+          id: button.dataset.exerciseId || "",
+          key: button.dataset.exerciseKey || "",
+          name: button.dataset.exerciseName || "",
+          category: button.dataset.exerciseCategory || "Fuerza",
+          muscle: button.dataset.exerciseMuscle || "",
+          equipment: button.dataset.exerciseEquipment || "",
+          accent: button.dataset.exerciseAccent || "#14b8a6",
+          glyph: button.dataset.exerciseGlyph || "FX",
+          imageUrl: button.dataset.exerciseImageUrl || "",
+        });
+      });
+    });
+
+    closeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        modal?.close?.();
+      });
+    });
+
+    if (imageFileInput && fields.imageUrl) {
+      imageFileInput.addEventListener("change", async () => {
+        const file = imageFileInput.files?.[0];
+        if (!file) return;
+        const dataUrl = await readFileAsDataUrl(file);
+        fields.imageUrl.value = dataUrl;
+        previewFromFields();
+      });
+    }
+
+    document.querySelectorAll("[data-field]").forEach((field) => {
+      field.addEventListener("input", previewFromFields);
+      field.addEventListener("change", previewFromFields);
+    });
+
+    filterButtons.forEach((button) => setButtonState(button, (button.dataset.exerciseFilter || "Todos") === activeCategory));
+    sourceFilterButtons.forEach((button) => setButtonState(button, (button.dataset.exerciseSourceFilter || "Todos") === activeSource));
+
+    applyFilters();
+  </script>
+</AppLayout>

@@ -1,10 +1,11 @@
 ---
 import AppLayout from "../layouts/layout.astro";
+import AuthNav from "../components/ui/AuthNav.astro";
 
 const user = Astro.locals.user;
 
 if (user) {
-    return Astro.redirect("/dashboard");
+    return Astro.redirect(String(user.role) === "gym_manager" ? "/gym-manager" : "/dashboard");
 }
 
 const error = Astro.url.searchParams.get("error");
@@ -25,7 +26,14 @@ if (error === "missing_fields") {
 ---
 
 <AppLayout title="Iniciar sesión | FitAssess Pro">
-    <div class="mx-auto max-w-md">
+    <div class="mx-auto max-w-md px-4 py-8 sm:py-10">
+        <AuthNav
+            items={[
+                { href: "/login", label: "Iniciar sesión", active: true },
+                { href: "/register", label: "Registro" },
+            ]}
+        />
+
         <div class="mb-6 text-center">
             <h1
                 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white"
@@ -33,7 +41,7 @@ if (error === "missing_fields") {
                 Iniciar sesión
             </h1>
             <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                Accede a tu cuenta para continuar en FitAssess Pro.
+                Accede como cliente, trainer, gym manager o administrador.
             </p>
         </div>
 
@@ -45,9 +53,12 @@ if (error === "missing_fields") {
             )
         }
 
-        <div
-            class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-        >
+        <div class="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:p-8">
+            <div class="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400">
+                <p class="font-semibold text-slate-900 dark:text-slate-200">Acceso según tu rol</p>
+                <p class="mt-1">Los gym managers entran a su panel del gimnasio, los trainers a sus clientes y los administradores al panel general.</p>
+            </div>
+
             <form action="/api/auth/login" method="POST" class="space-y-5">
                 <div>
                     <label

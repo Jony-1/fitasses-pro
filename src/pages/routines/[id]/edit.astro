@@ -1,0 +1,461 @@
+---
+import AppLayout from "../../../layouts/layout.astro";
+import SectionHeader from "../../../components/ui/SectionHeader.astro";
+import EmptyState from "../../../components/ui/EmptyState.astro";
+import { ensureRoutineSchema, getRoutineDetailsForUser } from "../../../lib/utils/routines";
+import { exerciseLibrary, getExerciseLibraryItem, type ExerciseLibraryItem } from "../../../lib/utils/exercise-library";
+
+const { id } = Astro.params;
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect("/login");
+}
+
+if (user.role !== "trainer" && user.role !== "admin") {
+  return Astro.redirect("/login?error=forbidden");
+}
+
+if (!id || Number.isNaN(Number(id))) {
+  return Astro.redirect("/routines");
+}
+
+await ensureRoutineSchema();
+
+const routine = await getRoutineDetailsForUser(Number(id), user);
+
+if (!routine || !routine.is_template) {
+  return new Response("Rutina no encontrada", { status: 404 });
+}
+
+const exerciseCatalog = exerciseLibrary as Array<ExerciseLibraryItem & { category: string; accent: string; source?: string }>;
+const muscles = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.muscle))];
+const equipments = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.equipment))];
+const exerciseCategoryByKey = Object.fromEntries(
+  exerciseCatalog.map((exercise) => [exercise.key, exercise.category]),
+) as Record<string, string>;
+---
+
+<AppLayout title={`Editar - ${routine.name}`}>
+  <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+    <SectionHeader
+      eyebrow="Editar plantilla"
+      title={routine.name}
+      description="Ajusta la estructura, ejercicios y notas de esta rutina preestablecida."
+    >
+      <a slot="actions" href={`/routines/${routine.id}`} class="text-sm font-medium text-slate-500 hover:text-emerald-600">
+        ← Volver
+      </a>
+    </SectionHeader>
+
+    <form method="POST" action="/api/routines/update" class="space-y-6">
+      <input type="hidden" name="routine_id" value={routine.id} />
+
+      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+        <div class="grid gap-5 md:grid-cols-2">
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nombre</span>
+            <input name="name" required value={routine.name} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Objetivo</span>
+            <input name="objective" value={routine.objective ?? ""} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nivel</span>
+            <input name="level" value={routine.level ?? ""} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Duración (semanas)</span>
+            <input name="duration_weeks" type="number" min="1" value={routine.duration_weeks ?? ""} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+          </label>
+        </div>
+
+        <label class="mt-5 block space-y-2">
+          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Notas generales</span>
+          <textarea name="notes" rows="4" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">{routine.notes ?? ""}</textarea>
+        </label>
+      </div>
+
+      <div class="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-900 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-200">
+        <div class="flex flex-wrap gap-2 font-semibold">
+          <span class="rounded-full bg-white px-3 py-1 dark:bg-slate-900">1. Ajusta el día</span>
+          <span class="rounded-full bg-white px-3 py-1 dark:bg-slate-900">2. Cambia ejercicios</span>
+          <span class="rounded-full bg-white px-3 py-1 dark:bg-slate-900">3. Guarda la plantilla</span>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Días de la rutina</h2>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Edita lo existente y agrega nuevos bloques si lo necesitas.</p>
+        </div>
+
+        <button id="add-day" type="button" class="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white">
+          + Agregar día
+        </button>
+      </div>
+
+      <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Biblioteca de ejercicios</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400">Filtra y agrega ejercicios al día seleccionado.</p>
+          </div>
+
+          <a href="/exercises" class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200 dark:hover:bg-slate-800">
+            Biblioteca completa
+          </a>
+        </div>
+
+        <div class="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
+          <label class="block space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Buscar ejercicio</span>
+            <input type="search" data-library-search placeholder="Sentadilla, press, core..." class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-emerald-500/10" />
+          </label>
+
+          <div class="flex flex-wrap items-end gap-2">
+            <button type="button" data-library-type-filter="all" class="rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950">Todos</button>
+            <button type="button" data-library-type-filter="Fuerza" class="rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm transition hover:-translate-y-0.5 dark:border-orange-900/40 dark:bg-orange-500/10 dark:text-orange-300">Fuerza</button>
+            <button type="button" data-library-type-filter="Push" class="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 dark:border-emerald-900/40 dark:bg-emerald-500/10 dark:text-emerald-300">Push</button>
+            <button type="button" data-library-type-filter="Pull" class="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:-translate-y-0.5 dark:border-rose-900/40 dark:bg-rose-500/10 dark:text-rose-300">Pull</button>
+            <button type="button" data-library-type-filter="Pierna" class="rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm transition hover:-translate-y-0.5 dark:border-sky-900/40 dark:bg-sky-500/10 dark:text-sky-300">Pierna</button>
+            <button type="button" data-library-type-filter="Core" class="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:-translate-y-0.5 dark:border-emerald-900/40 dark:bg-emerald-500/10 dark:text-emerald-300">Core</button>
+            <button type="button" data-library-type-filter="Cardio" class="rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 shadow-sm transition hover:-translate-y-0.5 dark:border-cyan-900/40 dark:bg-cyan-500/10 dark:text-cyan-300">Cardio</button>
+            <button type="button" data-library-type-filter="Accesorio" class="rounded-full border border-fuchsia-200 bg-fuchsia-50 px-4 py-2 text-sm font-semibold text-fuchsia-700 shadow-sm transition hover:-translate-y-0.5 dark:border-fuchsia-900/40 dark:bg-fuchsia-500/10 dark:text-fuchsia-300">Accesorio</button>
+          </div>
+        </div>
+
+        <div class="mt-4 grid gap-3 lg:grid-cols-3">
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Filtrar por músculo</span>
+            <select data-exercise-muscle-filter class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100 dark:focus:ring-emerald-500/10">
+              {muscles.map((muscle: string) => <option value={muscle}>{muscle}</option>)}
+            </select>
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Filtrar por equipo</span>
+            <select data-exercise-equipment-filter class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100 dark:focus:ring-emerald-500/10">
+              {equipments.map((equipment: string) => <option value={equipment}>{equipment}</option>)}
+            </select>
+          </label>
+
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-400">
+            Seleccionados: <span data-selected-count class="font-semibold text-slate-900 dark:text-slate-100">0</span>
+          </div>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button type="button" data-add-selected-exercises class="rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400">
+            Agregar seleccionados
+          </button>
+          <button type="button" data-clear-selected-exercises class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200 dark:hover:bg-slate-800">
+            Limpiar selección
+          </button>
+        </div>
+
+        <div class="mt-5 max-h-[72vh] overflow-y-auto pr-1">
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {exerciseCatalog.map((exercise) => (
+              <button
+                type="button"
+                data-pick-exercise
+                class="group overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl dark:border-slate-800 dark:bg-slate-950/80 dark:hover:border-emerald-500/40"
+                data-exercise-key={exercise.key}
+                data-exercise-name={exercise.name}
+                data-exercise-category={exerciseCategoryByKey[exercise.key] ?? ""}
+                data-exercise-muscle={exercise.muscle}
+                data-exercise-equipment={exercise.equipment}
+              >
+                <div class="relative">
+                  <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
+                  <div class="flex h-40 items-end bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4 text-white transition duration-300 group-hover:scale-[1.01] dark:from-slate-950 dark:via-slate-950 dark:to-black">
+                    <div class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-sm dark:border-white/5 dark:bg-black/30">
+                      <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">{exerciseCategoryByKey[exercise.key] ?? ""}</p>
+                      <p class="mt-1 text-lg font-bold leading-tight">{exercise.name}</p>
+                    </div>
+                  </div>
+                  <span class="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm dark:bg-slate-950/90 dark:text-slate-100">Seleccionar</span>
+                </div>
+                <div class="p-4">
+                  <div class="flex flex-wrap gap-2 text-[11px] font-semibold">
+                    <span class="rounded-full bg-white px-2.5 py-1 text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200">{exerciseCategoryByKey[exercise.key] ?? ""}</span>
+                    <span class="rounded-full bg-white px-2.5 py-1 text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200">{exercise.muscle}</span>
+                  </div>
+                  <h3 class="mt-2 text-base font-bold text-slate-900 dark:text-slate-100">{exercise.name}</h3>
+                  <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{exercise.equipment}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div id="days-container" class="space-y-4">
+        {routine.days.map((day, dayIndex) => (
+          <section class="day-card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/80" data-day-card data-day-index={dayIndex} data-title={day.title}>
+            <div class="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-900/60">
+              <div>
+                <p class="day-label text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Día {dayIndex + 1}</p>
+                <h3 class="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">{day.title}</h3>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Edita nombre, enfoque y ejercicios.</p>
+              </div>
+
+              <button type="button" data-remove-day class="rounded-full border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/40">Quitar día</button>
+            </div>
+
+            <div class="grid gap-4 p-5 md:grid-cols-2">
+              <label class="space-y-2 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/60">
+                <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Título del día</span>
+                <input name={`days[${dayIndex}][title]`} data-day-field="title" required value={day.title} class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              </label>
+
+              <label class="space-y-2 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/60">
+                <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Enfoque</span>
+                <input name={`days[${dayIndex}][focus]`} data-day-field="focus" value={day.focus ?? ""} class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              </label>
+            </div>
+
+            <div class="px-5 pb-5">
+              <label class="block space-y-2 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/60">
+                <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Notas del día</span>
+                <textarea name={`days[${dayIndex}][notes]`} data-day-field="notes" rows="3" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">{day.notes ?? ""}</textarea>
+              </label>
+            </div>
+
+            <div class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+              <h4 class="text-base font-bold text-slate-900 dark:text-slate-100">Ejercicios</h4>
+              <button type="button" data-add-exercise class="rounded-full border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:hover:bg-emerald-950/30">+ Agregar ejercicio</button>
+            </div>
+
+            <div data-exercises class="space-y-3 px-5 pb-5">
+              {day.exercises.map((exercise, exerciseIndex) => {
+                const libraryItem = getExerciseLibraryItem(exercise.exercise_key ?? exercise.name);
+
+                return (
+                  <div class="exercise-card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/80" data-exercise-card data-exercise-name={exercise.name} data-exercise-category={libraryItem ? exerciseCategoryByKey[libraryItem.key] : "Personalizado"}>
+                    <div class="flex flex-col gap-4 p-4 lg:flex-row">
+                      <div class="overflow-hidden rounded-2xl bg-slate-100 lg:w-32 lg:shrink-0">
+                        <img src={libraryItem?.image ?? "/favicon.png"} alt={exercise.name} class="h-32 w-full object-cover" data-exercise-preview />
+                      </div>
+
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-start justify-between gap-3">
+                          <div class="min-w-0">
+                            <p class="exercise-label text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Ejercicio {exerciseIndex + 1}</p>
+                            <h5 data-exercise-title class="mt-1 truncate text-base font-bold text-slate-900 dark:text-slate-100">{exercise.name}</h5>
+                            <p data-exercise-summary class="mt-1 text-xs text-slate-500 dark:text-slate-400">{exercise.sets ? `${exercise.sets} series` : "Series libre"}{exercise.reps ? ` · ${exercise.reps} reps` : ""}{exercise.rest_seconds ? ` · ${exercise.rest_seconds}s descanso` : ""}</p>
+                          </div>
+
+                          <button type="button" data-remove-exercise class="rounded-full border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/40">Quitar</button>
+                        </div>
+
+                        <div class="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                          <span data-exercise-muscle class="rounded-full bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-200">{libraryItem?.muscle ?? "Personalizado"}</span>
+                          <span data-exercise-equipment class="rounded-full bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-200">{libraryItem?.equipment ?? "Libre"}</span>
+                        </div>
+
+                        <input type="hidden" name={`days[${dayIndex}][exercises][${exerciseIndex}][exercise_key]`} data-exercise-field="exercise_key" value={exercise.exercise_key ?? ""} />
+
+                        <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                          <label class="space-y-2 lg:col-span-2">
+                            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nombre</span>
+                            <input name={`days[${dayIndex}][exercises][${exerciseIndex}][name]`} data-exercise-field="name" required value={exercise.name} class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
+                          </label>
+
+                          <label class="space-y-2">
+                            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Series</span>
+                            <input name={`days[${dayIndex}][exercises][${exerciseIndex}][sets]`} data-exercise-field="sets" type="number" min="1" value={exercise.sets ?? ""} class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
+                          </label>
+
+                          <label class="space-y-2">
+                            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Reps</span>
+                            <input name={`days[${dayIndex}][exercises][${exerciseIndex}][reps]`} data-exercise-field="reps" value={exercise.reps ?? ""} class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
+                          </label>
+
+                          <label class="space-y-2">
+                            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Descanso (seg)</span>
+                            <input name={`days[${dayIndex}][exercises][${exerciseIndex}][rest_seconds]`} data-exercise-field="rest_seconds" type="number" min="0" value={exercise.rest_seconds ?? ""} class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
+                          </label>
+                        </div>
+
+                        <label class="mt-4 block space-y-2">
+                          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Notas</span>
+                          <textarea name={`days[${dayIndex}][exercises][${exerciseIndex}][notes]`} data-exercise-field="notes" rows="2" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{exercise.notes ?? ""}</textarea>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <template data-exercise-template>
+              <div class="exercise-card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/80" data-exercise-card>
+                <div class="flex flex-col gap-4 p-4 lg:flex-row">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <p class="exercise-label text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Ejercicio 1</p>
+                        <h5 data-exercise-title class="mt-1 truncate text-base font-bold text-slate-900 dark:text-slate-100">Ejercicio personalizado</h5>
+                        <p data-exercise-summary class="mt-1 text-xs text-slate-500 dark:text-slate-400">Completa solo lo esencial para armarla rápido.</p>
+                      </div>
+
+                      <button type="button" data-remove-exercise class="rounded-full border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/40">Quitar</button>
+                    </div>
+
+                    <div class="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                      <span data-exercise-muscle class="rounded-full bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-200">Músculo</span>
+                      <span data-exercise-equipment class="rounded-full bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-200">Equipo</span>
+                    </div>
+
+                    <input type="hidden" name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][exercise_key]" data-exercise-field="exercise_key" value="" />
+
+                    <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <label class="space-y-2 lg:col-span-2">
+                        <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nombre</span>
+                        <input name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][name]" data-exercise-field="name" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="Press banca" />
+                      </label>
+
+                      <label class="space-y-2">
+                        <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Series</span>
+                        <input name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][sets]" data-exercise-field="sets" type="number" min="1" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="4" />
+                      </label>
+
+                      <label class="space-y-2">
+                        <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Reps</span>
+                        <input name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][reps]" data-exercise-field="reps" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="8-10" />
+                      </label>
+
+                      <label class="space-y-2">
+                        <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Descanso (seg)</span>
+                        <input name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][rest_seconds]" data-exercise-field="rest_seconds" type="number" min="0" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="90" />
+                      </label>
+                    </div>
+
+                    <label class="mt-4 block space-y-2">
+                      <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Notas</span>
+                      <textarea name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][notes]" data-exercise-field="notes" rows="2" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="Técnica, tempo, etc."></textarea>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </section>
+        ))}
+      </div>
+
+      <div class="flex items-center justify-end gap-3">
+        <a href={`/routines/${routine.id}`} class="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          Cancelar
+        </a>
+
+        <button type="submit" class="rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-900 hover:bg-emerald-300">
+          Guardar cambios
+        </button>
+      </div>
+    </form>
+
+    <template id="day-template">
+      <section class="day-card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/80" data-day-card>
+        <div class="flex items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/80 p-5 dark:border-slate-800 dark:bg-slate-900/60">
+          <div>
+            <p class="day-label text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Día 1</p>
+            <h3 class="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">Tarjeta de día</h3>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Ponle un nombre claro y luego agrega los ejercicios.</p>
+          </div>
+
+          <button type="button" data-remove-day class="rounded-full border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/40">Quitar día</button>
+        </div>
+
+        <div class="grid gap-4 p-5 md:grid-cols-2">
+          <label class="space-y-2 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/60">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Título del día</span>
+            <input name="days[__DAY_INDEX__][title]" data-day-field="title" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Pecho y tríceps" />
+          </label>
+
+          <label class="space-y-2 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/60">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Enfoque</span>
+            <input name="days[__DAY_INDEX__][focus]" data-day-field="focus" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Fuerza / volumen / movilidad" />
+          </label>
+        </div>
+
+        <div class="px-5 pb-5">
+          <label class="block space-y-2 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/60">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Notas del día</span>
+            <textarea name="days[__DAY_INDEX__][notes]" data-day-field="notes" rows="3" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Indicaciones para este día"></textarea>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+          <h4 class="text-base font-bold text-slate-900 dark:text-slate-100">Ejercicios</h4>
+          <button type="button" data-add-exercise class="rounded-full border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:hover:bg-emerald-950/30">+ Agregar ejercicio</button>
+        </div>
+
+        <div data-exercises class="space-y-3 px-5 pb-5"></div>
+
+        <template data-exercise-template>
+          <div class="exercise-card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/80" data-exercise-card>
+            <div class="flex flex-col gap-4 p-4 lg:flex-row">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="exercise-label text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Ejercicio 1</p>
+                    <h5 data-exercise-title class="mt-1 truncate text-base font-bold text-slate-900 dark:text-slate-100">Ejercicio personalizado</h5>
+                    <p data-exercise-summary class="mt-1 text-xs text-slate-500 dark:text-slate-400">Completa solo lo esencial para armarla rápido.</p>
+                  </div>
+
+                  <button type="button" data-remove-exercise class="rounded-full border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:hover:bg-red-950/40">Quitar</button>
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                  <span data-exercise-muscle class="rounded-full bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-200">Músculo</span>
+                  <span data-exercise-equipment class="rounded-full bg-slate-100 px-3 py-1 text-slate-700 dark:bg-slate-900 dark:text-slate-200">Equipo</span>
+                </div>
+
+                <input type="hidden" name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][exercise_key]" data-exercise-field="exercise_key" value="" />
+
+                <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <label class="space-y-2 lg:col-span-2">
+                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Nombre</span>
+                    <input name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][name]" data-exercise-field="name" required class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="Press banca" />
+                  </label>
+
+                  <label class="space-y-2">
+                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Series</span>
+                    <input name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][sets]" data-exercise-field="sets" type="number" min="1" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="4" />
+                  </label>
+
+                  <label class="space-y-2">
+                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Reps</span>
+                    <input name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][reps]" data-exercise-field="reps" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="8-10" />
+                  </label>
+
+                  <label class="space-y-2">
+                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Descanso (seg)</span>
+                    <input name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][rest_seconds]" data-exercise-field="rest_seconds" type="number" min="0" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="90" />
+                  </label>
+                </div>
+
+                <label class="mt-4 block space-y-2">
+                  <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Notas</span>
+                  <textarea name="days[__DAY_INDEX__][exercises][__EXERCISE_INDEX__][notes]" data-exercise-field="notes" rows="2" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="Técnica, tempo, etc."></textarea>
+                </label>
+              </div>
+            </div>
+          </div>
+        </template>
+      </section>
+    </template>
+  </div>
+
+  <script>
+    import { initRoutineBuilder } from "../../../lib/utils/routine-builder";
+
+    initRoutineBuilder();
+  </script>
+</AppLayout>

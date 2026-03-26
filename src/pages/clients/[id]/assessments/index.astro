@@ -2,6 +2,7 @@
 import AppLayout from "../../../../layouts/layout.astro";
 import { sql } from "../../../../lib/db/client";
 import { formatDateOnly } from "../../../../lib/utils/date";
+import TabNav from "../../../../components/ui/TabNav.astro";
 
 const { id } = Astro.params;
 
@@ -92,15 +93,20 @@ function formatNumber(value: unknown, suffix = "") {
 
             {
                 canManageAssessments && (
-                    <a
-                        href={`/clients/${client.id}/assessments/valoration_new`}
-                        class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
-                    >
+                    <a href={`/clients/${client.id}/assessments/valoration_new`} class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 sm:w-auto">
                         + Nueva valoración
                     </a>
                 )
             }
         </div>
+
+        <TabNav
+            items={[
+                { href: `/clients/${client.id}/routine`, label: "Mi rutina" },
+                { href: `/clients/${client.id}/progress`, label: "Mi progreso" },
+                { href: `/clients/${client.id}/assessments`, label: "Valoraciones", active: true },
+            ]}
+        />
 
         {
             assessments.length === 0 ? (
@@ -114,10 +120,7 @@ function formatNumber(value: unknown, suffix = "") {
                     </p>
 
                     {canManageAssessments && (
-                        <a
-                            href={`/clients/${client.id}/assessments/valoration_new`}
-                            class="mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
-                        >
+                        <a href={`/clients/${client.id}/assessments/valoration_new`} class="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 sm:w-auto">
                             Crear primera valoración
                         </a>
                     )}
@@ -158,10 +161,7 @@ function formatNumber(value: unknown, suffix = "") {
 
                                 {canManageAssessments && (
                                     <div class="flex flex-wrap gap-3">
-                                        <a
-                                            href={`/clients/${client.id}/assessments/valoration_edit?assessmentId=${assessment.id}`}
-                                            class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                                        >
+                                        <a href={`/clients/${client.id}/assessments/valoration_edit?assessmentId=${assessment.id}`} class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
                                             Editar
                                         </a>
 
@@ -180,10 +180,7 @@ function formatNumber(value: unknown, suffix = "") {
                                                 name="client_id"
                                                 value={client.id}
                                             />
-                                            <button
-                                                type="submit"
-                                                class="inline-flex items-center rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:text-red-400 dark:hover:bg-red-950/30"
-                                            >
+                                            <button type="submit" class="inline-flex items-center rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:text-red-400 dark:hover:bg-red-950/30">
                                                 Eliminar
                                             </button>
                                         </form>

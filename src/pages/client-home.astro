@@ -1,0 +1,40 @@
+---
+import AppLayout from "../layouts/layout.astro";
+import SectionHeader from "../components/ui/SectionHeader.astro";
+
+const user = Astro.locals.user;
+
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+if (user.role !== "client") {
+    return Astro.redirect("/dashboard");
+}
+---
+
+<AppLayout title="Mi cuenta">
+    <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+        <SectionHeader
+            eyebrow="Cuenta de cliente"
+            title={`Hola, ${user.name}`}
+            description="Tu cuenta está lista. Completa tu perfil o entra a tu rutina y progreso cuando esté vinculado."
+        />
+
+        <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/95 sm:p-8">
+            <p class="text-sm text-slate-600 dark:text-slate-400">
+                Aún no detectamos tu perfil de cliente vinculado.
+            </p>
+
+            <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <a href="/clients/register/client" class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 sm:w-auto">
+                    Completar registro
+                </a>
+
+                <a href="/register" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto">
+                    Ir al registro
+                </a>
+            </div>
+        </div>
+    </div>
+</AppLayout>

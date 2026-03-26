@@ -2,55 +2,68 @@
 import AppLayout from "../../../layouts/layout.astro";
 import { sql } from "../../../lib/db/client";
 import { formatDateOnly } from "../../../lib/utils/date";
+import SectionHeader from "../../../components/ui/SectionHeader.astro";
+import EmptyState from "../../../components/ui/EmptyState.astro";
 
-const user = Astro.locals.user;
+type PageUser = {
+    id: number;
+    name: string;
+    email: string;
+    role: "admin" | "gym_manager" | "trainer" | "client";
+    gymId: number | null;
+} | null;
+
+const user = Astro.locals.user as PageUser;
 
 if (!user) {
     return Astro.redirect("/login?error=unauthorized");
 }
 
-if (user.role !== "admin") {
+if (user.role !== "admin" && user.role !== "gym_manager") {
     return Astro.redirect("/dashboard?error=forbidden");
 }
 
 const status = Astro.url.searchParams.get("status");
 const message = Astro.url.searchParams.get("message");
 
-const trainers = await sql`
-  SELECT id, name, email, role, created_at
-  FROM users
-  WHERE role = 'trainer'
-  ORDER BY created_at DESC, id DESC
-`;
+const trainers =
+    user.role === "admin"
+        ? await sql`
+              SELECT u.id, u.name, u.email, u.role, u.created_at, g.name AS gym_name
+              FROM users u
+              LEFT JOIN gyms g ON g.id = u.gym_id
+              WHERE u.role IN ('trainer', 'gym_manager')
+              ORDER BY u.created_at DESC, u.id DESC
+          `
+        : await sql`
+              SELECT u.id, u.name, u.email, u.role, u.created_at, g.name AS gym_name
+              FROM users u
+              LEFT JOIN gyms g ON g.id = u.gym_id
+              WHERE u.role = 'trainer'
+                AND u.gym_id = ${user.gymId}
+              ORDER BY u.created_at DESC, u.id DESC
+          `;
 ---
 
 <AppLayout title="Gestión de trainers">
     <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-                <a
-                    href="/admin"
-                    class="text-sm font-medium text-slate-500 hover:text-emerald-600"
-                >
-                    ← Volver a administración
-                </a>
-
-                <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                    Gestión de trainers
-                </h1>
-
-                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    Administra las cuentas de entrenadores registradas en la plataforma.
-                </p>
-            </div>
-
+        <SectionHeader
+            eyebrow={user.role === "admin" ? "Administración" : "Mi gimnasio"}
+            title="Gestión de trainers"
+            description={
+                user.role === "admin"
+                    ? "Administra las cuentas de entrenadores registradas en la plataforma."
+                    : "Administra solo los entrenadores asignados a tu gimnasio."
+            }
+        >
             <a
+                slot="actions"
                 href="/admin/trainers/new"
-                class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
+                class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 sm:w-auto"
             >
                 + Nuevo trainer
             </a>
-        </div>
+        </SectionHeader>
 
         {
             status && message && (
@@ -68,23 +81,14 @@ const trainers = await sql`
 
         {
             trainers.length === 0 ? (
-                <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                    <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">
-                        Aún no hay trainers registrados
-                    </h2>
-                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                        Crea el primer entrenador para comenzar la gestión administrativa.
-                    </p>
-
-                    <a
-                        href="/admin/trainers/new"
-                        class="mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600"
-                    >
-                        Crear trainer
-                    </a>
-                </div>
+                <EmptyState
+                    title="Aún no hay trainers registrados"
+                    description="Crea el primer entrenador para comenzar la gestión administrativa."
+                    actionHref="/admin/trainers/new"
+                    actionLabel="Crear trainer"
+                />
             ) : (
-                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white/95 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                             <thead class="bg-slate-50 dark:bg-slate-900/40">
@@ -97,6 +101,9 @@ const trainers = await sql`
                                     </th>
                                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                         Rol
+                                    </th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                        Gimnasio
                                     </th>
                                     <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                                         Creado
@@ -120,6 +127,9 @@ const trainers = await sql`
                                             <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                                                 {trainer.role}
                                             </span>
+                                        </td>
+                                        <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+                                            {trainer.gym_name ?? "-"}
                                         </td>
                                         <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
                                             {formatDateOnly(trainer.created_at)}

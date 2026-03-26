@@ -1,0 +1,402 @@
+---
+import type { ExerciseLibraryItem } from "../../lib/utils/exercise-library";
+
+type Props = {
+  exercise: ExerciseLibraryItem;
+};
+
+type Pose =
+  | "default"
+  | "squat"
+  | "press"
+  | "bench"
+  | "row"
+  | "hang"
+  | "hinge"
+  | "bridge"
+  | "lunge"
+  | "plank"
+  | "twist"
+  | "jump"
+  | "mobility"
+  | "raise"
+  | "swing";
+
+type MotionExercise = {
+  key: string;
+  name: string;
+  accent: string;
+  category?: string;
+  pose?: Pose;
+};
+
+const { exercise } = Astro.props as Props;
+const item = exercise as MotionExercise;
+
+const detectPose = (current: MotionExercise): Pose => {
+  if (current.pose) return current.pose;
+
+  const key = current.key.toLowerCase();
+  const category = (current as { category?: string }).category ?? "";
+
+  if (key.includes("lateral_raise") || key.includes("rear_delt_fly") || key.includes("face_down_y_raise")) return "raise";
+  if (key.includes("bench_press") || key.includes("incline_press") || key.includes("decline_bench_press") || key.includes("machine_chest_press") || key.includes("push_up") || key.includes("dips") || key.includes("fly")) return "bench";
+  if (key.includes("squat") || key.includes("leg_press") || key.includes("hack_squat") || key.includes("sissy_squat")) return "squat";
+  if (key.includes("lunge") || key.includes("split_squat") || key.includes("step_up") || key.includes("cossack")) return "lunge";
+  if (key.includes("hip_thrust") || key.includes("glute_bridge")) return "bridge";
+  if (key.includes("deadlift") || key.includes("good_morning") || key.includes("back_extension") || key.includes("reverse_hyperextension") || key.includes("rdl") || key.includes("romanian")) return "hinge";
+  if (key.includes("kettlebell_swing")) return "swing";
+  if (category === "Push" || key.includes("press") || key.includes("overhead") || key.includes("arnold") || key.includes("push_press")) return "press";
+  if (category === "Pull" || key.includes("row") || key.includes("pull_up") || key.includes("pulldown") || key.includes("face_pull") || key.includes("pullover") || key.includes("chin_up") || key.includes("assisted_pull_up")) return key.includes("row") ? "row" : key.includes("pull_up") || key.includes("chin_up") || key.includes("pulldown") ? "hang" : "pull";
+  if (category === "Core" || key.includes("plank") || key.includes("crunch") || key.includes("dead_bug")) return key.includes("plank") ? "plank" : key.includes("twist") || key.includes("woodchop") ? "twist" : "default";
+  if (category === "Cardio") return key.includes("burpee") || key.includes("jump") || key.includes("rope") || key.includes("mountain_climber") ? "jump" : "default";
+  if (category === "Movilidad") return "mobility";
+
+  return "default";
+};
+
+const pose = detectPose(item);
+---
+
+<div class={`motion-avatar motion-avatar--${pose}`} aria-label={`Simulación del ejercicio ${exercise.name}`} role="img" style={`--accent:${exercise.accent};`}>
+  <svg viewBox="0 0 640 420" class="motion-avatar__svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.95" />
+        <stop offset="100%" stop-color="#0f172a" stop-opacity="0.96" />
+      </linearGradient>
+      <linearGradient id="figure" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#f8fafc" />
+        <stop offset="100%" stop-color="#cbd5e1" />
+      </linearGradient>
+      <linearGradient id="figureDark" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#e2e8f0" />
+        <stop offset="100%" stop-color="#64748b" />
+      </linearGradient>
+    </defs>
+
+    <rect x="0" y="0" width="640" height="420" rx="30" fill="url(#bg)" />
+    <circle cx="118" cy="96" r="90" fill="white" fill-opacity="0.08" />
+    <circle cx="540" cy="68" r="110" fill="white" fill-opacity="0.06" />
+    <ellipse cx="320" cy="342" rx="198" ry="24" fill="#020617" fill-opacity="0.26" />
+    <rect x="110" y="330" width="420" height="12" rx="6" fill="rgba(255,255,255,0.34)" />
+
+    {pose === "bench" && (
+      <g class="motion-avatar__pose motion-avatar__pose--bench">
+        <rect x="154" y="212" width="332" height="18" rx="9" fill="#94a3b8" fill-opacity="0.45" />
+        <rect x="176" y="192" width="92" height="16" rx="8" fill="#cbd5e1" />
+        <rect x="372" y="192" width="92" height="16" rx="8" fill="#cbd5e1" />
+        <circle cx="166" cy="200" r="18" fill="#e2e8f0" />
+        <circle cx="474" cy="200" r="18" fill="#e2e8f0" />
+        <g transform="translate(232 120) rotate(-90 88 88)">
+          <circle cx="86" cy="62" r="24" fill="#f8fafc" />
+          <rect x="72" y="84" width="28" height="110" rx="14" fill="url(#figure)" />
+          <rect x="58" y="118" width="18" height="76" rx="9" fill="url(#figureDark)" />
+          <rect x="100" y="118" width="18" height="76" rx="9" fill="url(#figureDark)" />
+          <rect x="68" y="144" width="18" height="78" rx="9" fill="url(#figure)" />
+          <rect x="94" y="144" width="18" height="78" rx="9" fill="url(#figure)" />
+          <rect x="24" y="78" width="124" height="10" rx="5" fill="#e2e8f0" />
+          <circle cx="26" cy="83" r="13" fill="#e2e8f0" />
+          <circle cx="146" cy="83" r="13" fill="#e2e8f0" />
+        </g>
+      </g>
+    )}
+
+    {pose === "squat" && (
+      <g class="motion-avatar__pose motion-avatar__pose--squat">
+        <rect x="176" y="150" width="288" height="14" rx="7" fill="#e2e8f0" />
+        <circle cx="166" cy="157" r="12" fill="#e2e8f0" />
+        <circle cx="474" cy="157" r="12" fill="#e2e8f0" />
+        <circle cx="320" cy="108" r="26" fill="#f8fafc" />
+        <rect x="306" y="134" width="28" height="90" rx="14" fill="url(#figure)" />
+        <rect x="282" y="156" width="20" height="82" rx="10" fill="url(#figureDark)" transform="rotate(-8 292 197)" />
+        <rect x="338" y="156" width="20" height="82" rx="10" fill="url(#figureDark)" transform="rotate(8 348 197)" />
+        <rect x="286" y="204" width="22" height="96" rx="11" fill="url(#figure)" transform="rotate(20 297 252)" />
+        <rect x="332" y="204" width="22" height="96" rx="11" fill="url(#figure)" transform="rotate(-20 343 252)" />
+        <rect x="256" y="82" width="128" height="10" rx="5" fill="#e2e8f0" />
+        <circle cx="258" cy="87" r="13" fill="#e2e8f0" />
+        <circle cx="382" cy="87" r="13" fill="#e2e8f0" />
+      </g>
+    )}
+
+    {pose === "press" && (
+      <g class="motion-avatar__pose motion-avatar__pose--press">
+        <circle cx="320" cy="106" r="26" fill="#f8fafc" />
+        <rect x="306" y="132" width="28" height="92" rx="14" fill="url(#figure)" />
+        <rect x="272" y="160" width="20" height="74" rx="10" fill="url(#figureDark)" transform="rotate(-30 282 197)" />
+        <rect x="348" y="160" width="20" height="74" rx="10" fill="url(#figureDark)" transform="rotate(30 358 197)" />
+        <rect x="286" y="214" width="20" height="102" rx="10" fill="url(#figure)" />
+        <rect x="334" y="214" width="20" height="102" rx="10" fill="url(#figure)" />
+        <rect x="236" y="68" width="168" height="10" rx="5" fill="#e2e8f0" />
+        <circle cx="238" cy="73" r="14" fill="#e2e8f0" />
+        <circle cx="402" cy="73" r="14" fill="#e2e8f0" />
+      </g>
+    )}
+
+    {pose === "row" && (
+      <g class="motion-avatar__pose motion-avatar__pose--row">
+        <circle cx="300" cy="120" r="24" fill="#f8fafc" />
+        <rect x="286" y="144" width="28" height="86" rx="14" fill="url(#figure)" transform="rotate(20 300 187)" />
+        <rect x="248" y="174" width="22" height="76" rx="11" fill="url(#figureDark)" transform="rotate(-68 259 212)" />
+        <rect x="324" y="160" width="22" height="80" rx="11" fill="url(#figureDark)" transform="rotate(64 335 200)" />
+        <rect x="268" y="210" width="20" height="98" rx="10" fill="url(#figure)" transform="rotate(8 278 259)" />
+        <rect x="334" y="214" width="20" height="94" rx="10" fill="url(#figure)" transform="rotate(-14 344 261)" />
+        <rect x="258" y="168" width="134" height="10" rx="5" fill="#e2e8f0" />
+        <circle cx="260" cy="173" r="14" fill="#e2e8f0" />
+        <circle cx="390" cy="173" r="14" fill="#e2e8f0" />
+      </g>
+    )}
+
+    {pose === "hinge" && (
+      <g class="motion-avatar__pose motion-avatar__pose--hinge">
+        <circle cx="290" cy="128" r="24" fill="#f8fafc" />
+        <rect x="276" y="152" width="28" height="82" rx="14" fill="url(#figure)" transform="rotate(42 290 193)" />
+        <rect x="248" y="198" width="18" height="72" rx="9" fill="url(#figureDark)" transform="rotate(-18 257 234)" />
+        <rect x="332" y="204" width="18" height="72" rx="9" fill="url(#figureDark)" transform="rotate(16 341 240)" />
+        <rect x="262" y="216" width="20" height="92" rx="10" fill="url(#figure)" transform="rotate(14 272 262)" />
+        <rect x="314" y="216" width="20" height="92" rx="10" fill="url(#figure)" transform="rotate(-14 324 262)" />
+        <rect x="248" y="272" width="122" height="10" rx="5" fill="#e2e8f0" />
+      </g>
+    )}
+
+    {pose === "bridge" && (
+      <g class="motion-avatar__pose motion-avatar__pose--bridge">
+        <rect x="160" y="232" width="320" height="18" rx="9" fill="#94a3b8" fill-opacity="0.42" />
+        <circle cx="198" cy="226" r="22" fill="#f8fafc" />
+        <rect x="216" y="210" width="154" height="28" rx="14" fill="url(#figure)" transform="rotate(-2 293 224)" />
+        <rect x="320" y="188" width="20" height="82" rx="10" fill="url(#figureDark)" transform="rotate(32 330 229)" />
+        <rect x="232" y="188" width="20" height="82" rx="10" fill="url(#figureDark)" transform="rotate(-24 242 229)" />
+        <rect x="210" y="236" width="92" height="20" rx="10" fill="url(#figure)" transform="rotate(14 256 246)" />
+        <rect x="288" y="236" width="92" height="20" rx="10" fill="url(#figure)" transform="rotate(-14 334 246)" />
+      </g>
+    )}
+
+    {pose === "lunge" && (
+      <g class="motion-avatar__pose motion-avatar__pose--lunge">
+        <circle cx="324" cy="108" r="24" fill="#f8fafc" />
+        <rect x="310" y="132" width="28" height="90" rx="14" fill="url(#figure)" />
+        <rect x="278" y="158" width="20" height="80" rx="10" fill="url(#figureDark)" transform="rotate(-20 288 198)" />
+        <rect x="334" y="158" width="20" height="80" rx="10" fill="url(#figureDark)" transform="rotate(20 344 198)" />
+        <rect x="282" y="214" width="22" height="104" rx="11" fill="url(#figure)" transform="rotate(26 293 266)" />
+        <rect x="334" y="206" width="22" height="110" rx="11" fill="url(#figure)" transform="rotate(-30 345 261)" />
+      </g>
+    )}
+
+    {pose === "plank" && (
+      <g class="motion-avatar__pose motion-avatar__pose--plank">
+        <rect x="166" y="250" width="290" height="16" rx="8" fill="#94a3b8" fill-opacity="0.42" />
+        <circle cx="214" cy="238" r="20" fill="#f8fafc" />
+        <rect x="230" y="232" width="178" height="22" rx="11" fill="url(#figure)" transform="rotate(6 319 243)" />
+        <rect x="318" y="226" width="18" height="74" rx="9" fill="url(#figureDark)" transform="rotate(68 327 263)" />
+        <rect x="390" y="228" width="18" height="72" rx="9" fill="url(#figureDark)" transform="rotate(74 399 264)" />
+      </g>
+    )}
+
+    {pose === "twist" && (
+      <g class="motion-avatar__pose motion-avatar__pose--twist">
+        <circle cx="320" cy="110" r="24" fill="#f8fafc" />
+        <rect x="306" y="134" width="28" height="94" rx="14" fill="url(#figure)" />
+        <rect x="260" y="176" width="18" height="82" rx="9" fill="url(#figureDark)" transform="rotate(-54 269 217)" />
+        <rect x="360" y="176" width="18" height="82" rx="9" fill="url(#figureDark)" transform="rotate(54 369 217)" />
+        <rect x="258" y="222" width="20" height="92" rx="10" fill="url(#figure)" transform="rotate(10 268 268)" />
+        <rect x="362" y="222" width="20" height="92" rx="10" fill="url(#figure)" transform="rotate(-10 372 268)" />
+      </g>
+    )}
+
+    {pose === "jump" && (
+      <g class="motion-avatar__pose motion-avatar__pose--jump">
+        <circle cx="320" cy="94" r="24" fill="#f8fafc" />
+        <rect x="306" y="118" width="28" height="88" rx="14" fill="url(#figure)" />
+        <rect x="270" y="144" width="18" height="70" rx="9" fill="url(#figureDark)" transform="rotate(-26 279 179)" />
+        <rect x="352" y="144" width="18" height="70" rx="9" fill="url(#figureDark)" transform="rotate(26 361 179)" />
+        <rect x="282" y="202" width="20" height="100" rx="10" fill="url(#figure)" transform="rotate(16 292 252)" />
+        <rect x="338" y="202" width="20" height="100" rx="10" fill="url(#figure)" transform="rotate(-16 348 252)" />
+      </g>
+    )}
+
+    {pose === "mobility" && (
+      <g class="motion-avatar__pose motion-avatar__pose--mobility">
+        <circle cx="318" cy="116" r="24" fill="#f8fafc" />
+        <rect x="304" y="140" width="28" height="90" rx="14" fill="url(#figure)" />
+        <rect x="256" y="156" width="18" height="76" rx="9" fill="url(#figureDark)" transform="rotate(-34 265 194)" />
+        <rect x="354" y="156" width="18" height="76" rx="9" fill="url(#figureDark)" transform="rotate(34 363 194)" />
+        <rect x="278" y="218" width="20" height="92" rx="10" fill="url(#figure)" transform="rotate(10 288 264)" />
+        <rect x="334" y="218" width="20" height="92" rx="10" fill="url(#figure)" transform="rotate(-10 344 264)" />
+      </g>
+    )}
+
+    {pose === "raise" && (
+      <g class="motion-avatar__pose motion-avatar__pose--raise">
+        <circle cx="320" cy="108" r="24" fill="#f8fafc" />
+        <rect x="306" y="132" width="28" height="92" rx="14" fill="url(#figure)" />
+        <rect x="264" y="150" width="18" height="74" rx="9" fill="url(#figureDark)" transform="rotate(-54 273 187)" />
+        <rect x="358" y="150" width="18" height="74" rx="9" fill="url(#figureDark)" transform="rotate(54 367 187)" />
+        <rect x="286" y="216" width="20" height="94" rx="10" fill="url(#figure)" />
+        <rect x="334" y="216" width="20" height="94" rx="10" fill="url(#figure)" />
+        <rect x="220" y="66" width="200" height="10" rx="5" fill="#e2e8f0" />
+        <circle cx="222" cy="71" r="14" fill="#e2e8f0" />
+        <circle cx="418" cy="71" r="14" fill="#e2e8f0" />
+      </g>
+    )}
+
+    {pose === "swing" && (
+      <g class="motion-avatar__pose motion-avatar__pose--swing">
+        <circle cx="292" cy="120" r="24" fill="#f8fafc" />
+        <rect x="278" y="144" width="28" height="82" rx="14" fill="url(#figure)" transform="rotate(34 292 185)" />
+        <rect x="248" y="186" width="18" height="76" rx="9" fill="url(#figureDark)" transform="rotate(-18 257 224)" />
+        <rect x="332" y="186" width="18" height="76" rx="9" fill="url(#figureDark)" transform="rotate(18 341 224)" />
+        <rect x="264" y="222" width="20" height="96" rx="10" fill="url(#figure)" transform="rotate(18 274 270)" />
+        <rect x="318" y="222" width="20" height="96" rx="10" fill="url(#figure)" transform="rotate(-18 328 270)" />
+        <rect x="222" y="248" width="196" height="10" rx="5" fill="#e2e8f0" />
+        <circle cx="246" cy="253" r="20" fill="#94a3b8" />
+        <circle cx="394" cy="253" r="20" fill="#94a3b8" />
+      </g>
+    )}
+
+    {pose === "default" && (
+      <g class="motion-avatar__pose motion-avatar__pose--default">
+        <circle cx="320" cy="110" r="24" fill="#f8fafc" />
+        <rect x="306" y="134" width="28" height="94" rx="14" fill="url(#figure)" />
+        <rect x="276" y="162" width="18" height="82" rx="9" fill="url(#figureDark)" transform="rotate(-12 285 203)" />
+        <rect x="346" y="162" width="18" height="82" rx="9" fill="url(#figureDark)" transform="rotate(12 355 203)" />
+        <rect x="282" y="222" width="20" height="94" rx="10" fill="url(#figure)" />
+        <rect x="338" y="222" width="20" height="94" rx="10" fill="url(#figure)" />
+      </g>
+    )}
+  </svg>
+</div>
+
+<style>
+  .motion-avatar {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border-radius: 1.75rem;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 88%, white 12%), #0f172a 72%);
+    box-shadow: 0 24px 50px rgba(2, 6, 23, 0.24);
+  }
+
+  .motion-avatar__svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .motion-avatar__pose {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: drift 3.8s ease-in-out infinite;
+  }
+
+  .motion-avatar--squat .motion-avatar__pose--squat,
+  .motion-avatar--press .motion-avatar__pose--press,
+  .motion-avatar--bench .motion-avatar__pose--bench,
+  .motion-avatar--row .motion-avatar__pose--row,
+  .motion-avatar--hang .motion-avatar__pose--hang,
+  .motion-avatar--hinge .motion-avatar__pose--hinge,
+  .motion-avatar--bridge .motion-avatar__pose--bridge,
+  .motion-avatar--lunge .motion-avatar__pose--lunge,
+  .motion-avatar--plank .motion-avatar__pose--plank,
+  .motion-avatar--twist .motion-avatar__pose--twist,
+  .motion-avatar--jump .motion-avatar__pose--jump,
+  .motion-avatar--mobility .motion-avatar__pose--mobility,
+  .motion-avatar--raise .motion-avatar__pose--raise,
+  .motion-avatar--swing .motion-avatar__pose--swing,
+  .motion-avatar--default .motion-avatar__pose--default {
+    animation-duration: 3s;
+  }
+
+  .motion-avatar--squat .motion-avatar__pose--squat { animation-name: squat; }
+  .motion-avatar--press .motion-avatar__pose--press { animation-name: press; }
+  .motion-avatar--bench .motion-avatar__pose--bench { animation-name: bench; }
+  .motion-avatar--row .motion-avatar__pose--row { animation-name: row; }
+  .motion-avatar--hang .motion-avatar__pose--hang { animation-name: hang; }
+  .motion-avatar--hinge .motion-avatar__pose--hinge { animation-name: hinge; }
+  .motion-avatar--bridge .motion-avatar__pose--bridge { animation-name: bridge; }
+  .motion-avatar--lunge .motion-avatar__pose--lunge { animation-name: lunge; }
+  .motion-avatar--plank .motion-avatar__pose--plank { animation-name: plank; }
+  .motion-avatar--twist .motion-avatar__pose--twist { animation-name: twist; }
+  .motion-avatar--jump .motion-avatar__pose--jump { animation-name: jump; }
+  .motion-avatar--mobility .motion-avatar__pose--mobility { animation-name: mobility; }
+  .motion-avatar--raise .motion-avatar__pose--raise { animation-name: raise; }
+  .motion-avatar--swing .motion-avatar__pose--swing { animation-name: swing; }
+
+  @keyframes drift {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  @keyframes squat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(10px) scale(0.985); }
+  }
+
+  @keyframes press {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  @keyframes bench {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  @keyframes row {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(4px) rotate(2deg); }
+  }
+
+  @keyframes hang {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
+
+  @keyframes hinge {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
+  }
+
+  @keyframes bridge {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  @keyframes lunge {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+  }
+
+  @keyframes plank {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
+
+  @keyframes twist {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(6deg); }
+  }
+
+  @keyframes jump {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @keyframes mobility {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(3deg); }
+  }
+
+  @keyframes raise {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  @keyframes swing {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(5px) rotate(1deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .motion-avatar__pose { animation: none !important; }
+  }
+</style>

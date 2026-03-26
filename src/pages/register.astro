@@ -1,46 +1,42 @@
 ---
 import AppLayout from "../layouts/layout.astro";
+import SectionHeader from "../components/ui/SectionHeader.astro";
+import ActionCard from "../components/ui/ActionCard.astro";
+import AuthNav from "../components/ui/AuthNav.astro";
 ---
 
 <AppLayout title="Registro">
-    <div class="mx-auto max-w-4xl px-4 py-12">
-        <div class="text-center">
-            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                Crear cuenta
-            </h1>
-            <p class="mt-2 text-slate-600 dark:text-slate-400">
-                Elige el tipo de cuenta con el que deseas registrarte.
-            </p>
-        </div>
+    <div class="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+        <AuthNav
+            items={[
+                { href: "/login", label: "Iniciar sesión" },
+                { href: "/register", label: "Registro", active: true },
+            ]}
+        />
 
-        <div class="mt-10 grid gap-6 md:grid-cols-2">
-            <a
+        <SectionHeader
+            title="Crear cuenta"
+            description="Elige el tipo de cuenta con el que deseas registrarte: cliente, trainer o gym manager."
+        />
+
+        <div class="mt-10 grid gap-6 md:grid-cols-3">
+            <ActionCard
                 href="/clients/register/client"
-                class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-emerald-400 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-            >
-                <h2
-                    class="text-xl font-bold text-slate-900 dark:text-slate-100"
-                >
-                    Cliente
-                </h2>
-                <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                    Consulta tu progreso, valoraciones e historial.
-                </p>
-            </a>
+                title="Cliente"
+                description="Consulta tu progreso, valoraciones e historial personal."
+            />
 
-            <a
+            <ActionCard
                 href="/clients/register/trainer"
-                class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-emerald-400 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900"
-            >
-                <h2
-                    class="text-xl font-bold text-slate-900 dark:text-slate-100"
-                >
-                    Trainer
-                </h2>
-                <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                    Administra clientes, valoraciones y seguimiento.
-                </p>
-            </a>
+                title="Trainer"
+                description="Administra clientes, valoraciones y seguimiento de tus atletas."
+            />
+
+            <ActionCard
+                href="/clients/register/gym-manager"
+                title="Gym manager"
+                description="Accede con el código de tu gimnasio para gestionar tu equipo."
+            />
         </div>
 
         <p class="mt-8 text-center text-sm text-slate-600 dark:text-slate-400">
