@@ -259,9 +259,14 @@ const accessMessage = Astro.url.searchParams.get("access_message");
                                 <input
                                     id="access_password"
                                     name="password"
-                                    type="text"
+                                    type="password"
                                     required
+                                    minlength="8"
+                                    maxlength="72"
+                                    pattern="^(?=.*[A-Z])(?=.*\d).{8,72}$"
+                                    title="Debe tener al menos 8 caracteres, una mayúscula y un número."
                                     class="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                                    placeholder="8 caracteres, mayúscula y número"
                                 />
                             </div>
 
@@ -333,9 +338,14 @@ const accessMessage = Astro.url.searchParams.get("access_message");
                                 <input
                                     id="reset_access_password"
                                     name="password"
-                                    type="text"
+                                    type="password"
                                     required
+                                    minlength="8"
+                                    maxlength="72"
+                                    pattern="^(?=.*[A-Z])(?=.*\d).{8,72}$"
+                                    title="Debe tener al menos 8 caracteres, una mayúscula y un número."
                                     class="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                                    placeholder="8 caracteres, mayúscula y número"
                                 />
                             </div>
 

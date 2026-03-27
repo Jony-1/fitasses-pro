@@ -208,10 +208,13 @@ if (!trainer) {
                             id="password"
                             name="password"
                             type="password"
-                            required
-                            minlength="6"
-                            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                            placeholder="Mínimo 6 caracteres"
+                        required
+                        minlength="8"
+                        maxlength="72"
+                        pattern="^(?=.*[A-Z])(?=.*\d).{8,72}$"
+                        title="Debe tener al menos 8 caracteres, una mayúscula y un número."
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        placeholder="8 caracteres, mayúscula y número"
                         />
                     </div>
 

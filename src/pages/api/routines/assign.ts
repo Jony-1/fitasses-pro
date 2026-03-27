@@ -122,13 +122,14 @@ export const POST: APIRoute = async (context) => {
     const newDayId = newDayRows[0].id as number;
 
     const templateExercises = await sql`
-      SELECT position, exercise_key, name, sets, reps, rest_seconds, notes
+      SELECT position, exercise_key, image_url, name, sets, reps, rest_seconds, notes
       FROM routine_exercises
       WHERE routine_day_id = ${templateDay.id}
       ORDER BY position ASC, id ASC
     ` as unknown as Array<{
       position: number;
       exercise_key: string | null;
+      image_url: string | null;
       name: string;
       sets: number | null;
       reps: string | null;
@@ -139,6 +140,7 @@ export const POST: APIRoute = async (context) => {
     for (const templateExercise of templateExercises as Array<{
       position: number;
       exercise_key: string | null;
+      image_url: string | null;
       name: string;
       sets: number | null;
       reps: string | null;
@@ -150,6 +152,7 @@ export const POST: APIRoute = async (context) => {
           routine_day_id,
           position,
           exercise_key,
+          image_url,
           name,
           sets,
           reps,
@@ -160,6 +163,7 @@ export const POST: APIRoute = async (context) => {
           ${newDayId},
           ${templateExercise.position},
           ${templateExercise.exercise_key},
+          ${templateExercise.image_url},
           ${templateExercise.name},
           ${templateExercise.sets},
           ${templateExercise.reps},

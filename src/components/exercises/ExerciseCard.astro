@@ -1,0 +1,89 @@
+---
+import ExerciseMotionAvatar from "./ExerciseMotionAvatar.astro";
+import { generateExerciseKey, getExerciseByKey, type ExerciseLibraryItem } from "../../lib/utils/exercise-library";
+
+type ExerciseLike = {
+  name: string;
+  exercise_key?: string | null;
+  key?: string | null;
+  category?: string | null;
+  muscle?: string | null;
+  equipment?: string | null;
+  image?: string | null;
+  imageUrl?: string | null;
+  sets?: string | number | null;
+  reps?: string | number | null;
+  rest_seconds?: string | number | null;
+  notes?: string | null;
+  position?: number | null;
+};
+
+interface Props {
+  exercise: ExerciseLike;
+  detailsHref?: string;
+  compact?: boolean;
+  showDetails?: boolean;
+}
+
+const { exercise, detailsHref, compact = false, showDetails = true } = Astro.props as Props;
+const libraryItem = await getExerciseByKey(exercise.exercise_key ?? exercise.key ?? exercise.name);
+const referenceImage = exercise.image ?? exercise.imageUrl ?? libraryItem?.imageUrl ?? libraryItem?.image ?? null;
+
+const avatarItem =
+  libraryItem ??
+  ({
+    key: generateExerciseKey(exercise.name),
+    name: exercise.name,
+    category: exercise.category ?? "Fuerza",
+    muscle: exercise.muscle ?? "General",
+    equipment: exercise.equipment ?? "Sin equipo",
+    image: "/favicon.png",
+    accent: "#475569",
+    glyph: "FX",
+  } as ExerciseLibraryItem);
+
+const labelClass = compact ? "text-sm" : "text-base";
+---
+
+<article class:list={[
+  "overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/80",
+  compact ? "" : "transition hover:-translate-y-0.5 hover:shadow-lg",
+]}> 
+  <div class={compact ? "grid gap-0 md:grid-cols-[112px_1fr]" : "grid gap-0 md:grid-cols-[180px_1fr]"}>
+    {referenceImage ? (
+      <div class={compact ? "h-28 overflow-hidden bg-slate-950/5 p-2 dark:bg-slate-900" : "h-44 overflow-hidden bg-slate-950/5 p-3 dark:bg-slate-900"}>
+        <img src={referenceImage} alt={exercise.name} class="h-full w-full rounded-2xl object-contain" loading="lazy" />
+      </div>
+    ) : (
+      <ExerciseMotionAvatar exercise={avatarItem} />
+    )}
+
+    <div class={compact ? "p-3" : "p-4 bg-white dark:bg-slate-900/70"}>
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class={`font-semibold text-slate-900 dark:text-slate-100 ${labelClass}`}>{exercise.name}</p>
+          <div class="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-900">{exercise.sets ? `${exercise.sets} series` : "Series libre"}</span>
+            {exercise.reps && <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-900">{exercise.reps} reps</span>}
+            {exercise.rest_seconds && <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-900">{exercise.rest_seconds}s descanso</span>}
+          </div>
+        </div>
+
+        {exercise.position && <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">#{exercise.position}</span>}
+      </div>
+
+      <div class="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+        <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-900">{avatarItem.muscle}</span>
+        <span class="rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-900">{avatarItem.equipment}</span>
+      </div>
+
+      {exercise.notes && <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">{exercise.notes}</p>}
+
+      {showDetails && detailsHref && (
+        <a href={detailsHref} class="mt-3 inline-flex rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          Ver detalle
+        </a>
+      )}
+    </div>
+  </div>
+</article>

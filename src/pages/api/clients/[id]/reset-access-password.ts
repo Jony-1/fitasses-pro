@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { sql } from "../../../../lib/db/client";
 import { requireTrainer } from "../../../../lib/auth/guards";
 import { hashPassword } from "../../../../lib/auth/password";
+import { isStrongPassword } from "../../../../lib/utils/validation";
 
 function parseId(id: string | undefined) {
     if (!id) return null;
@@ -41,6 +42,14 @@ export const POST: APIRoute = async (context) => {
 
         if (!password) {
             return redirectToEdit(clientId, "error", "La nueva contraseña es obligatoria.");
+        }
+
+        if (!isStrongPassword(password)) {
+            return redirectToEdit(
+                clientId,
+                "error",
+                "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.",
+            );
         }
 
         const clientResult = await sql`

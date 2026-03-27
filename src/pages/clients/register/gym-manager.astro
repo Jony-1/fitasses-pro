@@ -10,7 +10,7 @@ const errorMessages: Record<string, string> = {
     invalid_email: "Ingresa un correo válido.",
     password_mismatch: "Las contraseñas no coinciden.",
     weak_password:
-        "La contraseña debe tener al menos 8 caracteres, incluyendo mayúscula, minúscula, número y símbolo.",
+        "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.",
     email_exists: "Ese correo ya está registrado.",
     invalid_gym_code: "El código del gimnasio no es válido.",
     gym_not_found: "No encontramos un gimnasio con ese código.",
@@ -67,7 +67,7 @@ const errorMessage = error ? errorMessages[error] : null;
 
                 <div>
                     <label for="password" class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Contraseña</label>
-                    <input id="password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,72}$" title="Debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un símbolo." class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Crea una contraseña segura" />
+                    <input id="password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" pattern="^(?=.*[A-Z])(?=.*\d).{8,72}$" title="Debe tener al menos 8 caracteres, una mayúscula y un número." class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Crea una contraseña con mayúscula y número" />
                 </div>
 
                 <div>

@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { requireAdminOrGymManager } from "../../../../lib/auth/guards";
 import { hashPassword } from "../../../../lib/auth/password";
 import { sql } from "../../../../lib/db/client";
+import { isStrongPassword } from "../../../../lib/utils/validation";
 
 export const POST: APIRoute = async (context) => {
     try {
@@ -18,9 +19,9 @@ export const POST: APIRoute = async (context) => {
             );
         }
 
-        if (password.length < 6) {
+        if (!isStrongPassword(password)) {
             return context.redirect(
-                `/admin/trainers/${id}/edit?status=error&message=La%20Fcontraseña%20debe%20tener%20mínimo%206%20caracteres`,
+                `/admin/trainers/${id}/edit?status=error&message=La%20contraseña%20debe%20tener%20al%20menos%208%20caracteres,%20una%20mayúscula%20y%20un%20número`,
             );
         }
 

@@ -17,6 +17,17 @@ export type ExerciseLibraryItem = {
   source?: "static" | "custom";
 };
 
+type WgerExerciseInfoItem = {
+  id: number;
+  category: { id: number; name: string };
+  muscles: Array<{ id: number; name: string; name_en: string }>;
+  muscles_secondary: Array<{ id: number; name: string; name_en: string }>;
+  equipment: Array<{ id: number; name: string }>;
+  translations: Array<{ id: number; name: string; language: number }>;
+  images: Array<{ image: string; is_main?: boolean }>;
+  videos: Array<{ id: number; video: string }>;
+};
+
 export type ExerciseGuide = {
   overview: string;
   steps: string[];
@@ -44,6 +55,9 @@ type ExercisePose =
   | "raise"
   | "swing";
 
+const WGER_API_BASE = "https://wger.de/api/v2";
+let wgerCatalogCache: Promise<ExerciseLibraryItem[]> | null = null;
+
 function getExercisePose(item: Pick<ExerciseLibraryItem, "key" | "category" | "muscle" | "equipment">): ExercisePose {
   const key = item.key.toLowerCase();
 
@@ -69,6 +83,101 @@ function slugify(value: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+async function fetchAllPages<T>(path: string, params: Record<string, string> = {}) {
+  const results: T[] = [];
+  let nextUrl: string | null = `${WGER_API_BASE}${path}?${new URLSearchParams(params).toString()}`;
+
+  while (nextUrl) {
+    const response = await fetch(nextUrl, { headers: { Accept: "application/json" } });
+    if (!response.ok) {
+      throw new Error(`WGER request failed: ${response.status}`);
+    }
+
+    const payload = (await response.json()) as { results: T[]; next: string | null };
+    results.push(...payload.results);
+    nextUrl = payload.next;
+  }
+
+  return results;
+}
+
+function normalizeLabel(value: string) {
+  return value.toLowerCase();
+}
+
+function classifyWgerExercise(name: string, categoryName: string, muscleName: string, equipmentName: string): { category: string; muscle: string; equipment: string; pose: ExercisePose } {
+  const haystack = normalizeLabel(`${name} ${categoryName} ${muscleName} ${equipmentName}`);
+
+  let category = "Accesorio";
+  let pose: ExercisePose = "default";
+
+  if (/cardio|aerobic|run|bike|bike|rower|burpee|jump|rope|sled|elliptical|mountain/.test(haystack)) {
+    category = "Cardio";
+    pose = haystack.includes("jump") || haystack.includes("burpee") || haystack.includes("rope") ? "jump" : "cardio";
+  } else if (/mobility|stretch|stretching|flex|rotation|warm up|warmup|yoga|ankle|shoulder dislocate/.test(haystack)) {
+    category = "Movilidad";
+    pose = "mobility";
+  } else if (/bench|press|push|chest|dip|tricep|triceps|shoulder|overhead|arnold|fly|pec/.test(haystack)) {
+    category = haystack.includes("shoulder") ? "Push" : "Push";
+    pose = haystack.includes("bench") || haystack.includes("chest") || haystack.includes("fly") ? "bench" : haystack.includes("raise") ? "raise" : "press";
+  } else if (/pull|row|lat|pulldown|chin|pull up|pull-up|back|reverse fly|face pull|pullover|rear delt/.test(haystack)) {
+    category = "Pull";
+    pose = haystack.includes("row") ? "row" : haystack.includes("pull") || haystack.includes("lat") ? "hang" : "pull";
+  } else if (/squat|lunge|leg press|leg extension|leg curl|deadlift|hinge|hip thrust|glute|calf|split squat|step up|hamstring|quad|quadri/.test(haystack)) {
+    category = /deadlift|hip thrust|glute|hamstring/.test(haystack) ? "Posterior" : "Pierna";
+    if (haystack.includes("squat")) pose = "squat";
+    else if (haystack.includes("lunge") || haystack.includes("split")) pose = "lunge";
+    else if (haystack.includes("hip thrust") || haystack.includes("glute bridge") || haystack.includes("bridge")) pose = "bridge";
+    else if (haystack.includes("deadlift") || haystack.includes("hinge") || haystack.includes("good morning")) pose = "hinge";
+    else if (haystack.includes("swing")) pose = "swing";
+    else pose = "default";
+  } else if (/core|abs|abdominal|plank|crunch|oblique|twist|woodchop|bird dog|dead bug|carry|ab wheel|hollow/.test(haystack)) {
+    category = "Core";
+    if (haystack.includes("plank")) pose = "plank";
+    else if (haystack.includes("twist") || haystack.includes("woodchop") || haystack.includes("oblique")) pose = "twist";
+    else pose = "core";
+  } else if (/biceps|curl|hammer|shrug|wrist|forearm|calf|adduction|abduction|kickback|lateral raise|rear delt|y raise/.test(haystack)) {
+    category = "Accesorio";
+    if (haystack.includes("raise")) pose = "raise";
+  }
+
+  const muscle = muscleName || "General";
+  const equipment = equipmentName || "Sin equipo";
+
+  return { category, muscle, equipment, pose };
+}
+
+async function fetchWgerExercises(): Promise<ExerciseLibraryItem[]> {
+  const exercises = await fetchAllPages<WgerExerciseInfoItem>("/exerciseinfo/", { language: "2", limit: "100" });
+
+  return exercises.map((exercise) => {
+    const translation = exercise.translations.find((item) => item.language === 2) ?? exercise.translations[0];
+    const displayName = translation?.name ?? `Ejercicio ${exercise.id}`;
+    const categoryName = exercise.category.name ?? "General";
+    const muscleName = exercise.muscles[0]?.name_en || exercise.muscles[0]?.name || exercise.muscles_secondary[0]?.name_en || exercise.muscles_secondary[0]?.name || "General";
+    const equipmentName = exercise.equipment[0]?.name ?? "Sin equipo";
+    const classification = classifyWgerExercise(displayName, categoryName, muscleName, equipmentName);
+    const hasVideo = exercise.videos[0]?.video ?? null;
+    const referenceImage = exercise.images.find((item) => item.is_main)?.image ?? exercise.images[0]?.image ?? null;
+    const imageUrl = normalizeImageUrl(referenceImage);
+
+    return {
+      key: `wger-${exercise.id}`,
+      name: displayName,
+      category: classification.category,
+      muscle: classification.muscle,
+      equipment: classification.equipment,
+      image: imageUrl ?? makeArtwork(displayName, "#334155", "WG", classification.pose, `wger-${exercise.id}`),
+      videoUrl: hasVideo,
+      imageUrl,
+      accent: "#334155",
+      glyph: "WG",
+      pose: classification.pose,
+      source: "static",
+    };
+  });
 }
 
 function makeArtwork(name: string, accent: string, glyph: string, pose: ExercisePose = "default", seed = name) {
@@ -235,6 +344,65 @@ export const exerciseLibrary: ExerciseLibraryItem[] = predefinedExercises.map((e
 
 export const exerciseFallbackImage = makeArtwork("Ejercicio", "#475569", "FX");
 
+const remoteExerciseImageCache = new Map<string, string | null>();
+
+function normalizeImageUrl(value: string | null | undefined) {
+  if (!value) return null;
+  return value.startsWith("http") ? value : `https://wger.de${value}`;
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export async function getExerciseReferenceImage(item: Pick<ExerciseLibraryItem, "name" | "category" | "muscle" | "equipment" | "key">) {
+  const cacheKey = `${item.key}:${item.name}`.toLowerCase();
+  if (remoteExerciseImageCache.has(cacheKey)) {
+    return remoteExerciseImageCache.get(cacheKey) ?? null;
+  }
+
+  const searchTerms = [item.name, item.key.replace(/_/g, " "), `${item.name} ${item.category}`];
+  const wantedName = normalizeSearchText(item.name);
+
+  for (const term of searchTerms) {
+    try {
+      const response = await fetch(`https://wger.de/api/v2/exerciseinfo/?search=${encodeURIComponent(term)}&limit=10`);
+      if (!response.ok) continue;
+
+      const payload = (await response.json()) as {
+        results?: Array<{
+          images?: Array<{ image?: string | null; is_main?: boolean }>;
+          translations?: Array<{ name?: string }>;
+        }>;
+      };
+
+      const candidate = payload.results?.find((exercise) => {
+        const hasImages = Array.isArray(exercise.images) && exercise.images.length > 0;
+        if (!hasImages) return false;
+
+        const translations = (exercise.translations ?? []).map((translation) => normalizeSearchText(translation.name ?? ""));
+        return translations.some((translation) => translation === wantedName || translation.includes(wantedName) || wantedName.includes(translation));
+      }) ?? payload.results?.find((exercise) => Array.isArray(exercise.images) && exercise.images.length > 0);
+      const image = normalizeImageUrl(candidate?.images?.find((image) => image.is_main)?.image ?? candidate?.images?.[0]?.image);
+
+      if (image) {
+        remoteExerciseImageCache.set(cacheKey, image);
+        return image;
+      }
+    } catch {
+      // Fallback to avatar below.
+    }
+  }
+
+  remoteExerciseImageCache.set(cacheKey, null);
+  return null;
+}
+
 export async function ensureExerciseSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS exercise_library_items (
@@ -347,12 +515,23 @@ export async function getExerciseCatalog() {
     source: "custom",
   }));
 
+  const wgerItems = await (wgerCatalogCache ??= fetchWgerExercises());
   const staticItems = exerciseLibrary.map((item) => ({
     ...item,
+    imageUrl: item.image,
     source: "static" as const,
   }));
 
-  return [...customItems, ...staticItems];
+  const merged = [...customItems, ...wgerItems, ...staticItems];
+  const unique = new Map<string, ExerciseLibraryItem>();
+
+  merged.forEach((item) => {
+    if (!unique.has(item.key)) {
+      unique.set(item.key, item);
+    }
+  });
+
+  return [...unique.values()];
 }
 
 export async function getExerciseByKey(keyOrName: string | null | undefined) {
@@ -360,8 +539,23 @@ export async function getExerciseByKey(keyOrName: string | null | undefined) {
 
   const normalized = keyOrName.trim().toLowerCase();
   const catalog = await getExerciseCatalog();
+  const matched = catalog.find((item) => item.key === normalized || item.name.toLowerCase() === normalized) ?? null;
 
-  return catalog.find((item) => item.key === normalized || item.name.toLowerCase() === normalized) ?? null;
+  if (!matched) {
+    return null;
+  }
+
+  if (matched.source === "static") {
+    const customOverride = catalog.find(
+      (item) => item.source === "custom" && item.name.toLowerCase() === matched.name.toLowerCase(),
+    );
+
+    if (customOverride) {
+      return customOverride;
+    }
+  }
+
+  return matched;
 }
 
 export function getExerciseLibraryItem(keyOrName: string | null | undefined) {

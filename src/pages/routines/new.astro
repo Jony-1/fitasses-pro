@@ -8,7 +8,7 @@ import {
   getExerciseLibraryItem,
 } from "../../lib/utils/exercise-library";
 
-const exerciseCatalog = exerciseLibrary as Array<ExerciseLibraryItem & { category: string; accent: string; source?: string }>;
+const exerciseCatalog = exerciseLibrary as Array<ExerciseLibraryItem & { category: string; accent: string; source?: string; imageUrl?: string | null }>;
 const muscles = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.muscle))];
 const equipments = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.equipment))];
 
@@ -165,8 +165,22 @@ await ensureRoutineSchema();
               >
                 <div class="relative">
                   <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
-                  <div class="flex h-40 items-end bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4 text-white transition duration-300 group-hover:scale-[1.01] dark:from-slate-950 dark:via-slate-950 dark:to-black">
-                    <div class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-sm dark:border-white/5 dark:bg-black/30">
+                  <div class="relative h-40 overflow-hidden bg-slate-950 transition duration-300 group-hover:scale-[1.01]">
+                    <img
+                      src={(exercise as ExerciseLibraryItem & { imageUrl?: string | null }).imageUrl ?? exercise.image}
+                      alt={exercise.name}
+                      loading="lazy"
+                      decoding="async"
+                      class="h-full w-full object-cover"
+                      onerror="this.style.display='none';this.nextElementSibling?.removeAttribute('hidden')"
+                    />
+                    <div hidden class="flex h-full items-end bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4 text-white">
+                      <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">{exerciseCategoryByKey[exercise.key] ?? ""}</p>
+                        <p class="mt-1 text-lg font-bold leading-tight">{exercise.name}</p>
+                      </div>
+                    </div>
+                    <div class="absolute inset-x-3 bottom-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white backdrop-blur-md">
                       <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">{exerciseCategoryByKey[exercise.key] ?? ""}</p>
                       <p class="mt-1 text-lg font-bold leading-tight">{exercise.name}</p>
                     </div>

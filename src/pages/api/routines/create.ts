@@ -4,6 +4,7 @@ import { ensureRoutineSchema } from "../../../lib/utils/routines";
 
 type ParsedExercise = {
   exerciseKey: string | null;
+  imageUrl: string | null;
   name: string;
   sets: number | null;
   reps: string | null;
@@ -68,7 +69,7 @@ export function parseRoutineFormData(formData: FormData) {
     }
 
     const exerciseFieldMatch = key.match(
-      /^days\[(\d+)\]\[exercises\]\[(\d+)\]\[(exercise_key|name|sets|reps|rest_seconds|notes)\]$/,
+      /^days\[(\d+)\]\[exercises\]\[(\d+)\]\[(exercise_key|image_url|name|sets|reps|rest_seconds|notes)\]$/,
     );
 
     if (exerciseFieldMatch) {
@@ -85,6 +86,7 @@ export function parseRoutineFormData(formData: FormData) {
 
       const exercise = day.exercises.get(exerciseIndex) ?? {
         exerciseKey: null,
+        imageUrl: null,
         name: "",
         sets: null,
         reps: null,
@@ -94,6 +96,8 @@ export function parseRoutineFormData(formData: FormData) {
 
       if (field === "exercise_key") {
         exercise.exerciseKey = stringValue || null;
+      } else if (field === "image_url") {
+        exercise.imageUrl = stringValue || null;
       } else if (field === "name") {
         exercise.name = stringValue;
       } else if (field === "sets") {
@@ -124,6 +128,7 @@ export function parseRoutineFormData(formData: FormData) {
         .sort(([a], [b]) => a - b)
         .map(([, exercise]) => ({
           exerciseKey: exercise.exerciseKey,
+          imageUrl: exercise.imageUrl,
           name: exercise.name.trim(),
           sets: exercise.sets,
           reps: exercise.reps,
@@ -241,6 +246,7 @@ export const POST: APIRoute = async (context) => {
           routine_day_id,
           position,
           exercise_key,
+          image_url,
           name,
           sets,
           reps,
@@ -251,6 +257,7 @@ export const POST: APIRoute = async (context) => {
           ${routineDayId},
           ${index + 1},
           ${exercise.exerciseKey},
+          ${exercise.imageUrl},
           ${exercise.name},
           ${exercise.sets},
           ${exercise.reps},

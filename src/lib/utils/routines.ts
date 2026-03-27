@@ -28,6 +28,7 @@ export type RoutineListItem = {
 export type RoutineExercise = {
   id: number;
   exercise_key: string | null;
+  imageUrl: string | null;
   position: number;
   name: string;
   sets: number | null;
@@ -135,6 +136,7 @@ export async function ensureRoutineSchema() {
       routine_day_id INTEGER NOT NULL REFERENCES routine_days(id) ON DELETE CASCADE,
       position INTEGER NOT NULL,
       exercise_key TEXT,
+      image_url TEXT,
       name TEXT NOT NULL,
       sets INTEGER,
       reps TEXT,
@@ -155,6 +157,15 @@ export async function ensureRoutineSchema() {
           AND column_name = 'exercise_key'
       ) THEN
         ALTER TABLE routine_exercises ADD COLUMN exercise_key TEXT;
+      END IF;
+
+      IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'routine_exercises'
+          AND column_name = 'image_url'
+      ) THEN
+        ALTER TABLE routine_exercises ADD COLUMN image_url TEXT;
       END IF;
     END $$;
   `;
@@ -603,6 +614,7 @@ export async function getRoutineDetailsForUser(
       re.id AS exercise_id,
       re.position,
       re.exercise_key,
+      re.image_url,
       re.name AS exercise_name,
       re.sets,
       re.reps,
@@ -633,6 +645,7 @@ export async function getRoutineDetailsForUser(
     exercise_id: number | null;
     position: number | null;
     exercise_key: string | null;
+    image_url: string | null;
     exercise_name: string | null;
     sets: number | null;
     reps: string | null;
@@ -660,6 +673,7 @@ export async function getRoutineDetailsForUser(
       dayMap.get(row.day_id)?.exercises.push({
         id: row.exercise_id,
         exercise_key: row.exercise_key,
+        imageUrl: row.image_url,
         position: row.position ?? 0,
         name: row.exercise_name ?? "",
         sets: row.sets,
@@ -736,6 +750,7 @@ export async function getActiveRoutineForClient(clientId: number) {
       re.id AS exercise_id,
       re.position,
       re.exercise_key,
+      re.image_url,
       re.name AS exercise_name,
       re.sets,
       re.reps,
@@ -766,6 +781,7 @@ export async function getActiveRoutineForClient(clientId: number) {
     exercise_id: number | null;
     position: number | null;
     exercise_key: string | null;
+    image_url: string | null;
     exercise_name: string | null;
     sets: number | null;
     reps: string | null;
@@ -791,6 +807,7 @@ export async function getActiveRoutineForClient(clientId: number) {
       dayMap.get(row.day_id)?.exercises.push({
         id: row.exercise_id,
         exercise_key: row.exercise_key,
+        imageUrl: row.image_url,
         position: row.position ?? 0,
         name: row.exercise_name ?? "",
         sets: row.sets,

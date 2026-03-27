@@ -4,7 +4,7 @@ type LibraryPreset = {
   category: string;
   muscle: string;
   equipment: string;
-  image: string;
+  imageUrl: string;
 };
 
 function getDayCards() {
@@ -124,15 +124,17 @@ export function initRoutineBuilder() {
     const muscle = exerciseCard.querySelector<HTMLElement>("[data-exercise-muscle]");
     const equipment = exerciseCard.querySelector<HTMLElement>("[data-exercise-equipment]");
     const keyInput = exerciseCard.querySelector<HTMLInputElement>('input[data-exercise-field="exercise_key"]');
+    const imageUrlInput = exerciseCard.querySelector<HTMLInputElement>('input[data-exercise-field="image_url"]');
     const nameInput = exerciseCard.querySelector<HTMLInputElement>('input[data-exercise-field="name"]');
 
     if (preset) {
-      if (preview) preview.src = preset.image;
+      if (preview) preview.src = preset.imageUrl;
       if (title) title.textContent = preset.name;
       if (summary) summary.textContent = "Tarjeta visual predefinida";
       if (muscle) muscle.textContent = preset.muscle;
       if (equipment) equipment.textContent = preset.equipment;
       if (keyInput) keyInput.value = preset.key;
+      if (imageUrlInput) imageUrlInput.value = preset.imageUrl;
       if (nameInput && !nameInput.value) nameInput.value = preset.name;
       exerciseCard.dataset.exerciseName = preset.name;
       exerciseCard.dataset.exerciseCategory = preset.category;
@@ -143,6 +145,7 @@ export function initRoutineBuilder() {
       if (muscle) muscle.textContent = "Personalizado";
       if (equipment) equipment.textContent = "Libre";
       if (keyInput) keyInput.value = "";
+      if (imageUrlInput) imageUrlInput.value = "";
       exerciseCard.dataset.exerciseName = "Ejercicio personalizado";
       exerciseCard.dataset.exerciseCategory = "Personalizado";
     }
@@ -209,7 +212,7 @@ export function initRoutineBuilder() {
         category: card.dataset.exerciseCategory ?? "",
         muscle: card.dataset.exerciseMuscle ?? "",
         equipment: card.dataset.exerciseEquipment ?? "",
-        image: card.dataset.exerciseImage ?? "",
+        imageUrl: card.dataset.exerciseImage ?? "",
       });
     });
 
@@ -245,7 +248,7 @@ export function initRoutineBuilder() {
     const equipment = autoExerciseElement.dataset.exerciseEquipment ?? "";
     const image = autoExerciseElement.dataset.exerciseImage ?? "";
 
-    return { key, name, category, muscle, equipment, image };
+    return { key, name, category, muscle, equipment, imageUrl: image };
   };
 
   daysContainer.addEventListener("click", (event: MouseEvent) => {
@@ -290,7 +293,7 @@ export function initRoutineBuilder() {
         category: button.dataset.exerciseCategory ?? "",
         muscle: button.dataset.exerciseMuscle ?? "",
         equipment: button.dataset.exerciseEquipment ?? "",
-        image: button.dataset.exerciseImage ?? "",
+        imageUrl: button.dataset.exerciseImage ?? "",
       });
 
       targetDay.scrollIntoView({ behavior: "smooth", block: "start" });
