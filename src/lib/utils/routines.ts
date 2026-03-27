@@ -12,6 +12,7 @@ export type RoutineListItem = {
   trainer_id: number;
   client_id: number | null;
   client_name: string | null;
+  assigned_clients_total: number;
   name: string;
   objective: string | null;
   level: string | null;
@@ -23,6 +24,20 @@ export type RoutineListItem = {
   created_at: string | Date | null;
   days_total: number;
   exercises_total: number;
+};
+
+export type RoutineAssignment = {
+  id: number;
+  routine_id: number;
+  client_id: number;
+  client_name: string | null;
+  start_date: string | Date | null;
+  scope: "today" | "week" | "always";
+  template_visible: boolean;
+  active: boolean;
+  time_slot: RoutineAttendanceTimeSlot | null;
+  notes: string | null;
+  created_at: string | Date | null;
 };
 
 export type RoutineExercise = {
@@ -54,7 +69,7 @@ export type RoutineAttendanceTimeSlot = "morning" | "midday" | "night" | "other"
 
 let ensureRoutineSchemaPromise: Promise<void> | null = null;
 
-export type RoutineDetails = {
+  export type RoutineDetails = {
   id: number;
   trainer_id: number;
   client_id: number | null;
@@ -258,10 +273,81 @@ export async function ensureRoutineSchema() {
 
   await sql`CREATE INDEX IF NOT EXISTS routine_notifications_trainer_created_idx ON routine_notifications (trainer_id, created_at DESC)`;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS routine_assignments (
+      id SERIAL PRIMARY KEY,
+      routine_id INTEGER NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+      client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+      start_date DATE,
+      scope TEXT NOT NULL DEFAULT 'always' CHECK (scope IN ('today', 'week', 'always')),
+      template_visible BOOLEAN NOT NULL DEFAULT TRUE,
+      time_slot TEXT DEFAULT NULL CHECK (time_slot IN ('morning', 'midday', 'night', 'other')),
+      notes TEXT,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS routine_assignments_routine_active_idx ON routine_assignments (routine_id, active, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS routine_assignments_client_active_idx ON routine_assignments (client_id, active, created_at DESC)`;
+  await sql`ALTER TABLE routine_assignments ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'always'`;
+  await sql`ALTER TABLE routine_assignments ADD COLUMN IF NOT EXISTS template_visible BOOLEAN NOT NULL DEFAULT TRUE`;
+
+  await migrateLegacyRoutineAssignments();
+
   await ensureExampleRoutineTemplates();
   })();
 
   return ensureRoutineSchemaPromise;
+}
+
+async function migrateLegacyRoutineAssignments() {
+  const legacyRows = await sql`
+    SELECT id, trainer_id, client_id, start_date
+    FROM routines
+    WHERE is_template = FALSE
+      AND client_id IS NOT NULL
+      AND active = TRUE
+  ` as unknown as Array<{
+    id: number;
+    trainer_id: number;
+    client_id: number;
+    start_date: string | Date | null;
+  }>;
+
+  for (const row of legacyRows) {
+    const existing = await sql`
+      SELECT id
+      FROM routine_assignments
+      WHERE routine_id = ${row.id}
+        AND client_id = ${row.client_id}
+      LIMIT 1
+    `;
+
+    if (existing.length > 0) {
+      continue;
+    }
+
+    await sql`
+        INSERT INTO routine_assignments (
+          routine_id,
+          client_id,
+          start_date,
+          scope,
+          template_visible,
+          active
+        )
+        VALUES (
+          ${row.id},
+          ${row.client_id},
+          ${row.start_date},
+          'always',
+          TRUE,
+          TRUE
+        )
+      `;
+  }
 }
 
 async function ensureExampleRoutineTemplates() {
@@ -552,6 +638,7 @@ export async function getRoutineListForUser(user: RoutineUser) {
       r.trainer_id,
       r.client_id,
       c.full_name AS client_name,
+      COUNT(DISTINCT ra.id)::int AS assigned_clients_total,
       r.name,
       r.objective,
       r.level,
@@ -567,6 +654,7 @@ export async function getRoutineListForUser(user: RoutineUser) {
     LEFT JOIN clients c ON c.id = r.client_id
     LEFT JOIN routine_days rd ON rd.routine_id = r.id
     LEFT JOIN routine_exercises re ON re.routine_day_id = rd.id
+    LEFT JOIN routine_assignments ra ON ra.routine_id = r.id AND ra.active = TRUE
     ${userFilter}
     GROUP BY r.id, c.full_name
     ORDER BY r.is_template DESC, r.created_at DESC, r.id DESC
@@ -608,6 +696,63 @@ async function fetchRoutineBase(routineId: number, user: RoutineUser) {
   `;
 
   return (rows[0] as RoutineRow | undefined) ?? null;
+}
+
+async function fetchRoutineBaseById(routineId: number) {
+  const rows = await sql`
+    SELECT
+      r.id,
+      r.trainer_id,
+      r.client_id,
+      c.full_name AS client_name,
+      cu.email AS client_email,
+      r.name,
+      r.objective,
+      r.level,
+      r.duration_weeks,
+      r.notes,
+      r.is_template,
+      r.start_date,
+      r.active,
+      r.created_at
+    FROM routines r
+    LEFT JOIN clients c ON c.id = r.client_id
+    LEFT JOIN users cu ON cu.id = c.user_id
+    WHERE r.id = ${routineId}
+    LIMIT 1
+  `;
+
+  return (rows[0] as RoutineRow | undefined) ?? null;
+}
+
+export async function getRoutineAssignmentsForRoutine(routineId: number, user: RoutineUser) {
+  const accessFilter =
+    user.role === "admin"
+      ? sql``
+      : user.role === "trainer"
+        ? sql`AND r.trainer_id = ${user.id}`
+        : sql`AND 1 = 0`;
+
+  const rows = await sql`
+    SELECT
+      a.id,
+      a.routine_id,
+      a.client_id,
+      c.full_name AS client_name,
+      a.start_date,
+      a.active,
+      a.time_slot,
+      a.notes,
+      a.created_at
+    FROM routine_assignments a
+    INNER JOIN routines r ON r.id = a.routine_id
+    LEFT JOIN clients c ON c.id = a.client_id
+    WHERE a.routine_id = ${routineId}
+    ${accessFilter}
+    ORDER BY a.active DESC, a.created_at DESC, a.id DESC
+  `;
+
+  return rows as unknown as RoutineAssignment[];
 }
 
 export async function getRoutineDetailsForUser(
@@ -713,46 +858,120 @@ export async function getRoutineDetailsForUser(
 }
 
 export async function getActiveRoutineForClient(clientId: number) {
-  const rows = await sql`
-    SELECT id
-    FROM routines
-    WHERE client_id = ${clientId}
-      AND is_template = FALSE
-      AND active = TRUE
-    ORDER BY created_at DESC, id DESC
-    LIMIT 1
-  `;
-
-  const routineId = rows[0]?.id as number | undefined;
-
-  if (!routineId) {
-    return null;
-  }
-
-  const routine = await sql`
+  const assignmentRows = await sql`
     SELECT
-      r.id,
+      a.id,
+      a.routine_id,
+      a.client_id,
+      a.start_date,
+      a.time_slot,
+      a.notes,
+      a.active,
       r.trainer_id,
-      r.client_id,
       r.name,
       r.objective,
       r.level,
       r.duration_weeks,
-      r.notes,
+      r.notes AS routine_notes,
       r.is_template,
-      r.start_date,
-      r.active,
-      r.created_at
-    FROM routines r
-    WHERE r.id = ${routineId}
+      r.active AS routine_active,
+      r.created_at,
+      c.full_name AS client_name
+    FROM routine_assignments a
+    INNER JOIN routines r ON r.id = a.routine_id
+    LEFT JOIN clients c ON c.id = a.client_id
+    WHERE a.client_id = ${clientId}
+      AND a.active = TRUE
+      AND r.active = TRUE
+      AND (
+        a.scope = 'always'
+        OR (a.scope = 'today' AND a.start_date = CURRENT_DATE)
+        OR (a.scope = 'week' AND a.start_date IS NOT NULL AND a.start_date >= CURRENT_DATE AND a.start_date < CURRENT_DATE + INTERVAL '7 days')
+      )
+    ORDER BY a.created_at DESC, a.id DESC
     LIMIT 1
-  `;
+  ` as unknown as Array<{
+    id: number;
+    routine_id: number;
+    client_id: number;
+    start_date: string | Date | null;
+    scope: "today" | "week" | "always";
+    time_slot: RoutineAttendanceTimeSlot | null;
+    notes: string | null;
+    active: boolean;
+    trainer_id: number;
+    name: string;
+    objective: string | null;
+    level: string | null;
+    duration_weeks: number | null;
+    routine_notes: string | null;
+    is_template: boolean;
+    routine_active: boolean;
+    created_at: string | Date | null;
+    client_name: string | null;
+  }>;
 
-  const base = routine[0] as RoutineRow | undefined;
+  const assignment = assignmentRows[0];
+  let base: RoutineRow | null = null;
+
+  if (assignment) {
+    base = {
+      id: assignment.routine_id,
+      trainer_id: assignment.trainer_id,
+      client_id: assignment.client_id,
+      client_name: assignment.client_name,
+      client_email: null,
+      name: assignment.name,
+      objective: assignment.objective,
+      level: assignment.level,
+      duration_weeks: assignment.duration_weeks,
+      notes: assignment.routine_notes,
+      is_template: assignment.is_template,
+      start_date: assignment.start_date,
+      active: assignment.routine_active,
+      created_at: assignment.created_at,
+    };
+  }
 
   if (!base) {
-    return null;
+    const legacyRows = await sql`
+      SELECT
+        r.id,
+        r.trainer_id,
+        r.client_id,
+        r.name,
+        r.objective,
+        r.level,
+        r.duration_weeks,
+        r.notes,
+        r.is_template,
+        r.start_date,
+        r.active,
+        r.created_at
+      FROM routines r
+      WHERE r.client_id = ${clientId}
+        AND r.is_template = FALSE
+        AND r.active = TRUE
+      ORDER BY r.created_at DESC, r.id DESC
+      LIMIT 1
+    `;
+
+    const legacyRoutineId = legacyRows[0]?.id as number | undefined;
+
+    if (!legacyRoutineId) {
+      return null;
+    }
+
+    const legacyBase = await fetchRoutineBaseById(legacyRoutineId);
+
+    if (!legacyBase) {
+      return null;
+    }
+
+    base = legacyBase;
   }
+
+  base.client_id = clientId;
 
   const dayRows = await sql`
     SELECT
@@ -780,7 +999,7 @@ export async function getActiveRoutineForClient(clientId: number) {
       AND rc.client_id = ${clientId}
     LEFT JOIN routine_day_attendances ra ON ra.routine_day_id = rd.id
       AND ra.client_id = ${clientId}
-    WHERE rd.routine_id = ${routineId}
+    WHERE rd.routine_id = ${base.id}
     ORDER BY rd.day_number ASC, re.position ASC, re.id ASC
   `;
 

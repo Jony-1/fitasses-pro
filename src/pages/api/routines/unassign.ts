@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
-import { ensureRoutineSchema, getRoutineDetailsForUser } from "../../../lib/utils/routines";
+import { ensureRoutineSchema } from "../../../lib/utils/routines";
 
 export const POST: APIRoute = async (context) => {
   const { request, redirect, locals } = context;
@@ -18,23 +18,47 @@ export const POST: APIRoute = async (context) => {
 
   const formData = await request.formData();
   const routineId = Number(String(formData.get("routine_id") ?? "").trim());
+  const clientId = Number(String(formData.get("client_id") ?? "").trim());
+  const preserveClientRoutine = String(formData.get("preserve_client_routine") ?? "").trim() === "1";
 
-  if (Number.isNaN(routineId)) {
+  if (Number.isNaN(routineId) || Number.isNaN(clientId)) {
     return redirect("/routines?status=error&message=Rutina%20inválida");
   }
 
-  const routine = await getRoutineDetailsForUser(routineId, user);
+  const routineRows = await sql`
+    SELECT id, trainer_id, is_template
+    FROM routines
+    WHERE id = ${routineId}
+    LIMIT 1
+  ` as Array<{ id: number; trainer_id: number; is_template: boolean }>;
 
-  if (!routine || routine.is_template) {
+  const routine = routineRows[0];
+
+  if (!routine || (user.role === "trainer" && routine.trainer_id !== user.id)) {
     return redirect("/routines?status=error&message=Rutina%20no%20encontrada");
   }
 
-  if (routine.client_id) {
+  if (preserveClientRoutine) {
     await sql`
-      DELETE FROM routines
-      WHERE id = ${routineId}
+      UPDATE routine_assignments
+      SET template_visible = FALSE,
+          updated_at = NOW()
+      WHERE routine_id = ${routineId}
+        AND client_id = ${clientId}
+        AND active = TRUE
     `;
-  }
 
-  return redirect(`/clients/${routine.client_id ?? ""}/routine?status=success&message=Rutina%20eliminada`);
+    return redirect(`/routines/${routineId}?status=success&message=Cliente%20retirado%20de%20la%20plantilla`);
+  } else {
+    await sql`
+      UPDATE routine_assignments
+      SET active = FALSE,
+          updated_at = NOW()
+      WHERE routine_id = ${routineId}
+        AND client_id = ${clientId}
+        AND active = TRUE
+    `;
+
+    return redirect(`/clients/${clientId}/routine?status=success&message=Rutina%20eliminada`);
+  }
 };

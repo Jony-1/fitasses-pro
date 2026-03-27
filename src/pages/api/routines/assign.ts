@@ -18,10 +18,14 @@ export const POST: APIRoute = async (context) => {
 
   const formData = await request.formData();
   const routineId = Number(String(formData.get("routine_id") ?? "").trim());
-  const clientId = Number(String(formData.get("client_id") ?? "").trim());
   const startDate = String(formData.get("start_date") ?? "").trim() || null;
+  const scopeValue = String(formData.get("scope") ?? "always").trim();
+  const scope = ["today", "week", "always"].includes(scopeValue) ? scopeValue : "always";
+  const clientIds = formData.getAll("client_ids").map((value) => Number(String(value).trim())).filter((value) => !Number.isNaN(value));
+  const singleClientId = Number(String(formData.get("client_id") ?? "").trim());
+  const resolvedClientIds = clientIds.length > 0 ? clientIds : !Number.isNaN(singleClientId) ? [singleClientId] : [];
 
-  if (Number.isNaN(routineId) || Number.isNaN(clientId)) {
+  if (Number.isNaN(routineId) || resolvedClientIds.length === 0) {
     return redirect("/routines?status=error&message=Datos%20inválidos");
   }
 
@@ -42,137 +46,48 @@ export const POST: APIRoute = async (context) => {
   const clientRows = await sql`
     SELECT id, full_name, trainer_id
     FROM clients
-    WHERE id = ${clientId}
+    WHERE id = ANY(${resolvedClientIds})
       ${user.role === "trainer" ? sql`AND trainer_id = ${user.id}` : sql``}
-    LIMIT 1
-  `;
+  ` as Array<{ id: number; full_name: string; trainer_id: number | null }>;
 
-  if (clientRows.length === 0) {
+  const allowedClientIds = new Set(clientRows.map((row) => row.id));
+
+  if (allowedClientIds.size === 0) {
     return redirect(`/routines/${routineId}?status=error&message=Cliente%20no%20encontrado`);
   }
 
-  const insertedRoutine = await sql`
-    INSERT INTO routines (
-      trainer_id,
-      client_id,
-      name,
-      objective,
-      level,
-      duration_weeks,
-      notes,
-      is_template,
-      start_date,
-      active
-    )
-    VALUES (
-      ${routine.trainer_id},
-      ${clientId},
-      ${routine.name},
-      ${routine.objective},
-      ${routine.level},
-      ${routine.duration_weeks},
-      ${routine.notes},
-      FALSE,
-      ${startDate},
-      TRUE
-    )
-    RETURNING id
-  `;
+  await sql.begin(async (tx) => {
+    const trx = tx as any;
 
-  const assignedRoutineId = insertedRoutine[0].id as number;
+    for (const clientId of allowedClientIds) {
+      await trx`
+        UPDATE routine_assignments
+        SET active = FALSE,
+            updated_at = NOW()
+        WHERE client_id = ${clientId}
+          AND active = TRUE
+      `;
 
-  const templateDays = await sql`
-    SELECT id, day_number, title, focus, notes
-    FROM routine_days
-    WHERE routine_id = ${routineId}
-    ORDER BY day_number ASC, id ASC
-  ` as unknown as Array<{
-    id: number;
-    day_number: number;
-    title: string;
-    focus: string | null;
-    notes: string | null;
-  }>;
-
-  for (const templateDay of templateDays as Array<{
-    id: number;
-    day_number: number;
-    title: string;
-    focus: string | null;
-    notes: string | null;
-  }>) {
-    const newDayRows = await sql`
-      INSERT INTO routine_days (
-        routine_id,
-        day_number,
-        title,
-        focus,
-        notes
-      )
-      VALUES (
-        ${assignedRoutineId},
-        ${templateDay.day_number},
-        ${templateDay.title},
-        ${templateDay.focus},
-        ${templateDay.notes}
-      )
-      RETURNING id
-    `;
-
-    const newDayId = newDayRows[0].id as number;
-
-    const templateExercises = await sql`
-      SELECT position, exercise_key, image_url, name, sets, reps, rest_seconds, notes
-      FROM routine_exercises
-      WHERE routine_day_id = ${templateDay.id}
-      ORDER BY position ASC, id ASC
-    ` as unknown as Array<{
-      position: number;
-      exercise_key: string | null;
-      image_url: string | null;
-      name: string;
-      sets: number | null;
-      reps: string | null;
-      rest_seconds: number | null;
-      notes: string | null;
-    }>;
-
-    for (const templateExercise of templateExercises as Array<{
-      position: number;
-      exercise_key: string | null;
-      image_url: string | null;
-      name: string;
-      sets: number | null;
-      reps: string | null;
-      rest_seconds: number | null;
-      notes: string | null;
-    }>) {
-      await sql`
-        INSERT INTO routine_exercises (
-          routine_day_id,
-          position,
-          exercise_key,
-          image_url,
-          name,
-          sets,
-          reps,
-          rest_seconds,
-          notes
+      await trx`
+        INSERT INTO routine_assignments (
+          routine_id,
+          client_id,
+          start_date,
+          scope,
+          template_visible,
+          active
         )
         VALUES (
-          ${newDayId},
-          ${templateExercise.position},
-          ${templateExercise.exercise_key},
-          ${templateExercise.image_url},
-          ${templateExercise.name},
-          ${templateExercise.sets},
-          ${templateExercise.reps},
-          ${templateExercise.rest_seconds},
-          ${templateExercise.notes}
+          ${routineId},
+          ${clientId},
+          ${startDate},
+          ${scope},
+          TRUE,
+          TRUE
         )
       `;
     }
-  }
+  });
 
-  return redirect(`/routines/${assignedRoutineId}?status=success&message=Rutina%20asignada%20correctamente`);
+  return redirect(`/routines/${routineId}?status=success&message=Rutina%20asignada%20a%20${allowedClientIds.size}%20cliente(s)`);
 };

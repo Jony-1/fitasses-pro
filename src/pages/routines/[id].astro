@@ -2,6 +2,7 @@
 import AppLayout from "../../layouts/layout.astro";
 import SectionHeader from "../../components/ui/SectionHeader.astro";
 import EmptyState from "../../components/ui/EmptyState.astro";
+import { sql } from "../../lib/db/client";
 import { getClientsForUser } from "../../lib/utils/client-profile";
 import {
   ensureRoutineSchema,
@@ -34,6 +35,52 @@ if (!routine) {
 }
 
 const clients = routine.is_template ? await getClientsForUser(user) : [];
+const assignments: Array<{
+  id: number;
+  routine_id: number;
+  client_id: number;
+  client_name: string | null;
+  start_date: string | Date | null;
+  scope: "today" | "week" | "always";
+  active: boolean;
+  time_slot: string | null;
+  template_visible: boolean;
+  notes: string | null;
+  created_at: string | Date | null;
+}> = routine.is_template
+  ? await sql`
+      SELECT
+        a.id,
+        a.routine_id,
+        a.client_id,
+        c.full_name AS client_name,
+        a.start_date,
+        a.scope,
+        a.template_visible,
+        a.active,
+        a.time_slot,
+        a.notes,
+        a.created_at
+       FROM routine_assignments a
+       LEFT JOIN clients c ON c.id = a.client_id
+       INNER JOIN routines r ON r.id = a.routine_id
+       WHERE a.routine_id = ${routine.id}
+         AND a.template_visible = TRUE
+         ${user.role === "trainer" ? sql`AND r.trainer_id = ${user.id}` : sql``}
+      ORDER BY a.active DESC, a.created_at DESC, a.id DESC
+    `
+  : [];
+const activeAssignmentRows = routine.is_template
+  ? await sql`
+      SELECT client_id
+      FROM routine_assignments
+      WHERE routine_id = ${routine.id}
+        AND active = TRUE
+      GROUP BY client_id
+    ` as Array<{ client_id: number }>
+  : [];
+const assignedClientIds = new Set(activeAssignmentRows.map((assignment) => assignment.client_id));
+const availableClients = clients.filter((client) => !assignedClientIds.has(client.id));
 const completedDays = routine.days.filter((day) => day.completed_at).length;
 ---
 
@@ -62,6 +109,24 @@ const completedDays = routine.days.filter((day) => day.completed_at).length;
             class="inline-flex items-center justify-center rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-emerald-300"
           >
             Clonar
+          </button>
+        </form>
+      )}
+
+      {(user.role === "admin" || user.role === "trainer") && (
+        <form
+          slot="actions"
+          method="POST"
+          action="/api/routines/delete"
+          data-delete-routine-form
+        >
+          <input type="hidden" name="routine_id" value={routine.id} />
+          <button
+            type="button"
+            data-open-delete-routine
+            class="inline-flex items-center justify-center rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30"
+          >
+            Eliminar rutina
           </button>
         </form>
       )}
@@ -175,38 +240,94 @@ const completedDays = routine.days.filter((day) => day.completed_at).length;
           </dl>
 
           {routine.notes && <p class="mt-4 text-sm text-slate-600 dark:text-slate-400">{routine.notes}</p>}
+
+          {routine.is_template && (
+            <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Clientes asignados</p>
+              <div class="mt-3 space-y-2">
+                {assignments.length === 0 ? (
+                  <p class="text-sm text-slate-500 dark:text-slate-400">Aún no hay clientes asignados.</p>
+                ) : (
+                  assignments.map((assignment: any) => (
+                    <div class="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm dark:bg-slate-900">
+                      <div>
+                        <p class="font-semibold text-slate-900 dark:text-slate-100">{assignment.client_name ?? `Cliente ${assignment.client_id}`}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Inicio: {assignment.start_date ? new Date(assignment.start_date).toLocaleDateString("es-ES") : "Sin fecha"} · {assignment.scope === "today" ? "Hoy" : assignment.scope === "week" ? "Esta semana" : "Siempre"}</p>
+                      </div>
+                      <form method="POST" action="/api/routines/unassign">
+                        <input type="hidden" name="routine_id" value={routine.id} />
+                        <input type="hidden" name="client_id" value={assignment.client_id} />
+                        <input type="hidden" name="preserve_client_routine" value="1" />
+                        <button type="submit" class="rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30">
+                          Quitar
+                        </button>
+                      </form>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {routine.is_template ? (
           <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
-            <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Asignar a cliente</h2>
-            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Crea una copia personalizada de esta plantilla.</p>
+            <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Asignar a clientes</h2>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">La plantilla se comparte; cada cliente recibe su propia asignación sin duplicar días.</p>
 
-            {clients.length === 0 ? (
+            {availableClients.length === 0 ? (
               <div class="mt-4">
-                <EmptyState title="Sin clientes" description="Necesitas clientes registrados para poder asignar la rutina." />
+                <EmptyState title="Sin clientes disponibles" description="Todos los clientes ya tienen una asignación activa para esta plantilla." />
               </div>
             ) : (
               <form method="POST" action="/api/routines/assign" class="mt-4 space-y-4">
                 <input type="hidden" name="routine_id" value={routine.id} />
 
-                <label class="block space-y-2">
-                  <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Cliente</span>
-                  <select name="client_id" required class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
-                    <option value="">Selecciona un cliente</option>
-                    {clients.map((client) => (
-                      <option value={client.id}>{client.full_name}</option>
+                <div class="space-y-2">
+                  <div class="flex flex-wrap items-end justify-between gap-3">
+                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Clientes disponibles</span>
+                    <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <button type="button" data-select-all-clients class="rounded-full border border-slate-300 px-3 py-1.5 font-semibold text-slate-600 hover:bg-white dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900">Seleccionar todos</button>
+                      <button type="button" data-clear-clients class="rounded-full border border-slate-300 px-3 py-1.5 font-semibold text-slate-600 hover:bg-white dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900">Limpiar</button>
+                    </div>
+                  </div>
+                  <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                    {availableClients.map((client) => (
+                      <label class="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/40 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-emerald-500/40 dark:hover:bg-emerald-500/5">
+                        <input type="checkbox" name="client_ids" value={client.id} class="h-4 w-4 rounded border-slate-300 text-emerald-500 focus:ring-emerald-400" />
+                        <div class="min-w-0">
+                          <p class="truncate font-semibold text-slate-900 dark:text-slate-100">{client.full_name}</p>
+                          <p class="text-xs text-slate-500 dark:text-slate-400">Seleccionar para asignar la plantilla</p>
+                        </div>
+                      </label>
                     ))}
-                  </select>
-                </label>
+                  </div>
+                </div>
 
-                <label class="block space-y-2">
-                  <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Fecha de inicio</span>
-                  <input type="date" name="start_date" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-                </label>
+                <details class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+                  <summary class="cursor-pointer list-none text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    Opciones extra opcionales
+                  </summary>
+                  <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label class="block space-y-2">
+                      <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Fecha de inicio</span>
+                      <input type="date" name="start_date" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+                    </label>
+
+                    <label class="block space-y-2">
+                      <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Alcance</span>
+                      <select name="scope" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+                        <option value="always">Siempre</option>
+                        <option value="week">Esta semana</option>
+                        <option value="today">Solo hoy</option>
+                      </select>
+                    </label>
+
+                  </div>
+                </details>
 
                 <button type="submit" class="w-full rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-bold text-slate-900 hover:bg-emerald-300">
-                  Asignar rutina
+                  Asignar plantilla
                 </button>
               </form>
             )}
@@ -232,5 +353,66 @@ const completedDays = routine.days.filter((day) => day.completed_at).length;
         )}
       </aside>
     </div>
+
+    <div id="delete-routine-dialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+      <div class="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950 sm:p-7">
+        <p class="text-xs font-semibold uppercase tracking-wide text-red-500">Eliminar rutina</p>
+        <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Vas a borrar esta rutina</h2>
+        <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">
+          Esto eliminará la plantilla, sus días, ejercicios y todas las asignaciones vinculadas. Los clientes dejarán de verla de forma inmediata.
+        </p>
+
+        <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <button type="button" data-close-delete-routine class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            Cancelar
+          </button>
+          <form method="POST" action="/api/routines/delete">
+            <input type="hidden" name="routine_id" value={routine.id} />
+            <button type="submit" class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-500">
+              Sí, eliminar rutina
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const selectAllButton = document.querySelector("[data-select-all-clients]");
+      const clearButton = document.querySelector("[data-clear-clients]");
+      const deleteFormButton = document.querySelector("[data-open-delete-routine]");
+      const deleteDialog = document.querySelector("#delete-routine-dialog") as HTMLDialogElement | null;
+      const closeDeleteButton = document.querySelector("[data-close-delete-routine]");
+
+      const getCheckboxes = () => Array.from(document.querySelectorAll<HTMLInputElement>('input[name="client_ids"]'));
+
+      selectAllButton?.addEventListener("click", () => {
+        getCheckboxes().forEach((checkbox: HTMLInputElement) => {
+          checkbox.checked = true;
+        });
+      });
+
+      clearButton?.addEventListener("click", () => {
+        getCheckboxes().forEach((checkbox: HTMLInputElement) => {
+          checkbox.checked = false;
+        });
+      });
+
+      deleteFormButton?.addEventListener("click", () => {
+        deleteDialog?.classList.remove("hidden");
+        deleteDialog?.classList.add("flex");
+      });
+
+      closeDeleteButton?.addEventListener("click", () => {
+        deleteDialog?.classList.add("hidden");
+        deleteDialog?.classList.remove("flex");
+      });
+
+      deleteDialog?.addEventListener("click", (event) => {
+        if (event.target === deleteDialog) {
+          deleteDialog.classList.add("hidden");
+          deleteDialog.classList.remove("flex");
+        }
+      });
+    </script>
   </div>
 </AppLayout>

@@ -3,6 +3,7 @@ import AppLayout from "../../../layouts/layout.astro";
 import EmptyState from "../../../components/ui/EmptyState.astro";
 import ClientPageHeader from "../../../components/clients/ClientPageHeader.astro";
 import ExerciseCard from "../../../components/exercises/ExerciseCard.astro";
+import { sql } from "../../../lib/db/client";
 import { getExerciseLibraryItem } from "../../../lib/utils/exercise-library";
 import { ensureRoutineSchema, getActiveRoutineForClient } from "../../../lib/utils/routines";
 import { getClientByIdForUser } from "../../../lib/utils/client-profile";
@@ -13,6 +14,8 @@ type ClientSummary = {
 };
 
 type AttendanceTimeSlot = "morning" | "midday" | "night" | "other";
+
+type AssignmentScope = "today" | "week" | "always";
 
 function getAttendanceTimeSlotLabel(timeSlot: AttendanceTimeSlot | null) {
     switch (timeSlot) {
@@ -80,6 +83,20 @@ const todayExercises: any[] = todayDay?.exercises ?? [];
 const routineDays: any[] = activeRoutine?.days ?? [];
 const todayDayId = todayDay?.id ?? null;
 const completedRoutineDays = routineDays.filter((day: any) => day.completed_at).length;
+const currentAssignment = activeRoutine
+    ? await sql`
+        SELECT time_slot
+             , scope
+        FROM routine_assignments
+        WHERE routine_id = ${activeRoutine.id}
+          AND client_id = ${client.id}
+          AND active = TRUE
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+      ` as Array<{ time_slot: "morning" | "midday" | "night" | "other" | null; scope: AssignmentScope | null }>
+    : [];
+const preferredTimeSlot = currentAssignment[0]?.time_slot ?? null;
+const preferredScope = currentAssignment[0]?.scope ?? "always";
 const isClientView = user.role === "client";
 const canManageClient = user.role === "trainer" || user.role === "admin";
 const canManageAssessments = user.role === "trainer" || user.role === "admin";
@@ -187,10 +204,53 @@ function getExerciseDetailsHref(exercise: any) {
                 {canManageClient && (
                     <form method="POST" action="/api/routines/unassign" class="mt-4">
                         <input type="hidden" name="routine_id" value={activeRoutine.id} />
+                        <input type="hidden" name="client_id" value={client.id} />
                         <button type="submit" class="inline-flex items-center justify-center rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30">
                             Quitar rutina del usuario
                         </button>
                     </form>
+                )}
+
+                {isClientView && activeRoutine && (
+                    <div class="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Preferencia temporal</p>
+                                <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                    {preferredScope === "today" ? "Solo hoy" : preferredScope === "week" ? "Esta semana" : "Siempre"}
+                                </p>
+                            </div>
+                            <a href="#attendance-form" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-white dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">Cambiar</a>
+                        </div>
+
+                        <form method="POST" action="/api/routines/preference" class="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                            <input type="hidden" name="routine_id" value={activeRoutine.id} />
+                            <input type="hidden" name="client_id" value={client.id} />
+                            <label class="block space-y-2">
+                                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Duración</span>
+                                <select name="scope" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                                    <option value="always" selected={preferredScope === "always"}>Siempre</option>
+                                    <option value="week" selected={preferredScope === "week"}>Esta semana</option>
+                                    <option value="today" selected={preferredScope === "today"}>Solo hoy</option>
+                                </select>
+                            </label>
+
+                            <label class="block space-y-2">
+                                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Horario (opcional)</span>
+                                <select name="time_slot" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                                    <option value="">Sin definir</option>
+                                    <option value="morning" selected={preferredTimeSlot === "morning"}>Mañana</option>
+                                    <option value="midday" selected={preferredTimeSlot === "midday"}>Mediodía</option>
+                                    <option value="night" selected={preferredTimeSlot === "night"}>Noche</option>
+                                    <option value="other" selected={preferredTimeSlot === "other"}>Otro horario</option>
+                                </select>
+                            </label>
+
+                            <button type="submit" class="self-end rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                                Guardar horario
+                            </button>
+                        </form>
+                    </div>
                 )}
 
                 {todayDay ? (
@@ -223,17 +283,17 @@ function getExerciseDetailsHref(exercise: any) {
                         )}
 
                         {isClientView && todayDayId && (
-                            <form method="POST" action="/api/routines/attendance" class="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                            <form id="attendance-form" method="POST" action="/api/routines/attendance" class="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-slate-800 dark:bg-slate-950/40">
                                 <input type="hidden" name="routine_day_id" value={todayDayId} />
                                 <input type="hidden" name="client_id" value={client.id} />
 
                                 <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400">
                                     Horario
                                     <select name="time_slot" class="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
-                                        <option value="morning">Mañana</option>
-                                        <option value="midday">Mediodía</option>
-                                        <option value="night">Noche</option>
-                                        <option value="other">Otro horario</option>
+                                        <option value="morning" selected={preferredTimeSlot === "morning"}>Mañana</option>
+                                        <option value="midday" selected={preferredTimeSlot === "midday"}>Mediodía</option>
+                                        <option value="night" selected={preferredTimeSlot === "night"}>Noche</option>
+                                        <option value="other" selected={preferredTimeSlot === "other"}>Otro horario</option>
                                     </select>
                                 </label>
 
