@@ -42,9 +42,20 @@ export const POST: APIRoute = async (context) => {
     await sql`
       UPDATE routine_assignments
       SET template_visible = FALSE,
+          active = FALSE,
           updated_at = NOW()
       WHERE routine_id = ${routineId}
         AND client_id = ${clientId}
+        AND active = TRUE
+    `;
+
+    await sql`
+      UPDATE routines
+      SET active = FALSE,
+          updated_at = NOW()
+      WHERE trainer_id = ${routine.trainer_id}
+        AND client_id = ${clientId}
+        AND is_template = FALSE
         AND active = TRUE
     `;
 

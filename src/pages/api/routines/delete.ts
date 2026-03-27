@@ -33,6 +33,28 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect("/routines?status=error&message=Rutina%20no%20encontrada");
   }
 
+  const routine = routineRows[0];
+
+  const assignedClientRows = routine.is_template
+    ? await sql`
+        SELECT DISTINCT client_id
+        FROM routine_assignments
+        WHERE routine_id = ${routineId}
+          AND active = TRUE
+      ` as Array<{ client_id: number }>
+    : [];
+
+  const assignedClientIds = assignedClientRows.map((row) => row.client_id);
+
+  if (routine.is_template && assignedClientIds.length > 0) {
+    await sql`
+      DELETE FROM routines
+      WHERE trainer_id = ${routine.trainer_id}
+        AND is_template = FALSE
+        AND client_id = ANY(${assignedClientIds})
+    `;
+  }
+
   await sql`
     DELETE FROM routines
     WHERE id = ${routineId}
