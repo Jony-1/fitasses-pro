@@ -75,7 +75,7 @@ export const POST: APIRoute = async (context) => {
     `;
 
         return context.redirect(
-            "/admin/trainers?status=success&message=Cuenta%20creada%20correctamente",
+            `/admin/trainers?status=success&message=${encodeURIComponent(`Usuario creado correctamente: ${name} (${email}).`)}`,
         );
     } catch (error) {
         console.error("Create trainer error:", error);

@@ -1,0 +1,1009 @@
+---
+import AppLayout from "../../../../layouts/layout.astro";
+import EmptyState from "../../../../components/ui/EmptyState.astro";
+import { sql } from "../../../../lib/db/client";
+import { ensureRoutineSchema, getActiveRoutineForClient, getRoutineToday } from "../../../../lib/utils/routines";
+import { getClientByIdForUser } from "../../../../lib/utils/client-profile";
+
+type SessionHistoryItem = {
+  id: number;
+  started_at: string | Date | null;
+  finished_at: string | Date | null;
+  notes: string | null;
+  exercises_total: number;
+  completed_total: number;
+};
+
+type RecentExerciseItem = {
+  exercise_id: number;
+  weight_kg: string | null;
+  reps_done: string | null;
+  rest_seconds: number | null;
+  series_done: number | null;
+};
+
+const { id } = Astro.params;
+const user = Astro.locals.user;
+
+if (!user) return Astro.redirect("/login");
+if (!["trainer", "admin", "client"].includes(String(user.role))) return Astro.redirect("/login?error=forbidden");
+if (!id || Number.isNaN(Number(id))) return Astro.redirect("/clients");
+
+const clientId = Number(id);
+await ensureRoutineSchema();
+
+const [client, activeRoutine] = await Promise.all([getClientByIdForUser(clientId, user), getActiveRoutineForClient(clientId)]);
+
+if (!client) return new Response("Cliente no encontrado", { status: 404 });
+
+const todayInfo = activeRoutine ? getRoutineToday(activeRoutine) : { day: null, dayIndex: null, label: "Sin rutina" };
+const todayDay = todayInfo.day;
+const sessionStartedAt = new Date().toISOString();
+
+const sessionHistoryRows = activeRoutine?.id
+  ? await sql`
+      SELECT
+        s.id,
+        s.started_at,
+        s.finished_at,
+        s.notes,
+        COUNT(e.id)::int AS exercises_total,
+        COUNT(*) FILTER (WHERE e.completed = TRUE)::int AS completed_total
+      FROM routine_workout_sessions s
+      LEFT JOIN routine_workout_entries e ON e.session_id = s.id
+      WHERE s.client_id = ${client.id}
+        AND s.routine_day_id IN (
+          SELECT rd.id
+          FROM routine_days rd
+          WHERE rd.routine_id = ${activeRoutine.id}
+        )
+      GROUP BY s.id
+      ORDER BY s.started_at DESC, s.id DESC
+      LIMIT 5
+    `
+  : [];
+
+const recentExerciseRows = activeRoutine?.id
+  ? await sql`
+      SELECT
+        re.id AS exercise_id,
+        last_entry.weight_kg::text AS weight_kg,
+        last_entry.reps_done,
+        last_entry.rest_seconds,
+        last_entry.series_done
+      FROM routine_exercises re
+      LEFT JOIN LATERAL (
+        SELECT
+          e.weight_kg,
+          e.reps_done,
+          e.rest_seconds,
+          e.sets_done AS series_done
+        FROM routine_workout_entries e
+        INNER JOIN routine_workout_sessions s ON s.id = e.session_id
+        WHERE e.routine_exercise_id = re.id
+        ORDER BY s.started_at DESC, e.id DESC
+        LIMIT 1
+      ) AS last_entry ON TRUE
+      WHERE re.routine_day_id IN (
+        SELECT rd.id
+        FROM routine_days rd
+        WHERE rd.routine_id = ${activeRoutine.id}
+      )
+    `
+  : [];
+
+const sessionHistory = sessionHistoryRows as unknown as SessionHistoryItem[];
+const recentExerciseMap = Object.fromEntries((recentExerciseRows as unknown as RecentExerciseItem[]).map((row) => [row.exercise_id, row]));
+const exerciseCount = todayDay?.exercises.length ?? 0;
+const routineDayCount = activeRoutine?.days.length ?? 0;
+const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
+---
+
+<AppLayout title={`Entrenar - ${client.full_name}`}>
+  <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <a href={`/clients/${client.id}/routine`} class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+        Volver al resumen
+      </a>
+      <span class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300 sm:inline-flex">Modo entrenamiento</span>
+    </div>
+
+    {!activeRoutine || !todayDay ? (
+      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <EmptyState title="Sin sesión para entrenar" description="Todavía no hay una rutina activa o no tiene un día disponible para hoy." />
+      </div>
+    ) : (
+      <div class="space-y-6">
+        <section id="training-intro" class="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-emerald-50 p-5 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
+          <div class="mx-auto max-w-3xl text-center">
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">Entrenamiento de hoy</p>
+            <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">{todayDay.title}</h2>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{todayDay.focus ?? "Rutina del día"}</p>
+
+            <div class="mt-4 flex flex-wrap justify-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{routineDayCount} días</span>
+              <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{exerciseCount} ejercicios</span>
+              <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{todayInfo.label}</span>
+            </div>
+
+            <div class="mt-5 rounded-3xl border border-slate-200 bg-white/90 p-4 text-left shadow-sm dark:border-slate-800 dark:bg-slate-950/50 sm:p-5">
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Rutina de hoy</p>
+              <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                {todayDay.exercises.slice(0, 4).map((exercise: any, index: number) => (
+                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900">
+                    <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{index + 1}. {exercise.name}</p>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{exercise.sets ?? "libre"} series · {exercise.reps ?? "libre"} reps · {exercise.rest_seconds ? `${exercise.rest_seconds}s descanso` : "sin descanso"}</p>
+                  </div>
+                ))}
+                {todayDay.exercises.length > 4 && <p class="text-xs text-slate-500 dark:text-slate-400">+ {todayDay.exercises.length - 4} ejercicios más en la sesión guiada</p>}
+              </div>
+
+              {todayDay.notes && <p class="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{todayDay.notes}</p>}
+            </div>
+
+            <div class="mt-5 rounded-full border border-slate-200 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-950/50">
+              <div class="flex items-center justify-between px-2 pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <span>Progreso de la sesión</span>
+                <span id="session-progress-label">0%</span>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                <div id="session-progress-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="mt-6 flex justify-center">
+              <button id="start-training" type="button" class="inline-flex min-w-[18rem] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 px-8 py-4 text-base font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:brightness-105 dark:text-slate-950">
+                Empezar entrenamiento
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <form id="training-form" class="hidden mx-auto w-full max-w-4xl space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <input type="hidden" name="routine_day_id" value={todayDay.id} />
+          <input type="hidden" name="client_id" value={client.id} />
+          <input type="hidden" name="started_at" value={sessionStartedAt} />
+
+          <div class="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40 sm:p-5">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Sesión en curso</p>
+                  <h3 id="training-title" class="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">{todayDay.title}</h3>
+                  <p id="session-state-line" class="mt-1 text-sm text-slate-600 dark:text-slate-400">Listo para empezar</p>
+                </div>
+                <span id="training-progress-pill" class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">1 / {exerciseCount}</span>
+              </div>
+
+              <div class="mt-4 rounded-full bg-slate-100 p-1 dark:bg-slate-800">
+                <div id="exercise-progress-bar" class="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300" style="width: 0%"></div>
+              </div>
+
+              <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                <div class="rounded-2xl bg-white p-3 dark:bg-slate-900">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ejercicio actual</p>
+                  <p id="current-exercise-label" class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">--</p>
+                </div>
+                <div class="rounded-2xl bg-white p-3 dark:bg-slate-900">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Estado</p>
+                  <p id="session-state" class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">Listo para empezar</p>
+                </div>
+                <div class="rounded-2xl bg-white p-3 dark:bg-slate-900">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Descanso plan</p>
+                  <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{todayDay.exercises[0]?.rest_seconds ? `${todayDay.exercises[0].rest_seconds}s` : "libre"}</p>
+                </div>
+              </div>
+
+              <div class="mt-4 rounded-2xl bg-white p-4 dark:bg-slate-900">
+                <p class="text-sm text-slate-600 dark:text-slate-400">El plan asignado aparece en la tarjeta activa. Cuando pulses <span class="font-semibold text-slate-900 dark:text-slate-100">Ya cumplí</span>, el descanso comenzará abajo y pasarás al siguiente ejercicio.</p>
+              </div>
+            </div>
+
+            <div id="next-up-panel" class="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40 sm:p-5">
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Siguientes</p>
+              <div id="next-up-list" class="mt-3 space-y-3"></div>
+            </div>
+          </div>
+
+          <div class="mx-auto flex w-full max-w-md flex-col items-center rounded-[2rem] border border-emerald-200 bg-white p-6 text-center shadow-lg shadow-emerald-500/10 dark:border-emerald-900/40 dark:bg-slate-950/40">
+            <div class="flex h-36 w-36 items-center justify-center rounded-full border-[10px] border-emerald-200 bg-gradient-to-br from-emerald-500 to-teal-400 text-5xl font-black tracking-tight text-slate-950 shadow-inner dark:border-emerald-900/50">
+              <span id="rest-timer" class="leading-none">00:00</span>
+            </div>
+            <p class="mt-4 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">Cronómetro entre series</p>
+            <p id="timer-helper" class="mt-2 text-sm text-slate-600 dark:text-slate-400">Se activará al marcar un ejercicio como cumplido.</p>
+            <div class="mt-4 flex items-center justify-center gap-2">
+              <button type="button" data-adjust-rest="-15" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                -15s
+              </button>
+              <button type="button" data-adjust-rest="15" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                +15s
+              </button>
+            </div>
+          </div>
+
+          <div id="exercise-steps" class="space-y-4">
+            {todayDay.exercises.map((exercise: any, index: number) => (
+              (() => {
+                const lastEntry = recentExerciseMap[exercise.id];
+                const lastWeight = lastEntry?.weight_kg ?? "";
+                const lastReps = lastEntry?.reps_done ?? "";
+                const lastRest = lastEntry?.rest_seconds ?? exercise.rest_seconds ?? "";
+
+                return (
+              <article
+                data-workout-card
+                data-exercise-id={exercise.id}
+                data-exercise-index={index}
+                data-rest-seconds={exercise.rest_seconds ?? 0}
+                data-exercise-name={exercise.name}
+                data-exercise-sets={exercise.sets ?? ""}
+                data-exercise-reps={exercise.reps ?? ""}
+                data-planned-sets={exercise.sets ?? 1}
+                data-series-completed="0"
+                class="hidden rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40"
+              >
+                <div class="flex flex-col gap-3 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ejercicio {index + 1}</p>
+                    <h4 class="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{exercise.name}</h4>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">Asignado por rutina</span>
+                    <button type="button" data-complete-exercise class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">Cumplí serie</button>
+                  </div>
+                </div>
+
+                <div class="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+                  <section class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Plan del entrenador</p>
+                    <div class="mt-3 grid gap-2 text-sm text-slate-700 dark:text-slate-200">
+                      <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-950/50">
+                        <span class="text-slate-500 dark:text-slate-400">Series</span>
+                        <span class="font-bold">{exercise.sets ?? "libre"}</span>
+                      </div>
+                      <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-950/50">
+                        <span class="text-slate-500 dark:text-slate-400">Reps</span>
+                        <span class="font-bold">{exercise.reps ?? "libre"}</span>
+                      </div>
+                      <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-950/50">
+                        <span class="text-slate-500 dark:text-slate-400">Descanso</span>
+                        <span class="font-bold">{exercise.rest_seconds ? `${exercise.rest_seconds}s` : "libre"}</span>
+                      </div>
+                    </div>
+                    {lastEntry && (
+                      <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                        Último registro: {lastWeight || "-"} kg · {lastReps || "-"} · descanso {lastRest || "-"}s
+                      </p>
+                    )}
+                  </section>
+
+                  <section class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Tu registro</p>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <label class="block space-y-2">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Peso usado (kg)</span>
+                        <input type="text" inputmode="decimal" data-field="weight_kg" value={lastWeight} placeholder="Ej: 42.5" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10" />
+                        {lastWeight && <p class="text-xs text-slate-500 dark:text-slate-400">Último peso: {lastWeight} kg</p>}
+                      </label>
+
+                      <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Series</p>
+                        <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100"><span data-series-progress>0/0</span></p>
+                        <p data-series-state class="mt-1 text-xs text-slate-500 dark:text-slate-400">Serie 1 de 1</p>
+                      </div>
+
+                      <label class="block space-y-2">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Reps / tiempo</span>
+                        <input type="text" data-field="reps_done" value={exercise.reps ?? ""} placeholder={exercise.reps ?? "Ej: 10 reps / 30s"} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10" />
+                        {lastReps && <p class="text-xs text-slate-500 dark:text-slate-400">Últimas reps: {lastReps}</p>}
+                      </label>
+
+                      <label class="block space-y-2">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Descanso real (s)</span>
+                        <input type="number" min="0" max="9999" data-field="rest_seconds" value={exercise.rest_seconds ?? ""} placeholder={exercise.rest_seconds ?? 0} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10" />
+                        {lastRest !== "" && <p class="text-xs text-slate-500 dark:text-slate-400">Descanso anterior: {lastRest}s</p>}
+                      </label>
+                    </div>
+                  </section>
+                </div>
+
+                <label class="mt-3 block space-y-2">
+                  <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Notas</span>
+                  <textarea rows="2" data-field="notes" placeholder="Cómo se sintió, técnica, carga, etc." class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10"></textarea>
+                </label>
+              </article>
+                );
+              })()
+            ))}
+          </div>
+
+          <div class="grid gap-4 lg:grid-cols-[1fr_auto]">
+            <label class="block space-y-2">
+              <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Notas de la sesión</span>
+              <textarea name="session_notes" rows="4" placeholder="Sensaciones generales, molestias, observaciones..." class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10"></textarea>
+            </label>
+
+            <div class="flex flex-col justify-end gap-3">
+              <div id="training-message" class="hidden rounded-2xl px-4 py-3 text-sm font-medium"></div>
+              <button id="training-submit" type="submit" class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60">
+                Guardar sesión
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <section id="recent-sessions" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">Sesiones recientes</h3>
+              <p class="text-sm text-slate-600 dark:text-slate-400">Últimos entrenamientos guardados para esta rutina.</p>
+            </div>
+          </div>
+
+          {sessionHistory.length > 0 ? (
+            <div class="mt-4 grid gap-3">
+              {sessionHistory.map((session) => (
+                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                  <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p class="text-sm font-bold text-slate-900 dark:text-slate-100">{session.started_at ? new Date(session.started_at).toLocaleString("es-ES") : "Sin fecha"}</p>
+                      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{session.completed_total}/{session.exercises_total} ejercicios completados</p>
+                    </div>
+                    {session.finished_at && <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">Terminada</span>}
+                  </div>
+                  {session.notes && <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">{session.notes}</p>}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">Todavía no hay sesiones guardadas.</div>
+          )}
+        </section>
+      </div>
+    )}
+  </div>
+</AppLayout>
+
+<script define:vars={{ clientId, sessionStartedAt, draftKey }}>
+  const form = document.getElementById("training-form");
+  const startButton = document.getElementById("start-training");
+  const introPanel = document.getElementById("training-intro");
+  const recentSessions = document.getElementById("recent-sessions");
+  const nextUpPanel = document.getElementById("next-up-panel");
+  const exerciseCards = Array.from(document.querySelectorAll("[data-workout-card]"));
+  const adjustRestButtons = Array.from(document.querySelectorAll("[data-adjust-rest]"));
+  const messageBox = document.getElementById("training-message");
+  const submitButton = document.getElementById("training-submit");
+  const restTimer = document.getElementById("rest-timer");
+  const timerHelper = document.getElementById("timer-helper");
+  const sessionState = document.getElementById("session-state");
+  const sessionStateLine = document.getElementById("session-state-line");
+  const progressPill = document.getElementById("training-progress-pill");
+  const exerciseProgressBar = document.getElementById("exercise-progress-bar");
+  const sessionProgressBar = document.getElementById("session-progress-bar");
+  const sessionProgressLabel = document.getElementById("session-progress-label");
+  const currentExerciseLabel = document.getElementById("current-exercise-label");
+  const nextUpList = document.getElementById("next-up-list");
+  const trainingTitle = document.getElementById("training-title");
+
+  let activeIndex = -1;
+  let restInterval = null;
+  let restEndsAt = null;
+  let restLastDuration = 0;
+  let audioContext = null;
+  let draftSaveTimer = null;
+  let carryWeightValue = "";
+
+  function getPlannedSets(card) {
+    const planned = Number(card.dataset.plannedSets || 1);
+    return Number.isFinite(planned) && planned > 0 ? planned : 1;
+  }
+
+  function getCompletedSeries(card) {
+    const completed = Number(card.dataset.seriesCompleted || 0);
+    return Number.isFinite(completed) && completed >= 0 ? completed : 0;
+  }
+
+  function updateSessionProgressUI() {
+    const total = exerciseCards.length || 1;
+    const completedExercises = exerciseCards.filter((card) => card.dataset.completed === "true").length;
+    const completedSeries = exerciseCards.reduce((sum, card) => sum + getCompletedSeries(card), 0);
+    const plannedSeries = exerciseCards.reduce((sum, card) => sum + getPlannedSets(card), 0) || 1;
+    const exercisePercent = Math.round((completedExercises / total) * 100);
+    const sessionPercent = Math.round((completedSeries / plannedSeries) * 100);
+
+    if (exerciseProgressBar) {
+      exerciseProgressBar.style.width = `${exercisePercent}%`;
+    }
+
+    if (sessionProgressBar) {
+      sessionProgressBar.style.width = `${sessionPercent}%`;
+    }
+
+    if (sessionProgressLabel) {
+      sessionProgressLabel.textContent = `${sessionPercent}%`;
+    }
+  }
+
+  function updateSessionStateLine(text) {
+    if (sessionStateLine) sessionStateLine.textContent = text;
+  }
+
+  function saveDraft() {
+    try {
+      const payload = {
+        activeIndex,
+        sessionNotes: String(form?.elements["session_notes"]?.value ?? ""),
+        exercises: exerciseCards.map((card) => ({
+          exerciseId: Number(card.dataset.exerciseId || 0),
+          seriesCompleted: getCompletedSeries(card),
+          completed: card.dataset.completed === "true",
+          weight_kg: String(card.querySelector('[data-field="weight_kg"]')?.value ?? ""),
+          reps_done: String(card.querySelector('[data-field="reps_done"]')?.value ?? ""),
+          rest_seconds: String(card.querySelector('[data-field="rest_seconds"]')?.value ?? ""),
+          notes: String(card.querySelector('[data-field="notes"]')?.value ?? ""),
+        })),
+      };
+
+      localStorage.setItem(draftKey, JSON.stringify(payload));
+    } catch {
+      /* ignore draft errors */
+    }
+  }
+
+  function getWeightInput(card) {
+    return card.querySelector('[data-field="weight_kg"]');
+  }
+
+  function rememberWeightFromCard(card) {
+    const input = getWeightInput(card);
+    if (input instanceof HTMLInputElement) {
+      const value = String(input.value ?? "").trim();
+      if (value) carryWeightValue = value;
+    }
+  }
+
+  function applyCarryDefaults(card) {
+    const input = getWeightInput(card);
+    if (!(input instanceof HTMLInputElement)) return;
+
+    const currentValue = String(input.value ?? "").trim();
+    if (currentValue) {
+      carryWeightValue = currentValue;
+    } else if (carryWeightValue) {
+      input.value = carryWeightValue;
+    }
+  }
+
+  function queueDraftSave() {
+    if (draftSaveTimer) window.clearTimeout(draftSaveTimer);
+    draftSaveTimer = window.setTimeout(saveDraft, 300);
+  }
+
+  function restoreDraft() {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+
+      const draft = JSON.parse(raw);
+      if (!draft || typeof draft !== "object") return;
+
+      const exerciseDrafts = Array.isArray(draft.exercises) ? draft.exercises : [];
+
+      exerciseCards.forEach((card) => {
+        const exerciseId = Number(card.dataset.exerciseId || 0);
+        const saved = exerciseDrafts.find((item) => Number(item.exerciseId || 0) === exerciseId);
+        if (!saved) return;
+
+        const seriesCompleted = Number(saved.seriesCompleted ?? 0);
+        if (Number.isFinite(seriesCompleted) && seriesCompleted >= 0) {
+          card.dataset.seriesCompleted = String(seriesCompleted);
+        }
+
+        if (saved.completed) {
+          card.dataset.completed = "true";
+        }
+
+        const weightInput = card.querySelector('[data-field="weight_kg"]');
+        if (weightInput instanceof HTMLInputElement && saved.weight_kg !== undefined) {
+          weightInput.value = String(saved.weight_kg ?? "");
+        }
+
+        const repsInput = card.querySelector('[data-field="reps_done"]');
+        if (repsInput instanceof HTMLInputElement && saved.reps_done !== undefined) {
+          repsInput.value = String(saved.reps_done ?? "");
+        }
+
+        const restInput = card.querySelector('[data-field="rest_seconds"]');
+        if (restInput instanceof HTMLInputElement && saved.rest_seconds !== undefined) {
+          restInput.value = String(saved.rest_seconds ?? "");
+        }
+
+        const notesInput = card.querySelector('[data-field="notes"]');
+        if (notesInput instanceof HTMLTextAreaElement && saved.notes !== undefined) {
+          notesInput.value = String(saved.notes ?? "");
+        }
+
+        rememberWeightFromCard(card);
+        syncSeriesUI(card);
+      });
+
+      if (typeof draft.sessionNotes === "string" && form?.elements["session_notes"] instanceof HTMLTextAreaElement) {
+        form.elements["session_notes"].value = draft.sessionNotes;
+      }
+
+      if (typeof draft.activeIndex === "number" && draft.activeIndex >= 0) {
+        activeIndex = draft.activeIndex;
+      }
+    } catch {
+      /* ignore draft errors */
+    }
+  }
+
+  function clearDraft() {
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function getAudioContext() {
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextCtor) return null;
+
+    if (!audioContext) {
+      audioContext = new AudioContextCtor();
+    }
+
+    return audioContext;
+  }
+
+  function playSeriesSound() {
+    const audioContext = getAudioContext();
+    if (!audioContext) return;
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume().catch(() => undefined);
+    }
+
+    const now = audioContext.currentTime;
+    [880, 660].forEach((frequency, index) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gainNode.gain.value = 0.0001;
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      const startAt = now + index * 0.12;
+      gainNode.gain.setValueAtTime(0.0001, startAt);
+      gainNode.gain.exponentialRampToValueAtTime(0.2, startAt + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.14);
+
+      oscillator.start(startAt);
+      oscillator.stop(startAt + 0.18);
+    });
+
+    if (navigator.vibrate) {
+      navigator.vibrate([80, 40, 80]);
+    }
+  }
+
+  function syncSeriesUI(card) {
+    const progress = card.querySelector("[data-series-progress]");
+    const state = card.querySelector("[data-series-state]");
+    const button = card.querySelector('[data-complete-exercise]');
+    const completed = getCompletedSeries(card);
+    const total = getPlannedSets(card);
+
+    if (progress) progress.textContent = `${Math.min(completed, total)}/${total}`;
+    if (state) state.textContent = completed < total ? `Serie ${completed + 1} de ${total}` : "Ejercicio completo";
+    if (button instanceof HTMLButtonElement) {
+      button.textContent = completed < total ? "Cumplí serie" : "Ejercicio listo";
+      button.disabled = false;
+    }
+  }
+
+  function showMessage(text, type = "error") {
+    if (!messageBox) return;
+
+    messageBox.textContent = text;
+    messageBox.classList.remove("hidden");
+    messageBox.className =
+      "rounded-2xl px-4 py-3 text-sm font-medium " +
+      (type === "success"
+        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300");
+  }
+
+  function parseDecimal(value) {
+    if (value === null || value === undefined) return null;
+    const raw = String(value).trim();
+    if (!raw) return null;
+    const parsed = Number(raw.replace(",", "."));
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  function parseInteger(value) {
+    if (value === null || value === undefined) return null;
+    const raw = String(value).trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) ? parsed : null;
+  }
+
+  function formatSeconds(totalSeconds) {
+    const safe = Math.max(0, Math.floor(totalSeconds));
+    const minutes = String(Math.floor(safe / 60)).padStart(2, "0");
+    const seconds = String(safe % 60).padStart(2, "0");
+    return `${minutes}:${seconds}`;
+  }
+
+  function clearRestTimer() {
+    if (restInterval) {
+      window.clearInterval(restInterval);
+      restInterval = null;
+    }
+    restEndsAt = null;
+    restTimer?.classList.remove("animate-pulse");
+    if (timerHelper) timerHelper.textContent = "Se activará al completar una serie.";
+  }
+
+  function getRemainingRestSeconds() {
+    if (!restEndsAt) return 0;
+    return Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
+  }
+
+  function renderRestTime(seconds) {
+    if (!restTimer) return;
+    restTimer.textContent = formatSeconds(seconds);
+  }
+
+  function adjustRest(deltaSeconds) {
+    if (deltaSeconds === 0) return;
+
+    if (!restEndsAt) {
+      restLastDuration = Math.max(0, restLastDuration + deltaSeconds);
+      renderRestTime(restLastDuration);
+      if (timerHelper) {
+        timerHelper.textContent = `Descanso preparado: ${formatSeconds(restLastDuration)}.`;
+      }
+      return;
+    }
+
+    const updatedRemaining = Math.max(0, getRemainingRestSeconds() + deltaSeconds);
+    restEndsAt = Date.now() + updatedRemaining * 1000;
+    renderRestTime(updatedRemaining);
+
+    if (timerHelper) {
+      timerHelper.textContent = updatedRemaining > 0
+        ? `Descanso ajustado a ${formatSeconds(updatedRemaining)}.`
+        : "Descanso terminado.";
+    }
+
+    if (updatedRemaining === 0) {
+      clearRestTimer();
+      window.setTimeout(() => advanceToNext(), 150);
+    }
+  }
+
+  function setSessionState(text) {
+    if (sessionState) sessionState.textContent = text;
+    updateSessionStateLine(text);
+  }
+
+  function setCurrentExerciseLabel(text) {
+    if (currentExerciseLabel) currentExerciseLabel.textContent = text;
+  }
+
+  function updateProgress() {
+    const completedCount = exerciseCards.filter((card) => card.dataset.completed === "true").length;
+    const total = exerciseCards.length;
+    if (progressPill) progressPill.textContent = `${Math.max(1, activeIndex + 1)} / ${total}`;
+    if (trainingTitle) trainingTitle.textContent = activeIndex >= 0 ? `Paso ${activeIndex + 1} de ${total}` : trainingTitle.textContent || "Entrenamiento";
+    if (sessionState) sessionState.textContent = completedCount >= total ? "Listo para guardar" : activeIndex >= 0 ? "En curso" : "Listo para empezar";
+    updateSessionProgressUI();
+  }
+
+  function updateNextUp() {
+    if (!nextUpList) return;
+
+    const nextCards = exerciseCards.slice(activeIndex + 1, activeIndex + 3);
+    nextUpList.innerHTML = nextCards.length
+      ? nextCards
+          .map((card, offset) => {
+            const name = card.dataset.exerciseName ?? "Ejercicio";
+            const sets = card.dataset.exerciseSets || "libre";
+            const reps = card.dataset.exerciseReps || "libre";
+            const rest = Number(card.dataset.restSeconds ?? 0);
+            return `
+              <div class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">${offset === 0 ? "Siguiente" : "Después"}</p>
+                <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">${name}</p>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">${sets} series · ${reps} reps · ${rest ? `${rest}s descanso` : "sin descanso"}</p>
+              </div>`;
+          })
+          .join("")
+      : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">No hay más ejercicios en cola.</div>';
+  }
+
+  function showCard(index) {
+    clearRestTimer();
+    activeIndex = index;
+
+    exerciseCards.forEach((card, cardIndex) => {
+      const visible = cardIndex === index;
+      card.classList.toggle("hidden", !visible);
+    });
+
+    const currentCard = exerciseCards[index];
+    if (!currentCard) {
+      updateProgress();
+      updateNextUp();
+      return;
+    }
+
+    const name = currentCard.dataset.exerciseName ?? "Ejercicio";
+    const sets = currentCard.dataset.exerciseSets || "libre";
+    const reps = currentCard.dataset.exerciseReps || "libre";
+    const restSeconds = Number(currentCard.dataset.restSeconds ?? 0);
+
+    applyCarryDefaults(currentCard);
+    setCurrentExerciseLabel(name);
+    syncSeriesUI(currentCard);
+    updateProgress();
+    updateNextUp();
+
+    if (progressPill) progressPill.textContent = `${index + 1} / ${exerciseCards.length}`;
+    if (restTimer) restTimer.textContent = "00:00";
+    setSessionState(`Plan: ${sets} series · ${reps} reps`);
+    updateSessionProgressUI();
+
+    currentCard.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const completeButton = currentCard.querySelector('[data-complete-exercise]');
+    if (completeButton instanceof HTMLButtonElement) {
+      completeButton.disabled = currentCard.dataset.completed === "true";
+    }
+  }
+
+  function advanceToNext() {
+    const nextIndex = activeIndex + 1;
+    if (nextIndex >= exerciseCards.length) {
+      clearRestTimer();
+      if (restTimer) restTimer.textContent = "00:00";
+      setSessionState("Rutina completa, lista para guardar");
+      setCurrentExerciseLabel("Finalizado");
+      updateProgress();
+      updateNextUp();
+      return;
+    }
+
+    showCard(nextIndex);
+  }
+
+  function startRest(restSeconds, onFinish) {
+    clearRestTimer();
+
+    if (!restTimer) return;
+
+    restLastDuration = Math.max(0, restSeconds);
+
+    if (!restSeconds || restSeconds <= 0) {
+      renderRestTime(0);
+      if (timerHelper) timerHelper.textContent = "Sin descanso programado. Avanzando...";
+      window.setTimeout(() => {
+        if (typeof onFinish === "function") onFinish();
+      }, 350);
+      return;
+    }
+
+    restEndsAt = Date.now() + restSeconds * 1000;
+    renderRestTime(restSeconds);
+    setSessionState("Descanso en curso");
+    restTimer.classList.add("animate-pulse");
+    if (timerHelper) timerHelper.textContent = "Respira, recupera y prepara la siguiente serie.";
+
+    restInterval = window.setInterval(() => {
+      if (!restEndsAt) return;
+
+      const remaining = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
+      renderRestTime(remaining);
+
+      if (remaining <= 0) {
+        clearRestTimer();
+        renderRestTime(0);
+        setSessionState("Descanso terminado");
+        if (timerHelper) timerHelper.textContent = "Listo para continuar.";
+        window.setTimeout(() => {
+          if (typeof onFinish === "function") onFinish();
+        }, 450);
+      }
+    }, 250);
+  }
+
+  function finishExercise(card) {
+    card.dataset.completed = "true";
+    card.classList.add("ring-2", "ring-emerald-400", "ring-emerald-400/40");
+
+    card.querySelectorAll("input, textarea").forEach((field) => {
+      field.disabled = true;
+    });
+
+    const button = card.querySelector('[data-complete-exercise]');
+    if (button instanceof HTMLButtonElement) {
+      button.textContent = "Ejercicio listo";
+      button.disabled = true;
+    }
+  }
+
+  function markComplete(card) {
+    if (!(card instanceof HTMLElement)) return;
+
+    const completed = getCompletedSeries(card);
+    const total = getPlannedSets(card);
+    const restSeconds = Number(card.dataset.restSeconds ?? 0);
+
+    playSeriesSound();
+
+    if (completed + 1 >= total) {
+      card.dataset.seriesCompleted = String(total);
+      syncSeriesUI(card);
+      finishExercise(card);
+      setSessionState("Ejercicio completado");
+      queueDraftSave();
+      startRest(restSeconds, () => {
+        updateProgress();
+        updateNextUp();
+        advanceToNext();
+      });
+      updateProgress();
+      updateNextUp();
+      return;
+    }
+
+    card.dataset.seriesCompleted = String(completed + 1);
+    syncSeriesUI(card);
+    const button = card.querySelector('[data-complete-exercise]');
+    if (button instanceof HTMLButtonElement) {
+      button.textContent = "Descansando...";
+      button.disabled = true;
+    }
+    setSessionState(`Serie ${completed + 1} de ${total} completada`);
+    queueDraftSave();
+    startRest(restSeconds, () => {
+      syncSeriesUI(card);
+      setSessionState(`Listo para la serie ${completed + 2} de ${total}`);
+      updateProgress();
+      updateNextUp();
+    });
+    updateProgress();
+    updateNextUp();
+  }
+
+  startButton?.addEventListener("click", () => {
+    introPanel?.classList.add("hidden");
+    recentSessions?.classList.add("hidden");
+    nextUpPanel?.classList.add("hidden");
+    form?.classList.remove("hidden");
+    form?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (activeIndex < 0) showCard(0);
+    else showCard(activeIndex);
+  });
+
+  adjustRestButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const delta = Number(button.dataset.adjustRest || 0);
+      adjustRest(delta);
+    });
+  });
+
+  window.addEventListener("beforeunload", saveDraft);
+
+  exerciseCards.forEach((card, index) => {
+    const button = card.querySelector('[data-complete-exercise]');
+    if (!(button instanceof HTMLButtonElement)) return;
+
+    applyCarryDefaults(card);
+    syncSeriesUI(card);
+
+    card.querySelectorAll("input, textarea").forEach((field) => {
+      field.addEventListener("input", queueDraftSave);
+      field.addEventListener("change", queueDraftSave);
+    });
+
+    const weightInput = getWeightInput(card);
+    if (weightInput instanceof HTMLInputElement) {
+      weightInput.addEventListener("input", () => {
+        const value = String(weightInput.value ?? "").trim();
+        if (value) carryWeightValue = value;
+        queueDraftSave();
+      });
+    }
+
+    button.addEventListener("click", () => {
+      if (index !== activeIndex) return;
+      rememberWeightFromCard(card);
+      markComplete(card);
+    });
+  });
+
+  function collectExercises() {
+    return exerciseCards.map((card) => ({
+      routine_exercise_id: Number(card.dataset.exerciseId || 0),
+      completed: card.dataset.completed === "true",
+      weight_kg: parseDecimal(card.querySelector('[data-field="weight_kg"]')?.value),
+      reps_done: String(card.querySelector('[data-field="reps_done"]')?.value ?? "").trim(),
+      sets_done: getCompletedSeries(card),
+      rest_seconds: parseInteger(card.querySelector('[data-field="rest_seconds"]')?.value),
+      notes: String(card.querySelector('[data-field="notes"]')?.value ?? "").trim(),
+    }));
+  }
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    try {
+      messageBox?.classList.add("hidden");
+
+      const payload = {
+        routine_day_id: Number(form.elements["routine_day_id"]?.value ?? 0),
+        client_id: Number(form.elements["client_id"]?.value ?? clientId),
+        started_at: String(form.elements["started_at"]?.value ?? sessionStartedAt),
+        finished_at: new Date().toISOString(),
+        notes: String(form.elements["session_notes"]?.value ?? "").trim(),
+        exercises: collectExercises(),
+      };
+
+      if (submitButton) {
+        submitButton.textContent = "Guardando...";
+        submitButton.setAttribute("disabled", "true");
+      }
+
+      const response = await fetch("/api/routines/workout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "No se pudo guardar la sesión");
+
+      showMessage("Sesión guardada correctamente", "success");
+      setSessionState("Sesión guardada");
+      clearDraft();
+
+      setTimeout(() => {
+        window.location.href = `/clients/${clientId}/routine?status=success&message=Sesión%20guardada`;
+      }, 800);
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : "Ocurrió un error inesperado");
+      if (submitButton) {
+        submitButton.textContent = "Guardar sesión";
+        submitButton.removeAttribute("disabled");
+      }
+    }
+  });
+
+  function updateTrainingHeader() {
+    if (trainingTitle) {
+      trainingTitle.textContent = activeIndex >= 0 ? `Paso ${activeIndex + 1} de ${exerciseCards.length}` : "Sesión en curso";
+    }
+    if (progressPill) {
+      progressPill.textContent = `${Math.max(1, activeIndex + 1)} / ${exerciseCards.length}`;
+    }
+  }
+
+  updateProgress();
+  updateNextUp();
+  updateTrainingHeader();
+  restoreDraft();
+  updateProgress();
+  updateNextUp();
+  updateTrainingHeader();
+</script>

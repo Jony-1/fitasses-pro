@@ -9,6 +9,10 @@ if (user) {
 }
 
 const error = Astro.url.searchParams.get("error");
+const status = Astro.url.searchParams.get("status");
+const successMessage = status === "success"
+    ? (Astro.url.searchParams.get("message") ?? "Operación completada correctamente.")
+    : "";
 
 let errorMessage = "";
 
@@ -53,6 +57,12 @@ if (error === "missing_fields") {
             )
         }
 
+        {successMessage && (
+            <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                {successMessage}
+            </div>
+        )}
+
         <div class="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:p-8">
             <div class="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400">
                 <p class="font-semibold text-slate-900 dark:text-slate-200">Acceso según tu rol</p>
@@ -94,6 +104,12 @@ if (error === "missing_fields") {
                         class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
                         placeholder="Ingresa tu contraseña"
                     />
+                </div>
+
+                <div class="flex items-center justify-end">
+                    <a href="/forgot-password" class="text-sm font-semibold text-emerald-500 hover:text-emerald-400 hover:underline">
+                        ¿Olvidaste tu contraseña?
+                    </a>
                 </div>
 
                 <button

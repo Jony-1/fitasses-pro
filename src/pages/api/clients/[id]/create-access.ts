@@ -98,7 +98,11 @@ export const POST: APIRoute = async (context) => {
       WHERE id = ${clientId}
     `;
 
-        return redirectToEdit(clientId, "success", "Acceso creado correctamente.");
+        return redirectToEdit(
+            clientId,
+            "success",
+            `Usuario creado correctamente para ${client.full_name}. Ya puede iniciar sesión con ese correo.`,
+        );
     } catch (error) {
         console.error("Error creando acceso para cliente:", error);
 

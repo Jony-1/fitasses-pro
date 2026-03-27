@@ -227,6 +227,43 @@ export async function ensureRoutineSchema() {
   await sql`CREATE INDEX IF NOT EXISTS routine_day_attendances_client_day_idx ON routine_day_attendances (client_id, routine_day_id)`;
 
   await sql`
+    CREATE TABLE IF NOT EXISTS routine_workout_sessions (
+      id SERIAL PRIMARY KEY,
+      routine_day_id INTEGER NOT NULL REFERENCES routine_days(id) ON DELETE CASCADE,
+      client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+      started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      finished_at TIMESTAMP,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS routine_workout_sessions_client_created_idx ON routine_workout_sessions (client_id, created_at DESC, id DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS routine_workout_sessions_day_idx ON routine_workout_sessions (routine_day_id, created_at DESC, id DESC)`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS routine_workout_entries (
+      id SERIAL PRIMARY KEY,
+      session_id INTEGER NOT NULL REFERENCES routine_workout_sessions(id) ON DELETE CASCADE,
+      routine_exercise_id INTEGER NOT NULL REFERENCES routine_exercises(id) ON DELETE CASCADE,
+      completed BOOLEAN NOT NULL DEFAULT FALSE,
+      weight_kg NUMERIC(6,2),
+      reps_done TEXT,
+      sets_done INTEGER,
+      rest_seconds INTEGER,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE (session_id, routine_exercise_id)
+    )
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS routine_workout_entries_session_idx ON routine_workout_entries (session_id, id DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS routine_workout_entries_exercise_idx ON routine_workout_entries (routine_exercise_id, session_id, id DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS routine_workout_sessions_client_day_started_idx ON routine_workout_sessions (client_id, routine_day_id, started_at DESC, id DESC)`;
+
+  await sql`
     DO $$
     BEGIN
       IF NOT EXISTS (

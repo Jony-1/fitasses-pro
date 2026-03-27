@@ -57,23 +57,32 @@ function todayDateInput() {
     return `${year}-${month}-${day}`;
 }
 
+function formatInitialNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return "";
+
+  const num = Number(value);
+  if (Number.isNaN(num)) return String(value);
+
+  return String(num);
+}
+
 
 const initialValues = {
   assessment_id: "",
   assessment_date: todayDateInput(),
-  weight_kg: String(lastAssessment?.weight_kg ?? ""),
-  body_fat_pct: String(lastAssessment?.body_fat_pct ?? ""),
-  muscle_pct: String(lastAssessment?.muscle_pct ?? ""),
+  weight_kg: formatInitialNumber(lastAssessment?.weight_kg),
+  body_fat_pct: formatInitialNumber(lastAssessment?.body_fat_pct),
+  muscle_pct: formatInitialNumber(lastAssessment?.muscle_pct),
   daily_calories: String(lastAssessment?.daily_calories ?? ""),
   metabolic_age: String(lastAssessment?.metabolic_age ?? ""),
   visceral_fat: String(lastAssessment?.visceral_fat ?? ""),
-  shoulders_cm: String(lastAssessment?.shoulders_cm ?? ""),
-  chest_cm: String(lastAssessment?.chest_cm ?? ""),
-  right_arm_cm: String(lastAssessment?.right_arm_cm ?? ""),
-  waist_cm: String(lastAssessment?.waist_cm ?? ""),
-  hips_cm: String(lastAssessment?.hips_cm ?? ""),
-  right_thigh_cm: String(lastAssessment?.right_thigh_cm ?? ""),
-  calf_cm: String(lastAssessment?.calf_cm ?? ""),
+  shoulders_cm: formatInitialNumber(lastAssessment?.shoulders_cm),
+  chest_cm: formatInitialNumber(lastAssessment?.chest_cm),
+  right_arm_cm: formatInitialNumber(lastAssessment?.right_arm_cm),
+  waist_cm: formatInitialNumber(lastAssessment?.waist_cm),
+  hips_cm: formatInitialNumber(lastAssessment?.hips_cm),
+  right_thigh_cm: formatInitialNumber(lastAssessment?.right_thigh_cm),
+  calf_cm: formatInitialNumber(lastAssessment?.calf_cm),
   notes: "",
 };
 
