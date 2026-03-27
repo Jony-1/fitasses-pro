@@ -59,6 +59,7 @@ type ExercisePose =
 const WGER_API_BASE = "https://wger.de/api/v2";
 let wgerCatalogCache: Promise<ExerciseLibraryItem[]> | null = null;
 const remoteImageValidationCache = new Map<string, boolean>();
+let ensureExerciseSchemaPromise: Promise<void> | null = null;
 function getExercisePose(item: Pick<ExerciseLibraryItem, "key" | "category" | "muscle" | "equipment">): ExercisePose {
   const key = item.key.toLowerCase();
 
@@ -405,6 +406,11 @@ export async function getExerciseReferenceImage(item: Pick<ExerciseLibraryItem, 
 }
 
 export async function ensureExerciseSchema() {
+  if (ensureExerciseSchemaPromise) {
+    return ensureExerciseSchemaPromise;
+  }
+
+  ensureExerciseSchemaPromise = (async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS exercise_library_items (
       id SERIAL PRIMARY KEY,
@@ -445,6 +451,9 @@ export async function ensureExerciseSchema() {
   `;
 
   await sql`ALTER TABLE trainer_exercise_overrides ADD COLUMN IF NOT EXISTS video_url TEXT`;
+  })();
+
+  return ensureExerciseSchemaPromise;
 }
 
 function normalizeKey(value: string) {
@@ -609,14 +618,13 @@ export async function getExerciseCatalog(ownerTrainerId: number | null = null) {
     source: "trainer",
   })));
 
-  const wgerItems = await (wgerCatalogCache ??= fetchWgerExercises());
   const staticItems = exerciseLibrary.map((item) => ({
     ...item,
     imageUrl: item.image,
     source: "static" as const,
   }));
 
-  const merged = [...staticItems, ...wgerItems, ...baseItems, ...overrideItems];
+  const merged = [...staticItems, ...baseItems, ...overrideItems];
   const unique = new Map<string, ExerciseLibraryItem>();
 
   merged.forEach((item) => {
@@ -630,6 +638,12 @@ export async function getExerciseByKey(keyOrName: string | null | undefined, own
   if (!keyOrName) return null;
 
   const normalized = keyOrName.trim().toLowerCase();
+  const baseMatch = exerciseLibrary.find((item) => item.key === normalized || item.name.toLowerCase() === normalized) ?? null;
+
+  if (baseMatch) {
+    return baseMatch;
+  }
+
   const catalog = await getExerciseCatalog(ownerTrainerId);
   const matched = catalog.find((item) => item.key === normalized || item.name.toLowerCase() === normalized) ?? null;
 

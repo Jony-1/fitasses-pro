@@ -1,0 +1,26 @@
+---
+interface Props {
+  accent?: string;
+  glyph?: string;
+  title: string;
+}
+
+const { accent = "#475569", glyph = "FX", title } = Astro.props as Props;
+---
+
+<div class="flex h-full min-h-[144px] items-center justify-center overflow-hidden rounded-2xl bg-slate-950/5 p-3 dark:bg-slate-900" style={`--accent:${accent};`}>
+  <svg viewBox="0 0 240 160" class="h-full w-full" aria-hidden="true">
+    <defs>
+      <linearGradient id="placeholder-bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.95" />
+        <stop offset="100%" stop-color="#0f172a" stop-opacity="0.98" />
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="240" height="160" rx="18" fill="url(#placeholder-bg)" />
+    <circle cx="56" cy="50" r="24" fill="#fff" fill-opacity="0.12" />
+    <circle cx="186" cy="34" r="34" fill="#fff" fill-opacity="0.08" />
+    <path d="M30 122h180" stroke="#fff" stroke-opacity="0.28" stroke-width="3" stroke-linecap="round" />
+    <text x="30" y="68" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="800">{glyph}</text>
+    <text x="30" y="100" fill="#e2e8f0" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700">{title}</text>
+  </svg>
+</div>

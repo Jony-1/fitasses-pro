@@ -125,7 +125,7 @@ const completedDays = routine.days.filter((day) => day.completed_at).length;
 
                 <div class="mt-5 space-y-3">
                   {day.exercises.map((exercise) => (
-                    <ExerciseCard exercise={exercise} trainerId={routine.trainer_id} detailsHref={`/exercises/${exercise.exercise_key ?? exercise.name}`} />
+                    <ExerciseCard exercise={exercise} detailsHref={`/exercises/${exercise.exercise_key ?? exercise.name}`} />
                   ))}
                 </div>
 

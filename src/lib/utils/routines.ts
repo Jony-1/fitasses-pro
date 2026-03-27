@@ -52,6 +52,8 @@ export type RoutineDay = {
 
 export type RoutineAttendanceTimeSlot = "morning" | "midday" | "night" | "other";
 
+let ensureRoutineSchemaPromise: Promise<void> | null = null;
+
 export type RoutineDetails = {
   id: number;
   trainer_id: number;
@@ -99,6 +101,11 @@ type ExampleRoutineTemplate = {
 };
 
 export async function ensureRoutineSchema() {
+  if (ensureRoutineSchemaPromise) {
+    return ensureRoutineSchemaPromise;
+  }
+
+  ensureRoutineSchemaPromise = (async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS routines (
       id SERIAL PRIMARY KEY,
@@ -117,6 +124,8 @@ export async function ensureRoutineSchema() {
     )
   `;
 
+  await sql`CREATE INDEX IF NOT EXISTS routines_client_active_idx ON routines (client_id, active, is_template, created_at DESC, id DESC)`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS routine_days (
       id SERIAL PRIMARY KEY,
@@ -129,6 +138,8 @@ export async function ensureRoutineSchema() {
       UNIQUE (routine_id, day_number)
     )
   `;
+
+  await sql`CREATE INDEX IF NOT EXISTS routine_days_routine_id_idx ON routine_days (routine_id)`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS routine_exercises (
@@ -146,6 +157,8 @@ export async function ensureRoutineSchema() {
       UNIQUE (routine_day_id, position)
     )
   `;
+
+  await sql`CREATE INDEX IF NOT EXISTS routine_exercises_day_id_position_idx ON routine_exercises (routine_day_id, position)`;
 
   await sql`
     DO $$
@@ -181,6 +194,8 @@ export async function ensureRoutineSchema() {
     )
   `;
 
+  await sql`CREATE INDEX IF NOT EXISTS routine_day_completions_client_day_idx ON routine_day_completions (client_id, routine_day_id)`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS routine_day_attendances (
       id SERIAL PRIMARY KEY,
@@ -193,6 +208,8 @@ export async function ensureRoutineSchema() {
       UNIQUE (routine_day_id, client_id)
     )
   `;
+
+  await sql`CREATE INDEX IF NOT EXISTS routine_day_attendances_client_day_idx ON routine_day_attendances (client_id, routine_day_id)`;
 
   await sql`
     DO $$
@@ -239,7 +256,12 @@ export async function ensureRoutineSchema() {
     )
   `;
 
+  await sql`CREATE INDEX IF NOT EXISTS routine_notifications_trainer_created_idx ON routine_notifications (trainer_id, created_at DESC)`;
+
   await ensureExampleRoutineTemplates();
+  })();
+
+  return ensureRoutineSchemaPromise;
 }
 
 async function ensureExampleRoutineTemplates() {

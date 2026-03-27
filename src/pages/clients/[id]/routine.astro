@@ -6,7 +6,6 @@ import ExerciseCard from "../../../components/exercises/ExerciseCard.astro";
 import { getExerciseLibraryItem } from "../../../lib/utils/exercise-library";
 import { ensureRoutineSchema, getActiveRoutineForClient } from "../../../lib/utils/routines";
 import { getClientByIdForUser } from "../../../lib/utils/client-profile";
-import { setupClientDelete } from "../../../lib/utils/client-delete";
 
 type ClientSummary = {
     id: number;
@@ -66,14 +65,16 @@ if (!id || Number.isNaN(Number(id))) {
 }
 
 const clientId = Number(id);
-const client = (await getClientByIdForUser(clientId, user)) as ClientSummary | null;
+await ensureRoutineSchema();
+const [client, activeRoutine] = await Promise.all([
+    getClientByIdForUser(clientId, user),
+    getActiveRoutineForClient(clientId),
+]);
 
 if (!client) {
     return new Response("Cliente no encontrado", { status: 404 });
 }
 
-await ensureRoutineSchema();
-const activeRoutine: any = await getActiveRoutineForClient(clientId);
 const todayDay: any = activeRoutine ? getTodayRoutine(activeRoutine).day : null;
 const todayExercises: any[] = todayDay?.exercises ?? [];
 const routineDays: any[] = activeRoutine?.days ?? [];
@@ -216,7 +217,7 @@ function getExerciseDetailsHref(exercise: any) {
                         {todayExercises.length > 0 && canViewExercises && (
                             <div class="mt-4 grid gap-2">
                                 {todayExercises.map((exercise: any) => (
-                                    <ExerciseCard exercise={exercise} compact trainerId={activeRoutine?.trainer_id ?? null} detailsHref={getExerciseDetailsHref(exercise)} />
+                                    <ExerciseCard exercise={exercise} compact detailsHref={getExerciseDetailsHref(exercise)} />
                                 ))}
                             </div>
                         )}
@@ -306,7 +307,7 @@ function getExerciseDetailsHref(exercise: any) {
 
                                 <div class="mt-3 space-y-2">
                                     {day.exercises.map((exercise: any) => (
-                                        <ExerciseCard exercise={exercise} compact trainerId={activeRoutine?.trainer_id ?? null} detailsHref={getExerciseDetailsHref(exercise)} />
+                                        <ExerciseCard exercise={exercise} compact detailsHref={getExerciseDetailsHref(exercise)} />
                                     ))}
                                 </div>
                             </div>
@@ -331,7 +332,45 @@ function getExerciseDetailsHref(exercise: any) {
     </div>
 </AppLayout>
 
-<script type="module">
-  import { setupClientDelete } from "../../../lib/utils/client-delete";
-  setupClientDelete();
-</script>
+{canManageClient && (
+    <script>
+        const deleteBtn = document.getElementById("delete-client") as HTMLButtonElement | null;
+        const modal = document.getElementById("delete-modal") as HTMLDivElement | null;
+        const cancelBtn = document.getElementById("cancel-delete") as HTMLButtonElement | null;
+        const confirmBtn = document.getElementById("confirm-delete") as HTMLButtonElement | null;
+
+        if (deleteBtn && modal && cancelBtn && confirmBtn) {
+            const closeModal = () => {
+                modal.classList.add("hidden");
+                modal.classList.remove("flex");
+            };
+
+            deleteBtn.addEventListener("click", () => {
+                modal.classList.remove("hidden");
+                modal.classList.add("flex");
+            });
+
+            cancelBtn.addEventListener("click", closeModal);
+            modal.addEventListener("click", (event) => {
+                if (event.target === modal) closeModal();
+            });
+
+            confirmBtn.addEventListener("click", async () => {
+                const button = confirmBtn;
+                const clientId = confirmBtn.dataset.clientId;
+                if (!clientId) return;
+
+                try {
+                    button.textContent = "Eliminando...";
+                    button.disabled = true;
+
+                    await fetch(`/api/clients/${clientId}`, { method: "DELETE", headers: { Accept: "application/json" } });
+                    window.location.href = "/clients";
+                } catch {
+                    button.textContent = "Eliminar cliente";
+                    button.disabled = false;
+                }
+            });
+        }
+    </script>
+)}

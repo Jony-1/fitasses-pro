@@ -1,6 +1,6 @@
 ---
-import ExerciseMotionAvatar from "./ExerciseMotionAvatar.astro";
-import { generateExerciseKey, getExerciseByKey, getExerciseReferenceImage, type ExerciseLibraryItem } from "../../lib/utils/exercise-library";
+import { generateExerciseKey, getExerciseLibraryItem, type ExerciseLibraryItem } from "../../lib/utils/exercise-library";
+import ExercisePlaceholder from "./ExercisePlaceholder.astro";
 
 type ExerciseLike = {
   name: string;
@@ -23,13 +23,12 @@ interface Props {
   detailsHref?: string;
   compact?: boolean;
   showDetails?: boolean;
-  trainerId?: number | null;
 }
 
-const { exercise, detailsHref, compact = false, showDetails = true, trainerId = null } = Astro.props as Props;
-const libraryItem = await getExerciseByKey(exercise.exercise_key ?? exercise.key ?? exercise.name, trainerId);
-const referenceImage = libraryItem?.imageUrl ?? exercise.imageUrl ?? (libraryItem ? await getExerciseReferenceImage(libraryItem) : null) ?? exercise.image ?? libraryItem?.image ?? null;
-const detailsUrl = detailsHref && trainerId ? `${detailsHref}${detailsHref.includes("?") ? "&" : "?"}trainer_id=${trainerId}` : detailsHref;
+const { exercise, detailsHref, compact = false, showDetails = true } = Astro.props as Props;
+const libraryItem = getExerciseLibraryItem(exercise.exercise_key ?? exercise.key ?? exercise.name);
+const referenceImage = exercise.imageUrl ?? exercise.image ?? libraryItem?.imageUrl ?? null;
+const detailsUrl = detailsHref;
 
 const avatarItem =
   libraryItem ??
@@ -53,11 +52,11 @@ const labelClass = compact ? "text-sm" : "text-base";
 ]}> 
   <div class={compact ? "grid gap-0 md:grid-cols-[112px_1fr]" : "grid gap-0 md:grid-cols-[180px_1fr]"}>
     {referenceImage ? (
-      <div class={compact ? "h-28 overflow-hidden bg-slate-950/5 p-2 dark:bg-slate-900" : "h-44 overflow-hidden bg-slate-950/5 p-3 dark:bg-slate-900"}>
-        <img src={referenceImage} alt={exercise.name} class="h-full w-full rounded-2xl object-contain" loading="lazy" />
+    <div class={compact ? "h-28 overflow-hidden bg-slate-950/5 p-2 dark:bg-slate-900" : "h-44 overflow-hidden bg-slate-950/5 p-3 dark:bg-slate-900"}>
+        <img src={referenceImage} alt={exercise.name} class="h-full w-full rounded-2xl object-contain" loading="lazy" decoding="async" />
       </div>
     ) : (
-      <ExerciseMotionAvatar exercise={avatarItem} />
+      <ExercisePlaceholder accent={avatarItem.accent} glyph={avatarItem.glyph} title={exercise.name} />
     )}
 
     <div class={compact ? "p-3" : "p-4 bg-white dark:bg-slate-900/70"}>

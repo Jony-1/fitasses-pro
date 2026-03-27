@@ -107,7 +107,7 @@ const equipments = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exerci
       {visibleCatalog.map((exercise) => (
         <article class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
-          <ExerciseCard exercise={exercise} trainerId={ownerTrainerId} detailsHref={`/exercises/${exercise.key}`} showDetails={true} />
+          <ExerciseCard exercise={exercise} detailsHref={`/exercises/${exercise.key}`} showDetails={true} />
         </article>
       ))}
     </div>
