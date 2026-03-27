@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
-import { ensureExerciseSchema } from "../../../lib/utils/exercise-library";
+import { ensureExerciseSchema, invalidateExerciseCatalogCache } from "../../../lib/utils/exercise-library";
 
 export const POST: APIRoute = async ({ request, redirect, locals }) => {
   const user = locals.user;
@@ -43,6 +43,8 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
       `;
     }
   }
+
+  invalidateExerciseCatalogCache();
 
   return redirect("/exercises?status=deleted");
 };

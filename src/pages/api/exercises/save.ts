@@ -5,6 +5,7 @@ import {
   ensureExerciseSchema,
   exerciseLibrary,
   generateExerciseKey,
+  invalidateExerciseCatalogCache,
 } from "../../../lib/utils/exercise-library";
 
 function parseFormData(formData: FormData) {
@@ -164,6 +165,8 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
         updated_at = NOW()
     `;
   }
+
+  invalidateExerciseCatalogCache();
 
   return redirect("/exercises?status=success");
 };

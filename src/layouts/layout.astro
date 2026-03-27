@@ -42,7 +42,6 @@ const clientRecord = isClient && user ? await sql`
   LIMIT 1
 ` : [];
 const clientId = isClient ? (clientRecord[0]?.id as number | undefined) ?? null : null;
-const clientProfileHref = clientId ? `/clients/${clientId}` : "/dashboard";
 
 const panelTitle = isAdmin
   ? "Admin Panel"
@@ -50,16 +49,27 @@ const panelTitle = isAdmin
     ? "Gym Manager Panel"
   : isTrainer
     ? "Trainer Panel"
-    : isClient
+  : isClient
       ? "Client Panel"
       : "FitAssess Pro";
 
+function normalizePath(path: string) {
+  if (path === "/") return "/";
+
+  return path.replace(/\/+$/, "");
+}
+
+function getHrefPath(href: string) {
+  return normalizePath(href.split(/[?#]/)[0] ?? href);
+}
+
 const navItems = [
   { label: "Dashboard", href: dashboardHref, icon: "📊", visible: !!user && !isClient },
-  { label: "Mi rutina", href: clientId ? `/clients/${clientId}#rutina-actual` : "/dashboard", icon: "🗓️", visible: isClient },
+  { label: "Mi cuenta", href: "/client-home", icon: "🏠", visible: isClient },
+  { label: "Mi rutina", href: clientId ? `/clients/${clientId}/routine` : "/client-home", icon: "🗓️", visible: isClient && !!clientId },
   { label: "Ejercicios", href: "/client-exercises", icon: "🎴", visible: isClient },
-  { label: "Mi progreso", href: clientId ? `/clients/${clientId}#progreso` : "/dashboard", icon: "📈", visible: isClient },
-  { label: "Valoraciones", href: clientId ? `/clients/${clientId}/assessments` : "/dashboard", icon: "🧾", visible: isClient },
+  { label: "Mi progreso", href: clientId ? `/clients/${clientId}/progress` : "/client-home", icon: "📈", visible: isClient && !!clientId },
+  { label: "Valoraciones", href: clientId ? `/clients/${clientId}/assessments` : "/client-home", icon: "🧾", visible: isClient && !!clientId },
   { label: "Clients", href: "/clients", icon: "👥", visible: canManageClients },
   { label: "Ejercicios", href: "/exercises", icon: "🎴", visible: canManageRoutines },
   {
@@ -85,8 +95,7 @@ const navItems = [
 ].filter((item) => item.visible);
 
 function isActive(href: string) {
-  if (href === "/") return currentPath === "/";
-  return currentPath === href || currentPath.startsWith(`${href}/`);
+  return normalizePath(currentPath) === getHrefPath(href);
 }
 ---
 

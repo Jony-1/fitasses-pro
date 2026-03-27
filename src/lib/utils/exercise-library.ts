@@ -60,6 +60,7 @@ const WGER_API_BASE = "https://wger.de/api/v2";
 let wgerCatalogCache: Promise<ExerciseLibraryItem[]> | null = null;
 const remoteImageValidationCache = new Map<string, boolean>();
 let ensureExerciseSchemaPromise: Promise<void> | null = null;
+const exerciseCatalogCache = new Map<number | null, Promise<ExerciseLibraryItem[]>>();
 function getExercisePose(item: Pick<ExerciseLibraryItem, "key" | "category" | "muscle" | "equipment">): ExercisePose {
   const key = item.key.toLowerCase();
 
@@ -544,6 +545,12 @@ export function getExercisePoseForExercise(item: Pick<ExerciseLibraryItem, "key"
 }
 
 export async function getExerciseCatalog(ownerTrainerId: number | null = null) {
+  const cachedCatalog = exerciseCatalogCache.get(ownerTrainerId);
+  if (cachedCatalog) {
+    return cachedCatalog;
+  }
+
+  const catalogPromise = (async () => {
   await ensureExerciseSchema();
 
   const rows = await sql`
@@ -632,6 +639,14 @@ export async function getExerciseCatalog(ownerTrainerId: number | null = null) {
   });
 
   return [...unique.values()];
+  })();
+
+  exerciseCatalogCache.set(ownerTrainerId, catalogPromise);
+  return catalogPromise;
+}
+
+export function invalidateExerciseCatalogCache() {
+  exerciseCatalogCache.clear();
 }
 
 export async function getExerciseByKey(keyOrName: string | null | undefined, ownerTrainerId: number | null = null) {

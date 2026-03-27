@@ -2,9 +2,8 @@ import { sql } from "../db/client";
 import { calculateChange } from "./client";
 
 export async function getClientProgressSummary(clientId: number) {
-
-    
-    const latestAssessmentRows = await sql`
+    const [latestAssessmentRows, firstAssessmentRows, totalAssessmentsRows] = await Promise.all([
+    sql`
     SELECT
       assessment_date,
       weight_kg,
@@ -15,11 +14,8 @@ export async function getClientProgressSummary(clientId: number) {
     WHERE client_id = ${clientId}
     ORDER BY assessment_date DESC, id DESC
     LIMIT 1
-  `;
-
-    const latestAssessment = latestAssessmentRows[0] ?? null;
-
-    const firstAssessmentRows = await sql`
+  `,
+    sql`
     SELECT
       assessment_date,
       weight_kg,
@@ -30,15 +26,16 @@ export async function getClientProgressSummary(clientId: number) {
     WHERE client_id = ${clientId}
     ORDER BY assessment_date ASC, id ASC
     LIMIT 1
-  `;
-
-    const firstAssessment = firstAssessmentRows[0] ?? null;
-
-    const totalAssessmentsRows = await sql`
+  `,
+    sql`
     SELECT COUNT(*)::int AS total
     FROM assessments
     WHERE client_id = ${clientId}
-  `;
+  `,
+    ]);
+
+    const latestAssessment = latestAssessmentRows[0] ?? null;
+    const firstAssessment = firstAssessmentRows[0] ?? null;
 
     const totalAssessments = totalAssessmentsRows[0]?.total ?? 0;
 

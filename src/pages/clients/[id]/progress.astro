@@ -41,7 +41,13 @@ if (!id || Number.isNaN(Number(id))) {
 }
 
 const clientId = Number(id);
-const client = (await getClientByIdForUser(clientId, user)) as ClientDetails | null;
+const [clientRow, progressSummary, progressHistory] = await Promise.all([
+    getClientByIdForUser(clientId, user),
+    getClientProgressSummary(clientId),
+    getProgressHistory(clientId),
+]);
+
+const client = clientRow as ClientDetails | null;
 
 if (!client) {
     return new Response("Cliente no encontrado", { status: 404 });
@@ -53,10 +59,9 @@ const {
     weightChange,
     bodyFatChange,
     muscleChange,
-} = await getClientProgressSummary(clientId);
+} = progressSummary;
 
 const summaryLatestAssessment = latestAssessment as AssessmentSummary | null;
-const progressHistory = await getProgressHistory(clientId);
 const canManageAssessments = user?.role === "trainer" || user?.role === "admin";
 ---
 
@@ -104,7 +109,7 @@ const canManageAssessments = user?.role === "trainer" || user?.role === "admin";
         </ClientPageHeader>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <ClientSummaryCard client={client} />
+            <ClientSummaryCard client={client as any} />
 
             <div class="lg:col-span-2 space-y-6">
                 <ClientProgressSummary
@@ -136,10 +141,10 @@ const canManageAssessments = user?.role === "trainer" || user?.role === "admin";
 </AppLayout>
 
 <script>
-    const deleteBtn = document.getElementById("delete-client");
-    const modal = document.getElementById("delete-modal");
-    const cancelBtn = document.getElementById("cancel-delete");
-    const confirmBtn = document.getElementById("confirm-delete");
+    const deleteBtn = document.getElementById("delete-client") as HTMLButtonElement | null;
+    const modal = document.getElementById("delete-modal") as HTMLDivElement | null;
+    const cancelBtn = document.getElementById("cancel-delete") as HTMLButtonElement | null;
+    const confirmBtn = document.getElementById("confirm-delete") as HTMLButtonElement | null;
 
     if (deleteBtn && modal && cancelBtn && confirmBtn) {
         const closeModal = () => {
@@ -158,18 +163,19 @@ const canManageAssessments = user?.role === "trainer" || user?.role === "admin";
         });
 
         confirmBtn.addEventListener("click", async () => {
+            const button = confirmBtn as HTMLButtonElement;
             const clientId = confirmBtn.dataset.clientId;
             if (!clientId) return;
 
             try {
-                confirmBtn.textContent = "Eliminando...";
-                confirmBtn.disabled = true;
+                button.textContent = "Eliminando...";
+                button.disabled = true;
 
                 await fetch(`/api/clients/${clientId}`, { method: "DELETE", headers: { Accept: "application/json" } });
                 window.location.href = "/clients";
             } catch {
-                confirmBtn.textContent = "Eliminar cliente";
-                confirmBtn.disabled = false;
+                button.textContent = "Eliminar cliente";
+                button.disabled = false;
             }
         });
     }

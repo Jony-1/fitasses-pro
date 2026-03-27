@@ -669,27 +669,25 @@ async function getGymName(user: DashboardUser) {
 }
 
 export async function getDashboardData(user: DashboardUser): Promise<DashboardData> {
-    const [clientCounts, assessmentCounts, recentAssessments, recentClients, clientsWithoutRecentAssessment] =
+    const adminStatsPromise =
+        user.role === "admin" || user.role === "gym_manager"
+            ? getAdminStats(user)
+            : Promise.resolve({});
+
+    const [clientCounts, assessmentCounts, recentAssessments, recentClients, clientsWithoutRecentAssessment, trends, riskClients, attendanceSummary, recentNotifications, gymName, adminStats] =
         await Promise.all([
             getClientCounts(user),
             getAssessmentCounts(user),
             getRecentAssessments(user),
             getRecentClients(user),
             getClientsWithoutRecentAssessment(user),
+            getTrendData(user),
+            getRiskClients(user),
+            getAttendanceSummary(user),
+            getRecentNotifications(user),
+            getGymName(user),
+            adminStatsPromise,
         ]);
-
-    const trends = await getTrendData(user);
-    const riskClients = await getRiskClients(user);
-    const [attendanceSummary, recentNotifications] = await Promise.all([
-        getAttendanceSummary(user),
-        getRecentNotifications(user),
-    ]);
-    const gymName = await getGymName(user);
-
-    const adminStats =
-        user.role === "admin" || user.role === "gym_manager"
-            ? await getAdminStats(user)
-            : {};
 
     const stats: DashboardStatValue = {
         totalClients: clientCounts.total_clients ?? 0,

@@ -734,8 +734,6 @@ export async function getActiveRoutineForClient(clientId: number) {
       r.id,
       r.trainer_id,
       r.client_id,
-      c.full_name AS client_name,
-      cu.email AS client_email,
       r.name,
       r.objective,
       r.level,
@@ -746,8 +744,6 @@ export async function getActiveRoutineForClient(clientId: number) {
       r.active,
       r.created_at
     FROM routines r
-    LEFT JOIN clients c ON c.id = r.client_id
-    LEFT JOIN users cu ON cu.id = c.user_id
     WHERE r.id = ${routineId}
     LIMIT 1
   `;

@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS assessments (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS assessments_client_date_idx ON assessments (client_id, assessment_date DESC, id DESC);
 CREATE TABLE IF NOT EXISTS routines (
     id SERIAL PRIMARY KEY,
     trainer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
