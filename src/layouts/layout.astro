@@ -57,6 +57,7 @@ const panelTitle = isAdmin
 const navItems = [
   { label: "Dashboard", href: dashboardHref, icon: "📊", visible: !!user && !isClient },
   { label: "Mi rutina", href: clientId ? `/clients/${clientId}#rutina-actual` : "/dashboard", icon: "🗓️", visible: isClient },
+  { label: "Ejercicios", href: "/client-exercises", icon: "🎴", visible: isClient },
   { label: "Mi progreso", href: clientId ? `/clients/${clientId}#progreso` : "/dashboard", icon: "📈", visible: isClient },
   { label: "Valoraciones", href: clientId ? `/clients/${clientId}/assessments` : "/dashboard", icon: "🧾", visible: isClient },
   { label: "Clients", href: "/clients", icon: "👥", visible: canManageClients },

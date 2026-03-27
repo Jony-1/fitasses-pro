@@ -72,30 +72,30 @@ function slugify(value: string) {
 }
 
 function makeArtwork(name: string, accent: string, glyph: string, pose: ExercisePose = "default", seed = name) {
-  const poseKeywords: Record<ExercisePose, string> = {
-    default: "fitness gym workout",
-    squat: "gym squat barbell",
-    press: "gym shoulder press dumbbells",
-    bench: "gym bench press barbell",
-    pull: "gym pull exercise back",
-    row: "gym barbell row back",
-    hang: "gym pull up back",
-    hinge: "gym deadlift barbell",
-    bridge: "gym hip thrust glutes",
-    lunge: "gym lunge split squat",
-    core: "gym core workout abs",
-    plank: "gym plank abs",
-    twist: "gym oblique twist abs",
-    cardio: "gym cardio workout",
-    jump: "gym plyometric jump",
-    mobility: "gym mobility stretch",
-    raise: "gym lateral raise shoulders",
-    swing: "gym kettlebell swing",
+  const poseLabels: Record<ExercisePose, string> = {
+    default: "Rutina",
+    squat: "Sentadilla",
+    press: "Press",
+    bench: "Banca",
+    pull: "Pull",
+    row: "Remo",
+    hang: "Barra",
+    hinge: "Hinge",
+    bridge: "Puente",
+    lunge: "Zancada",
+    core: "Core",
+    plank: "Plancha",
+    twist: "Rotacion",
+    cardio: "Cardio",
+    jump: "Salto",
+    mobility: "Movilidad",
+    raise: "Elevacion",
+    swing: "Swing",
   };
 
-  const search = encodeURIComponent(`${poseKeywords[pose]} ${name}`.trim());
-  const lock = encodeURIComponent(slugify(seed) || slugify(name) || "exercise");
-  return `https://source.unsplash.com/featured/1200x800/?${search}&sig=${lock}`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" fill="none"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="100%" stop-color="#0f172a"/></linearGradient><linearGradient id="panel" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.16"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/></linearGradient></defs><rect width="1200" height="800" rx="56" fill="url(#bg)"/><circle cx="1040" cy="160" r="180" fill="#ffffff" fill-opacity="0.10"/><circle cx="170" cy="680" r="220" fill="#000000" fill-opacity="0.10"/><rect x="96" y="96" width="1008" height="608" rx="44" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.12"/><g transform="translate(160 200)"><circle cx="120" cy="120" r="88" fill="#ffffff" fill-opacity="0.18"/><path d="M60 132c28-66 100-98 168-84 18 4 36 12 52 22l-32 52c-20-10-42-14-64-12-40 4-76 28-94 66l-30-44Z" fill="#ffffff" fill-opacity="0.78"/><path d="M210 114h92l-20 52h-72z" fill="#ffffff" fill-opacity="0.28"/><text x="0" y="340" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="90" font-weight="800">${glyph}</text><text x="0" y="408" fill="#e2e8f0" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="600">${poseLabels[pose]} · ${name}</text></g></svg>`;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
 const predefinedExercises: Omit<ExerciseLibraryItem, "image" | "source" | "id" | "imageUrl" | "isCustom" | "pose">[] = [
