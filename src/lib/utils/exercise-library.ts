@@ -6,6 +6,7 @@ export type ExerciseLibraryItem = {
   category: string;
   muscle: string;
   equipment: string;
+  description?: string | null;
   image: string;
   videoUrl?: string | null;
   accent: string;
@@ -15,7 +16,7 @@ export type ExerciseLibraryItem = {
   imageUrl?: string | null;
   trainerId?: number | null;
   isCustom?: boolean;
-  source?: "static" | "base" | "trainer";
+  source?: "static" | "base" | "trainer" | "wger" | "custom";
 };
 
 type WgerExerciseInfoItem = {
@@ -24,9 +25,16 @@ type WgerExerciseInfoItem = {
   muscles: Array<{ id: number; name: string; name_en: string }>;
   muscles_secondary: Array<{ id: number; name: string; name_en: string }>;
   equipment: Array<{ id: number; name: string }>;
-  translations: Array<{ id: number; name: string; language: number }>;
+  translations: Array<{ id: number; name: string; language: number; description?: string | null }>;
   images: Array<{ image: string; is_main?: boolean }>;
   videos: Array<{ id: number; video: string }>;
+};
+
+type WgerTranslation = {
+  id: number;
+  name: string;
+  language: number;
+  description?: string | null;
 };
 
 export type ExerciseGuide = {
@@ -61,6 +69,8 @@ let wgerCatalogCache: Promise<ExerciseLibraryItem[]> | null = null;
 const remoteImageValidationCache = new Map<string, boolean>();
 let ensureExerciseSchemaPromise: Promise<void> | null = null;
 const exerciseCatalogCache = new Map<number | null, Promise<ExerciseLibraryItem[]>>();
+const exerciseCatalogCacheVersion = new Map<number | null, string>();
+let exerciseCatalogSeedPromise: Promise<void> | null = null;
 function getExercisePose(item: Pick<ExerciseLibraryItem, "key" | "category" | "muscle" | "equipment">): ExercisePose {
   const key = item.key.toLowerCase();
 
@@ -86,6 +96,100 @@ function slugify(value: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function buildGlyph(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0] ?? "")
+      .join("")
+      .toUpperCase()
+      .slice(0, 3) || "FX"
+  );
+}
+
+function buildSpanishDescription(name: string, category: string, muscle: string, equipment: string) {
+  const safeName = name.trim();
+  const safeMuscle = muscle.trim().toLowerCase();
+  const safeEquipment = equipment.trim().toLowerCase();
+
+  switch (category) {
+    case "Cardio":
+      return [
+        `${safeName} es un ejercicio cardiovascular para mejorar la resistencia, elevar el pulso y aumentar el gasto calórico.`,
+        `Posición inicial: colócate estable, activa el abdomen y prepara el cuerpo antes de empezar.`,
+        `Ejecución: realiza el movimiento con un ritmo constante, sin perder la técnica ni rebotar en cada repetición.`,
+        `Consejo: respira de forma controlada y mantén una intensidad que puedas sostener durante toda la serie.`,
+      ].join("\n\n");
+    case "Movilidad":
+      return [
+        `${safeName} es un ejercicio de movilidad pensado para preparar articulaciones, ganar rango de movimiento y dejar el cuerpo listo para el trabajo principal.`,
+        `Posición inicial: entra en la postura con calma, sin tensión innecesaria y con respiración fluida.`,
+        `Ejecución: mueve la articulación de forma suave, controlada y progresiva, evitando rebotes o tirones.`,
+        `Consejo: busca amplitud sin dolor y prioriza la calidad del gesto sobre la velocidad.`,
+      ].join("\n\n");
+    case "Push":
+      return [
+        `${safeName} es un movimiento de empuje que trabaja principalmente ${safeMuscle}.`,
+        `Posición inicial: coloca ${safeEquipment === "sin equipo" ? "el cuerpo" : `el ${safeEquipment}`} de forma estable y mantén el tronco firme.`,
+        `Ejecución: empuja con control, sin arquear la espalda y sin perder la alineación de hombros, codos y muñecas.`,
+        `Consejo: baja con calma, sube con intención y evita acelerar la repetición para no perder tensión muscular.`,
+      ].join("\n\n");
+    case "Pull":
+      return [
+        `${safeName} es un movimiento de tracción que activa sobre todo ${safeMuscle}.`,
+        `Posición inicial: ajusta el agarre, abre el pecho y deja los hombros en una posición estable antes de iniciar.`,
+        `Ejecución: tira con control y acerca la carga al cuerpo sin balancearte ni usar impulso de la espalda baja.`,
+        `Consejo: pausa un instante al final del recorrido para sentir la contracción y volver sin perder tensión.`,
+      ].join("\n\n");
+    case "Pierna":
+      return [
+        `${safeName} es un ejercicio de tren inferior enfocado en ${safeMuscle}.`,
+        `Posición inicial: coloca los pies con una base estable y activa el abdomen antes de moverte.`,
+        `Ejecución: controla la bajada y la subida, cuidando que rodillas y cadera mantengan una buena alineación.`,
+        `Consejo: empuja el suelo con firmeza y evita perder estabilidad en la parte final del movimiento.`,
+      ].join("\n\n");
+    case "Posterior":
+      return [
+        `${safeName} trabaja la cadena posterior, con foco en ${safeMuscle}.`,
+        `Posición inicial: lleva la cadera hacia atrás, mantén la espalda neutra y prepara el abdomen para sostener la postura.`,
+        `Ejecución: realiza la bisagra de cadera o el gesto principal con control, sin redondear la espalda ni perder tensión.`,
+        `Consejo: siente el trabajo en glúteos e isquios y evita compensar con la zona lumbar.`,
+      ].join("\n\n");
+    case "Core":
+      return [
+        `${safeName} fortalece la zona media y ayuda a estabilizar el tronco.`,
+        `Posición inicial: coloca la pelvis y la caja torácica en una postura neutra antes de empezar.`,
+        `Ejecución: mantén el abdomen activo durante todo el movimiento y evita que la espalda se arquee o se hunda.`,
+        `Consejo: mueve solo lo necesario y prioriza el control sobre la rapidez.`,
+      ].join("\n\n");
+    case "Accesorio":
+      return [
+        `${safeName} complementa la rutina y apoya el trabajo de ${safeMuscle}.`,
+        `Posición inicial: busca una postura cómoda y estable que te permita concentrarte en el músculo objetivo.`,
+        `Ejecución: haz el gesto con amplitud controlada y sin usar impulso innecesario.`,
+        `Consejo: usa este ejercicio para sumar volumen de trabajo sin sacrificar la técnica.`,
+      ].join("\n\n");
+    default:
+      return [
+        `${safeName} es un ejercicio orientado a ${safeMuscle}.`,
+        `Posición inicial: adopta una postura estable y prepara el cuerpo antes de iniciar la repetición.`,
+        `Ejecución: controla el recorrido completo y cuida la técnica en cada fase del movimiento.`,
+        `Consejo: si el ejercicio usa ${safeEquipment}, úsalo como apoyo para mantener calidad y seguridad.`,
+      ].join("\n\n");
+  }
+}
+
+function decodeHtmlEntities(value: string) {
+  return value
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 async function fetchAllPages<T>(path: string, params: Record<string, string> = {}) {
@@ -153,10 +257,10 @@ function classifyWgerExercise(name: string, categoryName: string, muscleName: st
 }
 
 async function fetchWgerExercises(): Promise<ExerciseLibraryItem[]> {
-  const exercises = await fetchAllPages<WgerExerciseInfoItem>("/exerciseinfo/", { language: "2", limit: "100" });
+  const exercises = await fetchAllPages<WgerExerciseInfoItem>("/exerciseinfo/", { language: "4", limit: "100" });
 
   return exercises.map((exercise) => {
-    const translation = exercise.translations.find((item) => item.language === 2) ?? exercise.translations[0];
+    const translation = exercise.translations.find((item) => item.language === 4) as WgerTranslation | undefined ?? exercise.translations[0] as WgerTranslation | undefined;
     const displayName = translation?.name ?? `Ejercicio ${exercise.id}`;
     const categoryName = exercise.category.name ?? "General";
     const muscleName = exercise.muscles[0]?.name_en || exercise.muscles[0]?.name || exercise.muscles_secondary[0]?.name_en || exercise.muscles_secondary[0]?.name || "General";
@@ -164,23 +268,135 @@ async function fetchWgerExercises(): Promise<ExerciseLibraryItem[]> {
     const classification = classifyWgerExercise(displayName, categoryName, muscleName, equipmentName);
     const hasVideo = exercise.videos[0]?.video ?? null;
     const referenceImage = exercise.images.find((item) => item.is_main)?.image ?? exercise.images[0]?.image ?? null;
-    const imageUrl = normalizeImageUrl(referenceImage);
+    const imageUrl = normalizeImageUrl(referenceImage) ?? null;
 
     return {
       key: `wger-${exercise.id}`,
       name: displayName,
+      description: buildSpanishDescription(displayName, classification.category, classification.muscle, classification.equipment),
       category: classification.category,
       muscle: classification.muscle,
       equipment: classification.equipment,
-      image: imageUrl ?? makeArtwork(displayName, "#334155", "WG", classification.pose, `wger-${exercise.id}`),
+      image: imageUrl ?? "",
       videoUrl: hasVideo,
       imageUrl,
       accent: "#334155",
-      glyph: "WG",
+      glyph: buildGlyph(displayName),
       pose: classification.pose,
       source: "static",
     };
   });
+}
+
+async function getWgerSyncCount() {
+  const rows = await sql`
+    SELECT COUNT(*)::int AS count
+    FROM exercise_library_items
+    WHERE source = 'wger'
+  ` as Array<{ count: number }>;
+
+  return rows[0]?.count ?? 0;
+}
+
+async function getWgerSyncState() {
+  const rows = await sql`
+    SELECT last_synced_at, remote_count
+    FROM exercise_library_sync_state
+    WHERE id = 1
+    LIMIT 1
+  ` as Array<{ last_synced_at: string | Date | null; remote_count: number | null }>;
+
+  return rows[0] ?? null;
+}
+
+export async function syncExerciseCatalogFromWger(force = false): Promise<void> {
+  await ensureExerciseSchema();
+
+  if (!force && exerciseCatalogSeedPromise) {
+    return exerciseCatalogSeedPromise;
+  }
+
+  const syncPromise = (async () => {
+    if (!force) {
+      const [state, currentCount] = await Promise.all([getWgerSyncState(), getWgerSyncCount()]);
+
+      if (state?.last_synced_at && currentCount > 0) {
+        return;
+      }
+    }
+
+    const exercises = await fetchWgerExercises();
+
+    for (const exercise of exercises) {
+      await sql`
+        INSERT INTO exercise_library_items (
+          key,
+          name,
+          description,
+          category,
+          muscle,
+          equipment,
+          image_url,
+          video_url,
+          accent,
+          glyph,
+          is_custom,
+          source
+        )
+        VALUES (
+          ${exercise.key},
+          ${exercise.name},
+          ${exercise.description ?? null},
+          ${exercise.category},
+          ${exercise.muscle},
+          ${exercise.equipment},
+          ${exercise.imageUrl ?? null},
+          ${exercise.videoUrl ?? null},
+          ${exercise.accent},
+          ${exercise.glyph},
+          FALSE,
+          'wger'
+        )
+        ON CONFLICT (key)
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          category = EXCLUDED.category,
+          muscle = EXCLUDED.muscle,
+          equipment = EXCLUDED.equipment,
+          image_url = EXCLUDED.image_url,
+          video_url = EXCLUDED.video_url,
+          accent = EXCLUDED.accent,
+          glyph = EXCLUDED.glyph,
+          is_custom = FALSE,
+          source = 'wger',
+          updated_at = NOW()
+      `;
+    }
+
+    await sql`
+      INSERT INTO exercise_library_sync_state (id, last_synced_at, remote_count)
+      VALUES (1, NOW(), ${exercises.length})
+      ON CONFLICT (id)
+      DO UPDATE SET
+        last_synced_at = EXCLUDED.last_synced_at,
+        remote_count = EXCLUDED.remote_count
+    `;
+
+    invalidateExerciseCatalogCache();
+
+    return;
+  })();
+
+  if (!force) {
+    exerciseCatalogSeedPromise = syncPromise.finally(() => {
+      exerciseCatalogSeedPromise = null;
+    });
+
+    return exerciseCatalogSeedPromise;
+  }
+
+  return syncPromise;
 }
 
 function makeArtwork(name: string, accent: string, glyph: string, pose: ExercisePose = "default", seed = name) {
@@ -207,7 +423,7 @@ function makeArtwork(name: string, accent: string, glyph: string, pose: Exercise
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" fill="none"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${accent}"/><stop offset="100%" stop-color="#0f172a"/></linearGradient><linearGradient id="panel" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.16"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0.04"/></linearGradient></defs><rect width="1200" height="800" rx="56" fill="url(#bg)"/><circle cx="1040" cy="160" r="180" fill="#ffffff" fill-opacity="0.10"/><circle cx="170" cy="680" r="220" fill="#000000" fill-opacity="0.10"/><rect x="96" y="96" width="1008" height="608" rx="44" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.12"/><g transform="translate(160 200)"><circle cx="120" cy="120" r="88" fill="#ffffff" fill-opacity="0.18"/><path d="M60 132c28-66 100-98 168-84 18 4 36 12 52 22l-32 52c-20-10-42-14-64-12-40 4-76 28-94 66l-30-44Z" fill="#ffffff" fill-opacity="0.78"/><path d="M210 114h92l-20 52h-72z" fill="#ffffff" fill-opacity="0.28"/><text x="0" y="340" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="90" font-weight="800">${glyph}</text><text x="0" y="408" fill="#e2e8f0" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="600">${poseLabels[pose]} · ${name}</text></g></svg>`;
 
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  return "";
 }
 
 const predefinedExercises: Omit<ExerciseLibraryItem, "image" | "source" | "id" | "imageUrl" | "isCustom" | "pose">[] = [
@@ -417,6 +633,7 @@ export async function ensureExerciseSchema() {
       id SERIAL PRIMARY KEY,
       key TEXT UNIQUE NOT NULL,
       name TEXT NOT NULL,
+      description TEXT,
       category TEXT NOT NULL,
       muscle TEXT NOT NULL,
       equipment TEXT NOT NULL,
@@ -425,12 +642,15 @@ export async function ensureExerciseSchema() {
       accent TEXT NOT NULL,
       glyph TEXT NOT NULL,
       is_custom BOOLEAN NOT NULL DEFAULT TRUE,
+      source TEXT NOT NULL DEFAULT 'custom',
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `;
 
+  await sql`ALTER TABLE exercise_library_items ADD COLUMN IF NOT EXISTS description TEXT`;
   await sql`ALTER TABLE exercise_library_items ADD COLUMN IF NOT EXISTS video_url TEXT`;
+  await sql`ALTER TABLE exercise_library_items ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'custom'`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS trainer_exercise_overrides (
@@ -452,6 +672,14 @@ export async function ensureExerciseSchema() {
   `;
 
   await sql`ALTER TABLE trainer_exercise_overrides ADD COLUMN IF NOT EXISTS video_url TEXT`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS exercise_library_sync_state (
+      id INTEGER PRIMARY KEY,
+      last_synced_at TIMESTAMP,
+      remote_count INTEGER NOT NULL DEFAULT 0
+    )
+  `;
   })();
 
   return ensureExerciseSchemaPromise;
@@ -465,8 +693,48 @@ function normalizeKey(value: string) {
     .replace(/^-+|-+$/g, "") || "exercise";
 }
 
+function normalizeCatalogText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getExerciseSignature(item: Pick<ExerciseLibraryItem, "name" | "category" | "muscle" | "equipment">) {
+  return [item.name, item.category, item.muscle, item.equipment]
+    .map((part) => normalizeCatalogText(part))
+    .join("|");
+}
+
+function getSourcePriority(source: ExerciseLibraryItem["source"], isCustom?: boolean) {
+  if (source === "trainer") return 4;
+  if (source === "wger" || source === "base") return 3;
+  if (source === "custom" || isCustom) return 2;
+  return 1;
+}
+
+function choosePreferredExercise(current: ExerciseLibraryItem, next: ExerciseLibraryItem) {
+  const currentPriority = getSourcePriority(current.source, current.isCustom);
+  const nextPriority = getSourcePriority(next.source, next.isCustom);
+
+  if (nextPriority > currentPriority) {
+    return next;
+  }
+
+  if (nextPriority < currentPriority) {
+    return current;
+  }
+
+  if ((next.description?.length ?? 0) > (current.description?.length ?? 0)) {
+    return next;
+  }
+
+  if ((next.imageUrl?.length ?? 0) > (current.imageUrl?.length ?? 0)) {
+    return next;
+  }
+
+  return current;
+}
+
 function renderImage(name: string, accent: string, glyph: string, imageUrl?: string | null) {
-  return isLikelyImageUrl(imageUrl) ? imageUrl!.trim() : makeArtwork(name, accent, glyph);
+  return isLikelyImageUrl(imageUrl) ? imageUrl!.trim() : "";
 }
 
 export function isLikelyImageUrl(value: string | null | undefined) {
@@ -504,10 +772,6 @@ async function resolveRemoteImageUrl(value: string | null | undefined) {
   const normalized = value.trim();
   if (!normalized) return null;
 
-  if (normalized.startsWith("data:image/")) {
-    return normalized;
-  }
-
   try {
     const url = new URL(normalized);
     const host = url.hostname.toLowerCase();
@@ -537,7 +801,7 @@ export function generateExerciseKey(name: string) {
 }
 
 export function createExerciseImageData(name: string, accent: string, glyph: string) {
-  return makeArtwork(name, accent, glyph);
+  return "";
 }
 
 export function getExercisePoseForExercise(item: Pick<ExerciseLibraryItem, "key" | "category" | "muscle" | "equipment">) {
@@ -545,22 +809,30 @@ export function getExercisePoseForExercise(item: Pick<ExerciseLibraryItem, "key"
 }
 
 export async function getExerciseCatalog(ownerTrainerId: number | null = null) {
+  await ensureExerciseSchema();
+  const syncState = await getWgerSyncState();
+  let syncVersion = syncState?.last_synced_at ? new Date(syncState.last_synced_at).toISOString() : "pending";
   const cachedCatalog = exerciseCatalogCache.get(ownerTrainerId);
-  if (cachedCatalog) {
+  if (cachedCatalog && exerciseCatalogCacheVersion.get(ownerTrainerId) === syncVersion) {
     return cachedCatalog;
   }
+
+  await syncExerciseCatalogFromWger();
+  const refreshedSyncState = await getWgerSyncState();
+  syncVersion = refreshedSyncState?.last_synced_at ? new Date(refreshedSyncState.last_synced_at).toISOString() : syncVersion;
 
   const catalogPromise = (async () => {
   await ensureExerciseSchema();
 
   const rows = await sql`
-    SELECT id, key, name, category, muscle, equipment, image_url, accent, glyph, is_custom
+    SELECT id, key, name, description, category, muscle, equipment, image_url, video_url, accent, glyph, is_custom, source
     FROM exercise_library_items
     ORDER BY created_at DESC, id DESC
   ` as unknown as Array<{
     id: number;
     key: string;
     name: string;
+    description: string | null;
     category: string;
     muscle: string;
     equipment: string;
@@ -569,22 +841,24 @@ export async function getExerciseCatalog(ownerTrainerId: number | null = null) {
     accent: string;
     glyph: string;
     is_custom: boolean;
+    source: string | null;
   }>; 
 
   const baseItems: ExerciseLibraryItem[] = await Promise.all(rows.map(async (item) => ({
     id: item.id,
     key: item.key,
     name: item.name,
+    description: item.description,
     category: item.category,
     muscle: item.muscle,
     equipment: item.equipment,
-    imageUrl: await resolveRemoteImageUrl(item.image_url),
+    imageUrl: isLikelyImageUrl(item.image_url) ? item.image_url : null,
     videoUrl: item.video_url,
     image: renderImage(item.name, item.accent, item.glyph, item.image_url),
     accent: item.accent,
     glyph: item.glyph,
     isCustom: item.is_custom,
-    source: "base",
+    source: (item.source as ExerciseLibraryItem["source"]) ?? "custom",
   })));
 
   const overrideRows = ownerTrainerId
@@ -613,10 +887,11 @@ export async function getExerciseCatalog(ownerTrainerId: number | null = null) {
     trainerId: item.trainer_id,
     key: item.exercise_key,
     name: item.name,
+    description: null,
     category: item.category,
     muscle: item.muscle,
     equipment: item.equipment,
-    imageUrl: await resolveRemoteImageUrl(item.image_url),
+    imageUrl: isLikelyImageUrl(item.image_url) ? item.image_url : null,
     videoUrl: item.video_url,
     image: renderImage(item.name, item.accent, item.glyph, item.image_url),
     accent: item.accent,
@@ -635,13 +910,27 @@ export async function getExerciseCatalog(ownerTrainerId: number | null = null) {
   const unique = new Map<string, ExerciseLibraryItem>();
 
   merged.forEach((item) => {
-    unique.set(item.key, item);
+    const signature = getExerciseSignature(item);
+    const current = unique.get(signature);
+
+    if (!current) {
+      unique.set(signature, item);
+      return;
+    }
+
+    unique.set(signature, choosePreferredExercise(current, item));
   });
 
-  return [...unique.values()];
+  return [...unique.values()].sort((left, right) => {
+    const sourceDiff = getSourcePriority(right.source, right.isCustom) - getSourcePriority(left.source, left.isCustom);
+    if (sourceDiff !== 0) return sourceDiff;
+
+    return left.name.localeCompare(right.name, "es", { sensitivity: "base" });
+  });
   })();
 
   exerciseCatalogCache.set(ownerTrainerId, catalogPromise);
+  exerciseCatalogCacheVersion.set(ownerTrainerId, syncVersion);
   return catalogPromise;
 }
 
@@ -685,56 +974,66 @@ export function getExerciseLibraryItem(keyOrName: string | null | undefined) {
 
 function buildGenericGuide(item: Pick<ExerciseLibraryItem, "name" | "category" | "muscle" | "equipment">): ExerciseGuide {
   const baseSteps = [
-    `Colócate con ${item.equipment.toLowerCase()} y ajusta la postura antes de empezar.`,
-    `Empuja o tira de forma controlada hasta completar el recorrido de ${item.name.toLowerCase()}.`,
-    `Mantén el abdomen firme y vuelve despacio a la posición inicial.`,
+    `Colócate con ${item.equipment.toLowerCase()} y fija una postura estable antes de la primera repetición.`,
+    `Activa el abdomen, abre el pecho y prepara la respiración para controlar el movimiento.`,
+    `Realiza el recorrido principal de ${item.name.toLowerCase()} sin acelerar ni perder alineación.`,
+    `Vuelve con calma a la posición inicial y repite manteniendo la misma calidad técnica.`,
   ];
 
   const categorySteps: Record<string, string[]> = {
     Push: [
       "Alinea hombros, codos y muñecas antes de la primera repetición.",
       "Desciende con control y empuja manteniendo el pecho estable.",
-      "No bloquees el movimiento si pierdes la técnica.",
+      "No dejes que la zona lumbar compense el trabajo de empuje.",
+      "Termina el recorrido con control y vuelve a la posición inicial sin rebotes.",
     ],
     Pull: [
       "Inicia el tirón con la espalda, no con los brazos.",
       "Lleva el peso hacia tu torso sin balancear el cuerpo.",
+      "Mantén los hombros lejos de las orejas durante todo el gesto.",
       "Controla la vuelta y estira bien la musculatura trabajada.",
     ],
     Pierna: [
       "Apoya bien todo el pie y mantén la rodilla alineada.",
       "Baja con control hasta tu rango cómodo.",
-      "Sube empujando el suelo y manteniendo el tronco firme.",
+      "Mantén el tronco firme para no colapsar hacia delante.",
+      "Sube empujando el suelo y conserva la estabilidad de la cadera.",
     ],
     Core: [
       "Evita arquear la zona lumbar y aprieta el abdomen.",
       "Respira de forma controlada durante cada repetición.",
+      "No muevas más de lo necesario si la zona media pierde tensión.",
       "Prioriza calidad antes que velocidad.",
     ],
     Cardio: [
       "Encuentra un ritmo sostenible desde el inicio.",
       "Mantén una respiración constante.",
       "Ajusta la intensidad para completar el tiempo previsto.",
+      "Evita arrancar demasiado fuerte para no caer de ritmo al final.",
     ],
     Movilidad: [
       "Muévete suave y sin rebotes bruscos.",
       "Busca amplitud con comodidad.",
       "Mantén cada posición unos segundos antes de cambiar.",
+      "Respira lento para que el cuerpo entre en la posición sin tensión extra.",
     ],
     Posterior: [
       "Empuja la cadera hacia atrás para cargar la cadena posterior.",
       "No redondees la espalda durante el recorrido.",
       "Aprieta glúteos e isquios al volver arriba.",
+      "Mantén la tensión para que el trabajo no se vaya a la zona lumbar.",
     ],
     Accesorio: [
       "Usa cargas más controladas y repeticiones limpias.",
       "No sacrifiques técnica por peso.",
       "Busca una sensación muscular clara en cada serie.",
+      "Aprovecha este trabajo para sumar calidad al volumen total.",
     ],
     Fuerza: [
       "Calienta la articulación antes de cargar pesado.",
       "Trabaja con trayectoria estable y sin rebotes.",
       "Descansa lo suficiente entre series.",
+      "Haz cada repetición con intención y sin perder el control del cuerpo.",
     ],
   };
 
@@ -742,16 +1041,22 @@ function buildGenericGuide(item: Pick<ExerciseLibraryItem, "name" | "category" |
     `Concéntrate en sentir ${item.muscle.toLowerCase()} en cada repetición.`,
     `Haz la fase negativa lenta para mejorar el control.`,
     `Si no mantienes la técnica, baja el peso.`,
+    `Respira antes de iniciar y mantén el tronco firme durante todo el ejercicio.`,
   ];
 
   const commonMistakes = [
     "Mover el peso con impulso.",
     "Acortar demasiado el rango.",
     "Perder la postura en la fase final.",
+    "Olvidar el control en la vuelta o en la fase excéntrica.",
   ];
 
-  return {
-    overview: `Guía rápida para ${item.name.toLowerCase()}.`,
+    return {
+      overview: [
+        `${item.name} es un ejercicio diseñado para trabajar ${item.muscle.toLowerCase()} con un patrón claro y repetible.`,
+        `Objetivo principal: mantener una técnica limpia, un ritmo estable y una buena conexión muscular en cada repetición.`,
+        `Antes de empezar, ajusta ${item.equipment.toLowerCase()}, activa el abdomen y deja la postura lista para moverte con control.`,
+      ].join("\n\n"),
     steps: categorySteps[item.category] ?? baseSteps,
     tips,
     commonMistakes,

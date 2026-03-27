@@ -2,6 +2,7 @@
 import AppLayout from "../../layouts/layout.astro";
 import SectionHeader from "../../components/ui/SectionHeader.astro";
 import EmptyState from "../../components/ui/EmptyState.astro";
+import ExercisePlaceholder from "../../components/exercises/ExercisePlaceholder.astro";
 import {
   ensureExerciseSchema,
   getExerciseByKey,
@@ -34,6 +35,7 @@ if (!exercise) {
 const guide = getExerciseGuide(exercise);
 const canEditExercise = ["trainer", "gym_manager", "admin"].includes(user.role as string);
 const referenceImage = exercise.imageUrl ?? await getExerciseReferenceImage(exercise);
+const exerciseDescription = (exercise as { description?: string | null }).description ?? guide.overview;
 ---
 
 <AppLayout title={exercise.name}>
@@ -51,28 +53,37 @@ const referenceImage = exercise.imageUrl ?? await getExerciseReferenceImage(exer
     <div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
-        {exercise.videoUrl ? (
-          <div class="bg-slate-950">
-            {exercise.videoUrl.includes("youtube.com") || exercise.videoUrl.includes("youtu.be") ? (
-              <iframe src={exercise.videoUrl.includes("embed") ? exercise.videoUrl : exercise.videoUrl.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/")} class="h-72 w-full sm:h-80" title={exercise.name} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <div class="space-y-6 p-6">
+          <div class="overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-sm dark:border-slate-800">
+            {referenceImage ? (
+              <img src={referenceImage} alt={exercise.name} class="h-72 w-full object-cover sm:h-80" />
+            ) : exercise.imageUrl ? (
+              <img src={exercise.imageUrl} alt={exercise.name} class="h-72 w-full object-cover sm:h-80" />
             ) : (
-              <video src={exercise.videoUrl} controls class="h-72 w-full object-cover sm:h-80"></video>
+              <ExercisePlaceholder accent={exercise.accent} glyph={exercise.glyph} title={exercise.name} />
             )}
           </div>
-        ) : referenceImage ? (
-          <img src={referenceImage} alt={exercise.name} class="h-72 w-full object-cover sm:h-80" />
-        ) : exercise.imageUrl ? (
-          <img src={exercise.imageUrl} alt={exercise.name} class="h-72 w-full object-cover sm:h-80" />
-        ) : (
-          <div class="flex h-72 w-full items-end bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white sm:h-80">
-            <div class="max-w-xl rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
-              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-white/60">Vista previa del ejercicio</p>
-              <h2 class="mt-2 text-3xl font-black leading-tight sm:text-4xl">{exercise.name}</h2>
-              <p class="mt-2 text-sm text-white/70">Referencia visual limpia para acompañar la explicación.</p>
+
+          {exercise.videoUrl && (
+            <div class="overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-sm dark:border-slate-800">
+              <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white">
+                <div>
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">Video de referencia</p>
+                  <p class="mt-1 text-sm font-bold">Mira el movimiento completo</p>
+                </div>
+                <a href={exercise.videoUrl} target="_blank" rel="noreferrer" class="rounded-full border border-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10">
+                  Abrir video
+                </a>
+              </div>
+              {exercise.videoUrl.includes("youtube.com") || exercise.videoUrl.includes("youtu.be") ? (
+                <iframe src={exercise.videoUrl.includes("embed") ? exercise.videoUrl : exercise.videoUrl.replace("watch?v=", "embed/").replace("youtu.be/", "www.youtube.com/embed/")} class="h-72 w-full sm:h-80" title={exercise.name} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+              ) : (
+                <video src={exercise.videoUrl} controls class="h-72 w-full object-cover sm:h-80"></video>
+              )}
             </div>
-          </div>
-        )}
-        <div class="p-6">
+          )}
+
+          <div>
           <div class="flex flex-wrap gap-2 text-[11px] font-semibold">
             <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-200">{exercise.category}</span>
             <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-200">{exercise.muscle}</span>
@@ -106,15 +117,28 @@ const referenceImage = exercise.imageUrl ?? await getExerciseReferenceImage(exer
             <a href="/exercises" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto">
               Ver biblioteca
             </a>
+
+            <a href={exercise.imageUrl ?? referenceImage ?? exercise.videoUrl ?? "/exercises"} target="_blank" rel="noreferrer" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto">
+              Abrir referencia
+            </a>
+          </div>
           </div>
         </div>
       </section>
 
       <section class="space-y-6">
         <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Descripción</p>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Resumen guardado en base de datos</h2>
+          <p class="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-400">
+            {exerciseDescription}
+          </p>
+        </div>
+
+        <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Cómo hacerlo</p>
           <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Guía rápida</h2>
-          <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">{guide.overview}</p>
+          <p class="mt-3 whitespace-pre-line text-sm text-slate-600 dark:text-slate-400">{guide.overview}</p>
 
           <ol class="mt-5 space-y-3">
             {guide.steps.map((step: string, index: number) => (
@@ -162,12 +186,20 @@ const referenceImage = exercise.imageUrl ?? await getExerciseReferenceImage(exer
 
               <label class="block space-y-2">
                 <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Imagen URL</span>
-                <input name="image_url" value={exercise.imageUrl ?? ""} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10" placeholder="https://..." />
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
+                  <input type="file" accept="image/*" data-edit-image-file class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-800 dark:text-slate-300" />
+                  <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Puedes subir una imagen o pegar una URL.</p>
+                </div>
+                <input id="exercise-image-url" name="image_url" value={exercise.imageUrl ?? ""} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10" placeholder="https://..." />
               </label>
 
               <label class="block space-y-2">
                 <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Video URL</span>
-                <input name="video_url" value={exercise.videoUrl ?? ""} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10" placeholder="https://...mp4 o YouTube" />
+                <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
+                  <input type="file" accept="video/*" data-edit-video-file class="block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-800 dark:text-slate-300" />
+                  <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Sube un video corto o pega una URL. El video se verá debajo de la imagen.</p>
+                </div>
+                <input id="exercise-video-url" name="video_url" value={exercise.videoUrl ?? ""} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10" placeholder="https://...mp4 o YouTube" />
               </label>
 
               <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 sm:w-auto">
@@ -179,4 +211,31 @@ const referenceImage = exercise.imageUrl ?? await getExerciseReferenceImage(exer
       </section>
     </div>
   </div>
+
+  <script>
+    const imageFileInput = document.querySelector("[data-edit-image-file]");
+    const videoFileInput = document.querySelector("[data-edit-video-file]");
+    const imageUrlInput = document.querySelector("#exercise-image-url");
+    const videoUrlInput = document.querySelector("#exercise-video-url");
+
+    const readFileAsDataUrl = (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+
+    imageFileInput?.addEventListener("change", async () => {
+      const file = imageFileInput.files?.[0];
+      if (!file || !imageUrlInput) return;
+      imageUrlInput.value = await readFileAsDataUrl(file);
+    });
+
+    videoFileInput?.addEventListener("change", async () => {
+      const file = videoFileInput.files?.[0];
+      if (!file || !videoUrlInput) return;
+      videoUrlInput.value = await readFileAsDataUrl(file);
+    });
+  </script>
 </AppLayout>

@@ -1,6 +1,7 @@
 ---
 import AppLayout from "../../layouts/layout.astro";
 import SectionHeader from "../../components/ui/SectionHeader.astro";
+import ExercisePlaceholder from "../../components/exercises/ExercisePlaceholder.astro";
 import { ensureRoutineSchema } from "../../lib/utils/routines";
 import type { ExerciseLibraryItem } from "../../lib/utils/exercise-library";
 import {
@@ -165,21 +166,18 @@ await ensureRoutineSchema();
               >
                 <div class="relative">
                   <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
-                  <div class="relative h-40 overflow-hidden bg-white transition duration-300 group-hover:scale-[1.01] dark:bg-slate-950">
-                    <img
-                      src={(exercise as ExerciseLibraryItem & { imageUrl?: string | null }).imageUrl ?? exercise.image}
-                      alt={exercise.name}
-                      loading="lazy"
-                      decoding="async"
-                      class="h-full w-full object-contain object-center p-2"
-                      onerror="this.style.display='none';this.nextElementSibling?.removeAttribute('hidden')"
-                    />
-                    <div hidden class="flex h-full items-end bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4 text-white">
-                      <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">{exerciseCategoryByKey[exercise.key] ?? ""}</p>
-                        <p class="mt-1 text-lg font-bold leading-tight">{exercise.name}</p>
-                      </div>
-                    </div>
+                    <div class="relative h-40 overflow-hidden bg-white transition duration-300 group-hover:scale-[1.01] dark:bg-slate-950">
+                      {(exercise as ExerciseLibraryItem & { imageUrl?: string | null }).imageUrl?.trim() ? (
+                        <img
+                          src={(exercise as ExerciseLibraryItem & { imageUrl?: string | null }).imageUrl as string}
+                          alt={exercise.name}
+                          loading="lazy"
+                          decoding="async"
+                          class="h-full w-full object-contain object-center p-2"
+                        />
+                      ) : (
+                        <ExercisePlaceholder accent={exercise.accent} glyph={exercise.glyph} title={exercise.name} />
+                      )}
                     <div class="absolute inset-x-3 bottom-3 rounded-2xl border border-white/10 bg-slate-950/50 px-4 py-3 text-white backdrop-blur-md">
                       <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">{exerciseCategoryByKey[exercise.key] ?? ""}</p>
                       <p class="mt-1 text-lg font-bold leading-tight">{exercise.name}</p>

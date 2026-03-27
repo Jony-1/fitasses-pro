@@ -2,6 +2,7 @@
 import AppLayout from "../../../layouts/layout.astro";
 import SectionHeader from "../../../components/ui/SectionHeader.astro";
 import EmptyState from "../../../components/ui/EmptyState.astro";
+import ExercisePlaceholder from "../../../components/exercises/ExercisePlaceholder.astro";
 import { ensureRoutineSchema, getRoutineDetailsForUser } from "../../../lib/utils/routines";
 import { getExerciseCatalog, type ExerciseLibraryItem } from "../../../lib/utils/exercise-library";
 
@@ -171,7 +172,7 @@ const exerciseByKey = new Map(exerciseCatalog.map((exercise) => [exercise.key, e
                 data-exercise-category={exerciseCategoryByKey[exercise.key] ?? ""}
                 data-exercise-muscle={exercise.muscle}
                 data-exercise-equipment={exercise.equipment}
-                data-exercise-image={(exercise as ExerciseLibraryItem & { imageUrl?: string | null }).imageUrl ?? exercise.image ?? ""}
+                data-exercise-image={(exercise as ExerciseLibraryItem & { imageUrl?: string | null }).imageUrl?.trim() ?? ""}
               >
                 <div class="relative">
                   <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
@@ -243,21 +244,18 @@ const exerciseByKey = new Map(exerciseCatalog.map((exercise) => [exercise.key, e
                     <div class="exercise-card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/80" data-exercise-card data-exercise-name={exerciseData.name} data-exercise-category={libraryItem ? exerciseCategoryByKey[libraryItem.key] : "Personalizado"}>
                     <div class="flex flex-col gap-4 p-4 lg:flex-row">
                       <div class="overflow-hidden rounded-2xl bg-white lg:w-40 lg:shrink-0 dark:bg-slate-950">
-                        <img
-                          src={exerciseData.imageUrl ?? (libraryItem as ExerciseLibraryItem & { imageUrl?: string | null })?.imageUrl ?? libraryItem?.image ?? "/favicon.png"}
-                          alt={exerciseData.name}
-                          loading="lazy"
-                          decoding="async"
-                          class="h-40 w-full object-contain object-center p-2"
-                          data-exercise-preview
-                          onerror="this.style.display='none';this.nextElementSibling?.removeAttribute('hidden')"
-                        />
-                        <div hidden class="flex h-40 w-full items-end bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-3 text-white">
-                          <div class="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
-                            <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">{libraryItem ? exerciseCategoryByKey[libraryItem.key] : "Personalizado"}</p>
-                            <p class="mt-1 text-sm font-bold leading-tight">{exerciseData.name}</p>
-                          </div>
-                        </div>
+                        {(exerciseData.imageUrl ?? (libraryItem as ExerciseLibraryItem & { imageUrl?: string | null })?.imageUrl)?.trim() ? (
+                          <img
+                            src={(exerciseData.imageUrl ?? (libraryItem as ExerciseLibraryItem & { imageUrl?: string | null })?.imageUrl) as string}
+                            alt={exerciseData.name}
+                            loading="lazy"
+                            decoding="async"
+                            class="h-40 w-full object-contain object-center p-2"
+                            data-exercise-preview
+                          />
+                        ) : (
+                          <ExercisePlaceholder accent={libraryItem?.accent ?? "#475569"} glyph={libraryItem?.glyph ?? "FX"} title={exerciseData.name} />
+                        )}
                       </div>
 
                       <div class="min-w-0 flex-1">
@@ -277,7 +275,7 @@ const exerciseByKey = new Map(exerciseCatalog.map((exercise) => [exercise.key, e
                         </div>
 
                         <input type="hidden" name={`days[${dayIndex}][exercises][${exerciseIndex}][exercise_key]`} data-exercise-field="exercise_key" value={exerciseData.exercise_key ?? ""} />
-                        <input type="hidden" name={`days[${dayIndex}][exercises][${exerciseIndex}][image_url]`} data-exercise-field="image_url" value={exerciseData.imageUrl ?? libraryItem?.imageUrl ?? libraryItem?.image ?? ""} />
+                        <input type="hidden" name={`days[${dayIndex}][exercises][${exerciseIndex}][image_url]`} data-exercise-field="image_url" value={exerciseData.imageUrl ?? libraryItem?.imageUrl ?? ""} />
 
                         <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                           <label class="space-y-2 lg:col-span-2">

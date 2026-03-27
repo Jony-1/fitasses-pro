@@ -27,7 +27,7 @@ interface Props {
 
 const { exercise, detailsHref, compact = false, showDetails = true } = Astro.props as Props;
 const libraryItem = getExerciseLibraryItem(exercise.exercise_key ?? exercise.key ?? exercise.name);
-const referenceImage = exercise.imageUrl ?? exercise.image ?? libraryItem?.imageUrl ?? null;
+const referenceImage = exercise.imageUrl?.trim() || exercise.image?.trim() || libraryItem?.imageUrl?.trim() || null;
 const detailsUrl = detailsHref;
 
 const avatarItem =

@@ -1,7 +1,6 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
 import {
-  createExerciseImageData,
   ensureExerciseSchema,
   exerciseLibrary,
   generateExerciseKey,
@@ -80,7 +79,8 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
     key = await ensureUniqueKey(data.name);
   }
 
-  const imageUrl = String(data.imageUrl ?? "").trim().length > 0 ? String(data.imageUrl).trim() : null;
+  const rawImageUrl = String(data.imageUrl ?? "").trim();
+  const imageUrl = rawImageUrl && !rawImageUrl.startsWith("data:image/") ? rawImageUrl : null;
 
   if (isAdmin) {
     if (data.id) {
