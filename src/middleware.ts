@@ -1,7 +1,13 @@
 import { defineMiddleware } from "astro:middleware";
 import { getSessionUser } from "./lib/auth/auth";
 
-const PUBLIC_PATHS = ["/login", "/register", "clients/register/client","clients/register/trainer",  "/api/create-trainer"];
+const PUBLIC_EXACT_PATHS = new Set(["/login", "/register"]);
+const PUBLIC_PREFIXES = [
+    "/clients/register/",
+    "/api/auth/login",
+    "/api/auth/logout",
+    "/api/auth/register-",
+];
 
 export const onRequest = defineMiddleware(async (context, next) => {
     const sessionToken = context.cookies.get("session")?.value ?? null;
@@ -11,12 +17,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     const pathname = context.url.pathname;
 
-    const isPublic =
-        PUBLIC_PATHS.includes(pathname) ||
-        pathname.startsWith("/clients/register/") ||
-        pathname.startsWith("/api/auth/login") ||
-        pathname.startsWith("/api/auth/logout") ||
-        pathname.startsWith("/api/auth/register-");
+    const isPublic = PUBLIC_EXACT_PATHS.has(pathname) || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
         
     if (!user && !isPublic) {
         return context.redirect("/login");

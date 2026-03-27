@@ -3,7 +3,6 @@ import { sql } from "../../../lib/db/client";
 import {
   createExerciseImageData,
   ensureExerciseSchema,
-  isLikelyImageUrl,
   exerciseLibrary,
   generateExerciseKey,
 } from "../../../lib/utils/exercise-library";
@@ -65,21 +64,25 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
   await ensureExerciseSchema();
 
   const data = parseFormData(await request.formData());
+  const isAdmin = user.role === "admin";
 
   if (!data.name || !data.category || !data.muscle || !data.equipment) {
     return redirect("/exercises?error=missing_fields");
   }
 
   let key = data.key;
-  if (!key || hasStaticKey(key)) {
+  if (!key) {
+    key = isAdmin ? await ensureUniqueKey(data.name) : generateExerciseKey(data.name);
+  }
+
+  if (isAdmin && hasStaticKey(key)) {
     key = await ensureUniqueKey(data.name);
   }
 
-  const imageUrl = isLikelyImageUrl(data.imageUrl)
-    ? data.imageUrl
-    : createExerciseImageData(data.name, data.accent, data.glyph);
+  const imageUrl = String(data.imageUrl ?? "").trim().length > 0 ? String(data.imageUrl).trim() : null;
 
-  if (data.id) {
+  if (isAdmin) {
+    if (data.id) {
     await sql`
       UPDATE exercise_library_items
       SET
@@ -94,7 +97,7 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
         updated_at = NOW()
       WHERE id = ${Number(data.id)}
     `;
-  } else {
+    } else {
     await sql`
       INSERT INTO exercise_library_items (
         key,
@@ -120,6 +123,45 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
         ${data.glyph},
         TRUE
       )
+    `;
+    }
+  } else {
+    await sql`
+      INSERT INTO trainer_exercise_overrides (
+        trainer_id,
+        exercise_key,
+        name,
+        category,
+        muscle,
+        equipment,
+        image_url,
+        video_url,
+        accent,
+        glyph
+      )
+      VALUES (
+        ${user.id},
+        ${key},
+        ${data.name},
+        ${data.category},
+        ${data.muscle},
+        ${data.equipment},
+        ${imageUrl},
+        ${data.videoUrl},
+        ${data.accent},
+        ${data.glyph}
+      )
+      ON CONFLICT (trainer_id, exercise_key)
+      DO UPDATE SET
+        name = EXCLUDED.name,
+        category = EXCLUDED.category,
+        muscle = EXCLUDED.muscle,
+        equipment = EXCLUDED.equipment,
+        image_url = EXCLUDED.image_url,
+        video_url = EXCLUDED.video_url,
+        accent = EXCLUDED.accent,
+        glyph = EXCLUDED.glyph,
+        updated_at = NOW()
     `;
   }
 

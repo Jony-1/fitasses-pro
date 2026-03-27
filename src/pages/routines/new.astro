@@ -4,17 +4,17 @@ import SectionHeader from "../../components/ui/SectionHeader.astro";
 import { ensureRoutineSchema } from "../../lib/utils/routines";
 import type { ExerciseLibraryItem } from "../../lib/utils/exercise-library";
 import {
-  exerciseLibrary,
-  getExerciseLibraryItem,
+  getExerciseByKey,
+  getExerciseCatalog,
 } from "../../lib/utils/exercise-library";
 
-const exerciseCatalog = exerciseLibrary as Array<ExerciseLibraryItem & { category: string; accent: string; source?: string; imageUrl?: string | null }>;
+const user = Astro.locals.user;
+const ownerTrainerId = user?.role === "trainer" ? user.id : null;
+const exerciseCatalog = (await getExerciseCatalog(ownerTrainerId)) as Array<ExerciseLibraryItem & { category: string; accent: string; source?: string; imageUrl?: string | null }>;
 const muscles = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.muscle))];
 const equipments = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.equipment))];
-
-const user = Astro.locals.user;
 const selectedExerciseKey = Astro.url.searchParams.get("exercise");
-const selectedExercise = getExerciseLibraryItem(selectedExerciseKey);
+const selectedExercise = await getExerciseByKey(selectedExerciseKey, ownerTrainerId);
 const exerciseCategoryByKey = Object.fromEntries(
   exerciseCatalog.map((exercise) => [exercise.key, exercise.category]),
 ) as Record<string, string>;
@@ -165,13 +165,13 @@ await ensureRoutineSchema();
               >
                 <div class="relative">
                   <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
-                  <div class="relative h-40 overflow-hidden bg-slate-950 transition duration-300 group-hover:scale-[1.01]">
+                  <div class="relative h-40 overflow-hidden bg-white transition duration-300 group-hover:scale-[1.01] dark:bg-slate-950">
                     <img
                       src={(exercise as ExerciseLibraryItem & { imageUrl?: string | null }).imageUrl ?? exercise.image}
                       alt={exercise.name}
                       loading="lazy"
                       decoding="async"
-                      class="h-full w-full object-cover"
+                      class="h-full w-full object-contain object-center p-2"
                       onerror="this.style.display='none';this.nextElementSibling?.removeAttribute('hidden')"
                     />
                     <div hidden class="flex h-full items-end bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-4 text-white">

@@ -65,6 +65,28 @@ export async function getClientById(id: number): Promise<Client | null> {
   return (result[0] as Client) ?? null;
 }
 
+export async function getClientByUserId(userId: number): Promise<Client | null> {
+  const result = await sql`
+    SELECT
+      id,
+      trainer_id,
+      full_name,
+      birth_date,
+      height_m,
+      notes,
+      gender,
+      active,
+      user_id,
+      created_at,
+      updated_at
+    FROM clients
+    WHERE user_id = ${userId}
+    LIMIT 1
+  `;
+
+  return (result[0] as Client) ?? null;
+}
+
 export async function getClientsForUser(
   user: AppUser,
 ): Promise<ClientListItem[]> {

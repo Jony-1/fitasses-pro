@@ -31,7 +31,7 @@ export function isValidHeight(height: number | null) {
 
 export function isValidGender(gender: string | null) {
     if (gender === null || gender === "") return true;
-    return gender === "Hombre" || gender === "Mujer";
+    return ["Masculino", "Femenino", "Prefiero no decirlo", "Hombre", "Mujer"].includes(gender);
 }
 
 export function isValidNotes(notes: string | null) {

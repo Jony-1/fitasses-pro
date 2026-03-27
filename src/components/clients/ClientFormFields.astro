@@ -1,5 +1,6 @@
 ---
 import HeightInput from "../HeightInput.astro";
+import GenderSelector from "./GenderSelector.astro";
 
 type TrainerOption = {
     id: number;
@@ -40,7 +41,7 @@ const { showTrainerSelect = false, trainers = [], values = {} } = Astro.props;
                 id="trainer_id"
                 name="trainer_id"
                 required
-                class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10"
             >
                 <option value="">Selecciona un trainer</option>
                 {trainers.map((trainer) => (
@@ -73,7 +74,7 @@ const { showTrainerSelect = false, trainers = [], values = {} } = Astro.props;
             type="text"
             required
             value={values.full_name ?? ""}
-            class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-emerald-500/10"
             placeholder="Ej. Juan Rincón"
         />
     </div>
@@ -90,65 +91,32 @@ const { showTrainerSelect = false, trainers = [], values = {} } = Astro.props;
             name="birth_date"
             type="date"
             value={values.birth_date ?? ""}
-            class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10"
         />
     </div>
 
-    <div>
-        <p
-            class="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300"
-        >
-            Género
-        </p>
-
-        <div class="flex flex-wrap gap-4 sm:gap-6">
-            <label class="flex cursor-pointer items-center gap-2">
-                <input
-                    type="radio"
-                    name="gender"
-                    value="Hombre"
-                    class="accent-emerald-500"
-                    checked={values.gender === "Hombre"}
-                    required
-                />
-                👨 Hombre
-            </label>
-
-            <label class="flex cursor-pointer items-center gap-2">
-                <input
-                    type="radio"
-                    name="gender"
-                    value="Mujer"
-                    class="accent-emerald-500"
-                    checked={values.gender === "Mujer"}
-                />
-                👩 Mujer
-            </label>
-        </div>
+    <div class="md:col-span-2">
+        <GenderSelector value={values.gender ?? null} />
     </div>
 
     <div>
-        <HeightInput
-            name="height_m"
-            label="Altura (m)"
-            value={String(values.height_m ?? "")}
-        />
-    </div>
+    <HeightInput
+        name="height_m"
+        label="Altura (m)"
+        value={String(values.height_m ?? "")}
+    />
+</div>
 </div>
 
 <div>
-    <label
-        for="notes"
-        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
-    >
+    <label for="notes" class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
         Observaciones generales
     </label>
     <textarea
         id="notes"
         name="notes"
         rows="4"
-        class="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10"
         placeholder="Ej. Molestias, restricciones, notas iniciales..."
-        >{values.notes ?? ""}</textarea
-    >
+    >{values.notes ?? ""}</textarea>
 </div>

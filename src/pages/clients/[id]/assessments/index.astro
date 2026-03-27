@@ -2,7 +2,7 @@
 import AppLayout from "../../../../layouts/layout.astro";
 import { sql } from "../../../../lib/db/client";
 import { formatDateOnly } from "../../../../lib/utils/date";
-import TabNav from "../../../../components/ui/TabNav.astro";
+import ClientPageHeader from "../../../../components/clients/ClientPageHeader.astro";
 
 const { id } = Astro.params;
 
@@ -19,6 +19,7 @@ const clientRows = await sql`
 
 const user = Astro.locals.user;
 const canManageAssessments = user?.role === "trainer" || user?.role === "admin";
+const canManageClient = user?.role === "trainer" || user?.role === "admin";
 
 const client = clientRows[0];
 
@@ -69,44 +70,40 @@ function formatNumber(value: unknown, suffix = "") {
 
 <AppLayout title={`Valoraciones - ${client.full_name}`}>
     <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-        <div
-            class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
-        >
-            <div>
-                <a
-                    href={`/clients/${client.id}`}
-                    class="text-sm font-medium text-slate-500 hover:text-emerald-600"
-                >
-                    ← Volver al cliente
-                </a>
-
-                <h1
-                    class="mt-2 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
-                >
-                    Historial de valoraciones
-                </h1>
-
-                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    Cliente: <strong>{client.full_name}</strong>
-                </p>
-            </div>
-
-            {
-                canManageAssessments && (
-                    <a href={`/clients/${client.id}/assessments/valoration_new`} class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 sm:w-auto">
-                        + Nueva valoración
-                    </a>
-                )
-            }
-        </div>
-
-        <TabNav
-            items={[
+        <ClientPageHeader
+            title="Historial de valoraciones"
+            description={`Cliente: ${client.full_name}`}
+            accent="blue"
+            tabs={[
                 { href: `/clients/${client.id}/routine`, label: "Mi rutina" },
                 { href: `/clients/${client.id}/progress`, label: "Mi progreso" },
                 { href: `/clients/${client.id}/assessments`, label: "Valoraciones", active: true },
             ]}
-        />
+        >
+            {canManageClient && (
+                <a slot="actions" href={`/clients/${client.id}/edit`} class="inline-flex w-full items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30 sm:w-auto">
+                    Editar cliente
+                </a>
+            )}
+
+            {canManageClient && (
+                <button slot="actions" type="button" id="delete-client" class="inline-flex w-full items-center justify-center rounded-xl border border-red-300/60 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-950 transition hover:bg-red-500/20 sm:w-auto">
+                    Eliminar cliente
+                </button>
+            )}
+
+            <a slot="actions" href={`/clients/${client.id}`} class="inline-flex w-full items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30 sm:w-auto">
+                Volver al cliente
+            </a>
+
+            {
+                canManageAssessments && (
+                    <a slot="actions" href={`/clients/${client.id}/assessments/valoration_new`} class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 sm:w-auto">
+                        + Nueva valoración
+                    </a>
+                )
+            }
+        </ClientPageHeader>
 
         {
             assessments.length === 0 ? (
@@ -384,3 +381,58 @@ function formatNumber(value: unknown, suffix = "") {
         }
     </div>
 </AppLayout>
+
+{canManageClient && (
+    <div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-950 p-6 shadow-2xl">
+            <h3 class="text-xl font-bold text-slate-100">Eliminar cliente</h3>
+            <p class="mt-2 text-sm text-slate-400">Esta acción eliminará al cliente y no se puede deshacer.</p>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="cancel-delete" type="button" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-900">Cancelar</button>
+                <button id="confirm-delete" type="button" data-client-id={client.id} class="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-600">Eliminar cliente</button>
+            </div>
+        </div>
+    </div>
+)}
+
+<script>
+    const deleteBtn = document.getElementById("delete-client") as HTMLButtonElement | null;
+    const modal = document.getElementById("delete-modal") as HTMLDivElement | null;
+    const cancelBtn = document.getElementById("cancel-delete") as HTMLButtonElement | null;
+    const confirmBtn = document.getElementById("confirm-delete") as HTMLButtonElement | null;
+
+    if (deleteBtn && modal && cancelBtn && confirmBtn) {
+        const closeModal = () => {
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+        };
+
+        deleteBtn.addEventListener("click", () => {
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        });
+
+        cancelBtn.addEventListener("click", closeModal);
+        modal.addEventListener("click", (event) => {
+            if (event.target === modal) closeModal();
+        });
+
+        confirmBtn.addEventListener("click", async () => {
+            const button = confirmBtn;
+            const clientId = confirmBtn.dataset.clientId;
+            if (!clientId) return;
+
+            try {
+                button.textContent = "Eliminando...";
+                button.disabled = true;
+
+                await fetch(`/api/clients/${clientId}`, { method: "DELETE", headers: { Accept: "application/json" } });
+                window.location.href = "/clients";
+            } catch {
+                button.textContent = "Eliminar cliente";
+                button.disabled = false;
+            }
+        });
+    }
+</script>

@@ -41,12 +41,12 @@ const uid = `height-${Math.random().toString(36).slice(2, 10)}`;
             value={value}
             placeholder={placeholder}
             maxlength="5"
-            class="height-display w-full rounded-lg border border-slate-300 px-4 py-3 pr-10 outline-none"
+            class="height-display w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-10 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-emerald-500/10"
             autocomplete="off"
         />
 
         <span
-            class="height-status absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400"
+            class="height-status absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500"
         >
             m
         </span>
@@ -54,7 +54,7 @@ const uid = `height-${Math.random().toString(36).slice(2, 10)}`;
 
     <input type="hidden" name={name} value="" class="height-hidden" />
 
-    <p class="height-message mt-2 text-xs text-slate-400">
+    <p class="height-message mt-2 text-xs text-slate-500 dark:text-slate-400">
         Entre {min.toFixed(2)} m y {max.toFixed(2)} m — coma o punto aceptados
     </p>
 </div>
@@ -64,6 +64,7 @@ const uid = `height-${Math.random().toString(36).slice(2, 10)}`;
         function setupHeightInput(root) {
             const min = Number(root.dataset.min || 0.5);
             const max = Number(root.dataset.max || 2.5);
+            const isDark = document.documentElement.classList.contains("dark");
 
             const displayInput = root.querySelector(".height-display");
             const hiddenInput = root.querySelector(".height-hidden");
@@ -71,6 +72,11 @@ const uid = `height-${Math.random().toString(36).slice(2, 10)}`;
             const status = root.querySelector(".height-status");
 
             if (!displayInput || !hiddenInput || !message || !status) return;
+
+            const display = displayInput;
+            const hidden = hiddenInput;
+            const messageEl = message;
+            const statusEl = status;
 
             function renderState(rawValue) {
                 let raw = rawValue;
@@ -94,83 +100,84 @@ const uid = `height-${Math.random().toString(36).slice(2, 10)}`;
                     }
                 }
 
-                displayInput.value = raw;
+                display.value = raw;
 
                 const num = parseFloat(raw);
 
                 if (raw === "" || raw === ".") {
-                    displayInput.style.borderColor = "#d1d5db";
-                    hiddenInput.value = "";
-                    message.textContent = `Entre ${min.toFixed(2)} m y ${max.toFixed(2)} m — coma o punto aceptados`;
-                    message.className =
+                    display.style.borderColor = "#d1d5db";
+                    hidden.value = "";
+                    messageEl.textContent = `Entre ${min.toFixed(2)} m y ${max.toFixed(2)} m — coma o punto aceptados`;
+                    messageEl.className =
                         "height-message mt-2 text-xs text-slate-400";
-                    status.textContent = "m";
-                    status.style.color = "#94a3b8";
+                    statusEl.textContent = "m";
+                    statusEl.style.color = "#94a3b8";
                     return;
                 }
 
                 if (Number.isNaN(num)) {
-                    displayInput.style.borderColor = "#ef4444";
-                    hiddenInput.value = "";
-                    message.textContent = "Valor inválido";
-                    message.className = "height-message mt-2 text-xs text-red-500";
-                    status.textContent = "✕";
-                    status.style.color = "#ef4444";
+                    display.style.borderColor = "#ef4444";
+                    hidden.value = "";
+                    messageEl.textContent = "Valor inválido";
+                    messageEl.className = "height-message mt-2 text-xs text-red-500";
+                    statusEl.textContent = "✕";
+                    statusEl.style.color = "#ef4444";
                     return;
                 }
 
                 if (num < min) {
-                    displayInput.style.borderColor = "#ef4444";
-                    hiddenInput.value = "";
-                    message.textContent = `Mínimo ${min.toFixed(2)} m`;
-                    message.className = "height-message mt-2 text-xs text-red-500";
-                    status.textContent = "✕";
-                    status.style.color = "#ef4444";
+                    display.style.borderColor = "#ef4444";
+                    hidden.value = "";
+                    messageEl.textContent = `Mínimo ${min.toFixed(2)} m`;
+                    messageEl.className = "height-message mt-2 text-xs text-red-500";
+                    statusEl.textContent = "✕";
+                    statusEl.style.color = "#ef4444";
                     return;
                 }
 
                 if (num > max) {
-                    displayInput.style.borderColor = "#ef4444";
-                    hiddenInput.value = "";
-                    message.textContent = `Máximo ${max.toFixed(2)} m`;
-                    message.className = "height-message mt-2 text-xs text-red-500";
-                    status.textContent = "✕";
-                    status.style.color = "#ef4444";
+                    display.style.borderColor = "#ef4444";
+                    hidden.value = "";
+                    messageEl.textContent = `Máximo ${max.toFixed(2)} m`;
+                    messageEl.className = "height-message mt-2 text-xs text-red-500";
+                    statusEl.textContent = "✕";
+                    statusEl.style.color = "#ef4444";
                     return;
                 }
 
                 const normalized = num.toFixed(2);
 
-                displayInput.style.borderColor = "#22c55e";
-                hiddenInput.value = normalized;
-                message.textContent = `${normalized} m registrado ✓`;
-                message.className = "height-message mt-2 text-xs text-emerald-600";
-                status.textContent = "✓";
-                status.style.color = "#22c55e";
+                display.style.borderColor = "#22c55e";
+                hidden.value = normalized;
+                messageEl.textContent = `${normalized} m registrado ✓`;
+                messageEl.className = "height-message mt-2 text-xs text-emerald-600";
+                statusEl.textContent = "✓";
+                statusEl.style.color = "#22c55e";
             }
 
-            displayInput.addEventListener("input", (e) => {
-                renderState(e.target.value);
+            display.addEventListener("input", (e) => {
+                const target = e.target;
+                renderState(target?.value ?? "");
             });
 
-            displayInput.addEventListener("keydown", (e) => {
+            display.addEventListener("keydown", (e) => {
                 if (e.key === ",") {
                     e.preventDefault();
 
-                    const value = displayInput.value;
+                    const value = display.value;
                     if (!value.includes(".")) {
                         const newValue = value + ".";
                         renderState(newValue);
 
                         requestAnimationFrame(() => {
-                            const pos = displayInput.value.length;
-                            displayInput.setSelectionRange(pos, pos);
+                            const pos = display.value.length;
+                            display.setSelectionRange(pos, pos);
                         });
                     }
                 }
             });
 
-            renderState(displayInput.value || "");
+            renderState(display.value || "");
         }
 
         document

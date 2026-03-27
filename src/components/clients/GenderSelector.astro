@@ -1,0 +1,66 @@
+---
+type GenderOption = {
+  label: string;
+  value: string;
+  icon: string;
+  description: string;
+};
+
+interface Props {
+  value?: string | null;
+}
+
+const { value = null } = Astro.props as Props;
+
+const options: GenderOption[] = [
+  {
+    label: "Masculino",
+    value: "Masculino",
+    icon: "♂",
+    description: "Registro tradicional del cliente.",
+  },
+  {
+    label: "Femenino",
+    value: "Femenino",
+    icon: "♀",
+    description: "Registro tradicional del cliente.",
+  },
+  {
+    label: "Prefiero no decirlo",
+    value: "Prefiero no decirlo",
+    icon: "◌",
+    description: "Dejar este dato sin especificar.",
+  },
+];
+---
+
+<fieldset class="rounded-3xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/70">
+  <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Género</legend>
+  <p class="px-2 pt-1 text-xs text-slate-500 dark:text-slate-400">Usa la opción que mejor represente al cliente.</p>
+
+  <div class="mt-4 grid gap-3 md:grid-cols-3">
+    {options.map((option) => {
+      const checked = value === option.value || (value === "Hombre" && option.value === "Masculino") || (value === "Mujer" && option.value === "Femenino");
+
+      return (
+        <label class:list={[
+          "group flex min-h-[132px] cursor-pointer flex-col gap-3 rounded-2xl border p-4 transition",
+          checked
+            ? "border-emerald-400 bg-emerald-50 shadow-sm dark:border-emerald-500/50 dark:bg-emerald-500/10"
+            : "border-slate-200 bg-slate-50 hover:border-emerald-300 hover:bg-emerald-50/50 dark:border-slate-700 dark:bg-slate-950/60 dark:hover:border-emerald-500/40",
+        ]}>
+          <div class="flex items-center justify-between gap-3">
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-base text-white dark:bg-slate-100 dark:text-slate-900">{option.icon}</span>
+            <input type="radio" name="gender" value={option.value} checked={checked} class="accent-emerald-500" />
+          </div>
+          <div class="min-w-0">
+            <div class="flex flex-col gap-1">
+              <span class="text-sm font-semibold text-slate-900 dark:text-slate-100">{option.label}</span>
+              <p class="text-xs leading-5 text-slate-500 dark:text-slate-400">{option.description}</p>
+            </div>
+          </div>
+        </label>
+      );
+    })}
+  </div>
+</fieldset>

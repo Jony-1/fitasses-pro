@@ -17,15 +17,32 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 
   const formData = await request.formData();
   const id = Number(String(formData.get("id") ?? "").trim());
+  const key = String(formData.get("key") ?? "").trim();
 
-  if (Number.isNaN(id)) {
+  if (Number.isNaN(id) && !key) {
     return redirect("/exercises?error=invalid_id");
   }
 
-  await sql`
-    DELETE FROM exercise_library_items
-    WHERE id = ${id}
-  `;
+  if (user.role === "admin") {
+    await sql`
+      DELETE FROM exercise_library_items
+      WHERE id = ${id}
+    `;
+  } else {
+    if (!Number.isNaN(id)) {
+      await sql`
+        DELETE FROM trainer_exercise_overrides
+        WHERE trainer_id = ${user.id}
+          AND id = ${id}
+      `;
+    } else {
+      await sql`
+        DELETE FROM trainer_exercise_overrides
+        WHERE trainer_id = ${user.id}
+          AND exercise_key = ${key}
+      `;
+    }
+  }
 
   return redirect("/exercises?status=deleted");
 };

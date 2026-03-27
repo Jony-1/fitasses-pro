@@ -1,10 +1,10 @@
 export function genderEmoji(gender: string | null) {
-    const g = String(gender || "").trim().toLowerCase();
+  const g = String(gender || "").trim().toLowerCase();
 
-    if (g === "hombre") return "👨";
-    if (g === "mujer") return "👩";
+  if (g === "hombre" || g === "masculino") return "👨";
+  if (g === "mujer" || g === "femenino") return "👩";
 
-    return "👨‍🚀";
+  return "🧑";
 }
 
 export function formatMetric(value: unknown, suffix = "") {

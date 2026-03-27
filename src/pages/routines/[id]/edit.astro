@@ -28,7 +28,7 @@ if (!routine || !routine.is_template) {
   return new Response("Rutina no encontrada", { status: 404 });
 }
 
-const exerciseCatalog = (await getExerciseCatalog()) as Array<ExerciseLibraryItem & { category: string; accent: string; source?: string; imageUrl?: string | null }>;
+const exerciseCatalog = (await getExerciseCatalog(routine.trainer_id)) as Array<ExerciseLibraryItem & { category: string; accent: string; source?: string; imageUrl?: string | null }>;
 const muscles = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.muscle))];
 const equipments = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.equipment))];
 const exerciseCategoryByKey = Object.fromEntries(
@@ -242,13 +242,13 @@ const exerciseByKey = new Map(exerciseCatalog.map((exercise) => [exercise.key, e
                 return (
                     <div class="exercise-card overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/80" data-exercise-card data-exercise-name={exerciseData.name} data-exercise-category={libraryItem ? exerciseCategoryByKey[libraryItem.key] : "Personalizado"}>
                     <div class="flex flex-col gap-4 p-4 lg:flex-row">
-                      <div class="overflow-hidden rounded-2xl bg-slate-100 lg:w-40 lg:shrink-0">
+                      <div class="overflow-hidden rounded-2xl bg-white lg:w-40 lg:shrink-0 dark:bg-slate-950">
                         <img
                           src={exerciseData.imageUrl ?? (libraryItem as ExerciseLibraryItem & { imageUrl?: string | null })?.imageUrl ?? libraryItem?.image ?? "/favicon.png"}
                           alt={exerciseData.name}
                           loading="lazy"
                           decoding="async"
-                          class="h-40 w-full object-cover"
+                          class="h-40 w-full object-contain object-center p-2"
                           data-exercise-preview
                           onerror="this.style.display='none';this.nextElementSibling?.removeAttribute('hidden')"
                         />

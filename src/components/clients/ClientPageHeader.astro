@@ -1,0 +1,61 @@
+---
+import TabNav from "../ui/TabNav.astro";
+
+type TabItem = {
+  href: string;
+  label: string;
+  active?: boolean;
+};
+
+interface Props {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  tabs: TabItem[];
+  accent?: "emerald" | "sky" | "blue" | "teal";
+}
+
+const { eyebrow = "Perfil de cliente", title, description, tabs, accent = "emerald" } = Astro.props as Props;
+
+const accentClasses = {
+  emerald: "from-emerald-500 via-teal-500 to-cyan-500",
+  sky: "from-sky-500 via-cyan-500 to-emerald-400",
+  blue: "from-blue-500 via-indigo-500 to-sky-500",
+  teal: "from-teal-500 via-emerald-500 to-lime-400",
+} as const;
+---
+
+<section class="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 shadow-xl dark:border-slate-800">
+    <div class={`bg-gradient-to-br ${accentClasses[accent]} p-6 text-slate-950 sm:p-8 lg:p-10`}>
+    <p class="text-xs font-bold uppercase tracking-[0.3em] text-slate-900/70">{eyebrow}</p>
+    <div class="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h1 class="max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">{title}</h1>
+        {description && <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-900/80 sm:text-base">{description}</p>}
+      </div>
+
+      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <slot name="actions" />
+      </div>
+    </div>
+
+    <div class="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div class="rounded-2xl border border-white/30 bg-white/25 p-4 backdrop-blur">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-900/60">Vista</p>
+        <p class="mt-1 text-sm font-bold text-slate-950">Rápida y ordenada</p>
+      </div>
+      <div class="rounded-2xl border border-white/30 bg-white/25 p-4 backdrop-blur">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-900/60">Acceso</p>
+        <p class="mt-1 text-sm font-bold text-slate-950">Información clave</p>
+      </div>
+      <div class="rounded-2xl border border-white/30 bg-white/25 p-4 backdrop-blur">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-900/60">Navegación</p>
+        <p class="mt-1 text-sm font-bold text-slate-950">Entre rutina y progreso</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="border-t border-slate-200 bg-slate-950/95 p-3 dark:border-slate-800">
+    <TabNav items={tabs} />
+  </div>
+</section>

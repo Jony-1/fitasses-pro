@@ -13,8 +13,9 @@ export type ExerciseLibraryItem = {
   pose?: ExercisePose;
   id?: number;
   imageUrl?: string | null;
+  trainerId?: number | null;
   isCustom?: boolean;
-  source?: "static" | "custom";
+  source?: "static" | "base" | "trainer";
 };
 
 type WgerExerciseInfoItem = {
@@ -57,7 +58,7 @@ type ExercisePose =
 
 const WGER_API_BASE = "https://wger.de/api/v2";
 let wgerCatalogCache: Promise<ExerciseLibraryItem[]> | null = null;
-
+const remoteImageValidationCache = new Map<string, boolean>();
 function getExercisePose(item: Pick<ExerciseLibraryItem, "key" | "category" | "muscle" | "equipment">): ExercisePose {
   const key = item.key.toLowerCase();
 
@@ -423,6 +424,27 @@ export async function ensureExerciseSchema() {
   `;
 
   await sql`ALTER TABLE exercise_library_items ADD COLUMN IF NOT EXISTS video_url TEXT`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS trainer_exercise_overrides (
+      id SERIAL PRIMARY KEY,
+      trainer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      exercise_key TEXT NOT NULL,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      muscle TEXT NOT NULL,
+      equipment TEXT NOT NULL,
+      image_url TEXT,
+      video_url TEXT,
+      accent TEXT NOT NULL,
+      glyph TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE (trainer_id, exercise_key)
+    )
+  `;
+
+  await sql`ALTER TABLE trainer_exercise_overrides ADD COLUMN IF NOT EXISTS video_url TEXT`;
 }
 
 function normalizeKey(value: string) {
@@ -466,6 +488,40 @@ export function isLikelyImageUrl(value: string | null | undefined) {
   }
 }
 
+async function resolveRemoteImageUrl(value: string | null | undefined) {
+  if (!value) return null;
+
+  const normalized = value.trim();
+  if (!normalized) return null;
+
+  if (normalized.startsWith("data:image/")) {
+    return normalized;
+  }
+
+  try {
+    const url = new URL(normalized);
+    const host = url.hostname.toLowerCase();
+    const path = url.pathname.toLowerCase();
+
+    if (host.includes("source.unsplash.com") || host.includes("images.unsplash.com") || /\.(png|jpe?g|gif|webp|avif|svg)$/.test(path)) {
+      return normalized;
+    }
+
+    if (remoteImageValidationCache.has(normalized)) {
+      return remoteImageValidationCache.get(normalized) ? normalized : null;
+    }
+
+    const response = await fetch(normalized, { method: "HEAD", redirect: "follow" });
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+    const ok = response.ok && contentType.startsWith("image/");
+    remoteImageValidationCache.set(normalized, ok);
+    return ok ? normalized : null;
+  } catch {
+    remoteImageValidationCache.set(normalized, false);
+    return null;
+  }
+}
+
 export function generateExerciseKey(name: string) {
   return normalizeKey(name);
 }
@@ -478,7 +534,7 @@ export function getExercisePoseForExercise(item: Pick<ExerciseLibraryItem, "key"
   return getExercisePose(item);
 }
 
-export async function getExerciseCatalog() {
+export async function getExerciseCatalog(ownerTrainerId: number | null = null) {
   await ensureExerciseSchema();
 
   const rows = await sql`
@@ -499,21 +555,59 @@ export async function getExerciseCatalog() {
     is_custom: boolean;
   }>; 
 
-  const customItems: ExerciseLibraryItem[] = rows.map((item) => ({
+  const baseItems: ExerciseLibraryItem[] = await Promise.all(rows.map(async (item) => ({
     id: item.id,
     key: item.key,
     name: item.name,
     category: item.category,
     muscle: item.muscle,
     equipment: item.equipment,
-    imageUrl: isLikelyImageUrl(item.image_url) ? item.image_url : null,
+    imageUrl: await resolveRemoteImageUrl(item.image_url),
     videoUrl: item.video_url,
     image: renderImage(item.name, item.accent, item.glyph, item.image_url),
     accent: item.accent,
     glyph: item.glyph,
     isCustom: item.is_custom,
-    source: "custom",
-  }));
+    source: "base",
+  })));
+
+  const overrideRows = ownerTrainerId
+    ? (await sql`
+        SELECT id, trainer_id, exercise_key, name, category, muscle, equipment, image_url, video_url, accent, glyph
+        FROM trainer_exercise_overrides
+        WHERE trainer_id = ${ownerTrainerId}
+        ORDER BY updated_at DESC, id DESC
+      ` as unknown as Array<{
+        id: number;
+        trainer_id: number;
+        exercise_key: string;
+        name: string;
+        category: string;
+        muscle: string;
+        equipment: string;
+        image_url: string | null;
+        video_url: string | null;
+        accent: string;
+        glyph: string;
+      }>)
+    : [];
+
+  const overrideItems: ExerciseLibraryItem[] = await Promise.all(overrideRows.map(async (item) => ({
+    id: item.id,
+    trainerId: item.trainer_id,
+    key: item.exercise_key,
+    name: item.name,
+    category: item.category,
+    muscle: item.muscle,
+    equipment: item.equipment,
+    imageUrl: await resolveRemoteImageUrl(item.image_url),
+    videoUrl: item.video_url,
+    image: renderImage(item.name, item.accent, item.glyph, item.image_url),
+    accent: item.accent,
+    glyph: item.glyph,
+    isCustom: true,
+    source: "trainer",
+  })));
 
   const wgerItems = await (wgerCatalogCache ??= fetchWgerExercises());
   const staticItems = exerciseLibrary.map((item) => ({
@@ -522,37 +616,25 @@ export async function getExerciseCatalog() {
     source: "static" as const,
   }));
 
-  const merged = [...customItems, ...wgerItems, ...staticItems];
+  const merged = [...staticItems, ...wgerItems, ...baseItems, ...overrideItems];
   const unique = new Map<string, ExerciseLibraryItem>();
 
   merged.forEach((item) => {
-    if (!unique.has(item.key)) {
-      unique.set(item.key, item);
-    }
+    unique.set(item.key, item);
   });
 
   return [...unique.values()];
 }
 
-export async function getExerciseByKey(keyOrName: string | null | undefined) {
+export async function getExerciseByKey(keyOrName: string | null | undefined, ownerTrainerId: number | null = null) {
   if (!keyOrName) return null;
 
   const normalized = keyOrName.trim().toLowerCase();
-  const catalog = await getExerciseCatalog();
+  const catalog = await getExerciseCatalog(ownerTrainerId);
   const matched = catalog.find((item) => item.key === normalized || item.name.toLowerCase() === normalized) ?? null;
 
   if (!matched) {
     return null;
-  }
-
-  if (matched.source === "static") {
-    const customOverride = catalog.find(
-      (item) => item.source === "custom" && item.name.toLowerCase() === matched.name.toLowerCase(),
-    );
-
-    if (customOverride) {
-      return customOverride;
-    }
   }
 
   return matched;

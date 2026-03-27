@@ -8,9 +8,11 @@ import {
   getExerciseGuide,
   getExerciseReferenceImage,
 } from "../../lib/utils/exercise-library";
+import { getClientByUserId } from "../../lib/utils/client-profile";
 
 const user = Astro.locals.user;
 const key = Astro.params.key;
+const trainerIdParam = Astro.url.searchParams.get("trainer_id");
 
 if (!user) {
   return Astro.redirect("/login");
@@ -21,7 +23,9 @@ if (!key) {
 }
 
 await ensureExerciseSchema();
-const exercise = await getExerciseByKey(key);
+const client = user.role === "client" ? await getClientByUserId(user.id) : null;
+const trainerId = trainerIdParam ? Number(trainerIdParam) : user.role === "trainer" ? user.id : client?.trainer_id ?? null;
+const exercise = await getExerciseByKey(key, Number.isNaN(trainerId as number) ? null : trainerId);
 
 if (!exercise) {
   return new Response("Ejercicio no encontrado", { status: 404 });
@@ -29,13 +33,13 @@ if (!exercise) {
 
 const guide = getExerciseGuide(exercise);
 const canEditExercise = ["trainer", "gym_manager", "admin"].includes(user.role as string);
-const referenceImage = await getExerciseReferenceImage(exercise);
+const referenceImage = exercise.imageUrl ?? await getExerciseReferenceImage(exercise);
 ---
 
 <AppLayout title={exercise.name}>
   <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
     <SectionHeader
-      eyebrow={exercise.source === "custom" ? "Ejercicio personalizado" : "Biblioteca"}
+      eyebrow={exercise.source === "trainer" ? "Ejercicio personalizado" : "Biblioteca"}
       title={exercise.name}
       description={`${exercise.category} · ${exercise.muscle} · ${exercise.equipment}`}
     >
@@ -78,7 +82,7 @@ const referenceImage = await getExerciseReferenceImage(exercise);
           <div class="mt-4 grid gap-3 sm:grid-cols-3">
             <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/50">
               <p class="text-xs uppercase tracking-wide text-slate-400">Tipo</p>
-              <p class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{exercise.source === "custom" ? "Personalizado" : "Base"}</p>
+              <p class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{exercise.source === "trainer" ? "Personalizado" : "Base"}</p>
             </div>
 
             <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-950/50">
@@ -143,7 +147,7 @@ const referenceImage = await getExerciseReferenceImage(exercise);
         {canEditExercise && (
           <div class="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-500/10">
             <p class="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Edición</p>
-            <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">{exercise.source === "custom" ? "Editar ejercicio" : "Crear versión editable"}</h2>
+            <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">{exercise.source === "trainer" ? "Editar ejercicio" : "Crear versión editable"}</h2>
             <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Solo entrenadores, managers y admin pueden cambiar imagen o video. Clientes no ven este bloque.</p>
 
             <form method="POST" action="/api/exercises/save" class="mt-5 space-y-4">

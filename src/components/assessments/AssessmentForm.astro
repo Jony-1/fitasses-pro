@@ -21,7 +21,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
 ---
 
 <div
-  class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:border-slate-800"
+  class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80"
 >
   <form id="assessment-form" class="space-y-8" novalidate>
     <input type="hidden" name="client_id" value={clientId} />
@@ -50,7 +50,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             type="date"
             value={initialValues.assessment_date ?? ""}
             required
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
         </div>
 
@@ -73,7 +73,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="300"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 30 a 300 kg
@@ -98,7 +98,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="60"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 3 a 60%
@@ -123,7 +123,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="70"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 10 a 70%
@@ -147,7 +147,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             placeholder="Ej: 2200"
             data-integer="true"
             data-max="6000"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 800 a 6000
@@ -171,7 +171,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             placeholder="Ej: 28"
             data-integer="true"
             data-max="100"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 10 a 100
@@ -195,7 +195,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             placeholder="Ej: 7"
             data-integer="true"
             data-max="30"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 1 a 30
@@ -228,7 +228,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="180"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 60 a 180 cm
@@ -253,7 +253,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="180"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 60 a 180 cm
@@ -278,7 +278,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="70"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 15 a 70 cm
@@ -303,7 +303,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="180"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 40 a 180 cm
@@ -328,7 +328,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="180"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 60 a 180 cm
@@ -353,7 +353,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="120"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 30 a 120 cm
@@ -378,7 +378,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
             data-decimal="true"
             data-max="80"
             data-decimals="2"
-            class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
           />
           <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Rango recomendado: 20 a 80 cm
@@ -398,7 +398,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
         rows="5"
         maxlength="2000"
         placeholder="Observaciones de la valoración..."
-        class="w-full rounded-xl border border-slate-300 px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100"
         >{initialValues.notes ?? ""}</textarea
       >
     </section>
@@ -412,7 +412,7 @@ if (user.role !== "trainer" && user.role !== "admin") {
     <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
       <a
         href={cancelHref}
-        class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:bg-slate-800"
       >
         Cancelar
       </a>
@@ -420,13 +420,39 @@ if (user.role !== "trainer" && user.role !== "admin") {
       <button
         id="submit-button"
         type="submit"
-        class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+        class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitLabel}
       </button>
     </div>
   </form>
 </div>
+
+<style>
+  #assessment-form input,
+  #assessment-form textarea,
+  #assessment-form select {
+    color: rgb(15 23 42);
+    background: rgb(255 255 255);
+  }
+
+  html.dark #assessment-form input,
+  html.dark #assessment-form textarea,
+  html.dark #assessment-form select {
+    color: rgb(226 232 240);
+    background: rgb(15 23 42 / 0.72);
+  }
+
+  #assessment-form input::placeholder,
+  #assessment-form textarea::placeholder {
+    color: rgb(148 163 184);
+  }
+
+  html.dark #assessment-form input::placeholder,
+  html.dark #assessment-form textarea::placeholder {
+    color: rgb(100 116 139);
+  }
+</style>
 
 <script
   define:vars={{

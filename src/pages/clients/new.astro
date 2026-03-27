@@ -15,51 +15,88 @@ if (user.role !== "trainer" && user.role !== "admin") {
 
 const trainers =
   user.role === "admin"
-    ? await sql`
-        SELECT id, name, email
-        FROM users
-        WHERE role = 'trainer'
-        ORDER BY name ASC, id ASC
-      `
+    ? (JSON.parse(
+        JSON.stringify(
+          await sql`
+            SELECT id, name, email
+            FROM users
+            WHERE role = 'trainer'
+            ORDER BY name ASC, id ASC
+          `,
+        ),
+      ) as { id: number; name: string; email: string }[])
     : [];
 ---
 
 <AppLayout title="Nuevo cliente">
-  <div class="mx-auto max-w-3xl">
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold tracking-tight">Nuevo cliente</h1>
-      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-        {
-          user.role === "admin"
-            ? "Registra un nuevo cliente y asígnalo a un trainer."
-            : "Registra un nuevo cliente para comenzar sus valoraciones."
-        }
-      </p>
-    </div>
+  <div class="mx-auto max-w-5xl px-4 py-4 sm:px-6 lg:px-8 sm:py-6">
+    <div class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950">
+      <div class="grid gap-0 lg:grid-cols-[1fr_1.05fr]">
+        <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-6 text-slate-950 sm:p-8 lg:min-h-[calc(100vh-4rem)] lg:p-10">
+          <div class="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/20 blur-2xl"></div>
+          <div class="absolute -bottom-16 right-12 h-56 w-56 rounded-full bg-black/10 blur-3xl"></div>
 
-    <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-      <form method="POST" action="/api/clients/create" class="space-y-6">
-        <ClientFormFields
-          showTrainerSelect={user.role === "admin"}
-          trainers={trainers}
-        />
+          <p class="text-xs font-bold uppercase tracking-[0.3em] text-slate-900/70">Nuevo perfil</p>
+          <h1 class="mt-3 max-w-md text-3xl font-black tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
+            Crea un cliente con una ficha más clara y visual.
+          </h1>
+          <p class="mt-4 max-w-md text-sm leading-6 text-slate-900/80">
+            Registra sus datos, asigna trainer y deja lista la base para valoraciones, progreso y rutina.
+          </p>
 
-        <div class="flex items-center justify-end gap-3">
-          <a
-            href="/clients"
-            class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            Cancelar
-          </a>
-
-          <button
-            type="submit"
-            class="rounded-lg bg-emerald-400 px-5 py-2 text-sm font-bold text-slate-900 hover:bg-emerald-300 dark:bg-emerald-600 dark:text-slate-100 dark:hover:bg-emerald-500"
-          >
-            Guardar cliente
-          </button>
+          <div class="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div class="rounded-2xl border border-white/30 bg-white/25 p-4 backdrop-blur">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-900/60">Paso 1</p>
+              <p class="mt-1 text-sm font-bold text-slate-950">Datos básicos</p>
+            </div>
+            <div class="rounded-2xl border border-white/30 bg-white/25 p-4 backdrop-blur">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-900/60">Paso 2</p>
+              <p class="mt-1 text-sm font-bold text-slate-950">Perfil corporal</p>
+            </div>
+            <div class="rounded-2xl border border-white/30 bg-white/25 p-4 backdrop-blur">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-900/60">Paso 3</p>
+              <p class="mt-1 text-sm font-bold text-slate-950">Acceso y notas</p>
+            </div>
+          </div>
         </div>
-      </form>
+
+        <div class="bg-white p-4 sm:p-6 lg:p-8 dark:bg-slate-950">
+          <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-xl font-bold text-slate-900 sm:text-2xl dark:text-slate-100">Formulario</h2>
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Completa los campos para crear el cliente.</p>
+            </div>
+            <a href="/clients" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+              Volver
+            </a>
+          </div>
+
+          <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5 shadow-lg sm:p-6 dark:border-slate-800 dark:bg-slate-900/90">
+            <form method="POST" action="/api/clients/create" class="space-y-6">
+              <ClientFormFields
+                showTrainerSelect={user.role === "admin"}
+                trainers={trainers}
+              />
+
+              <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-6 dark:border-slate-800">
+                <a
+                  href="/clients"
+                  class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Cancelar
+                </a>
+
+                <button
+                  type="submit"
+                  class="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-400 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
+                >
+                  Guardar cliente
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </AppLayout>

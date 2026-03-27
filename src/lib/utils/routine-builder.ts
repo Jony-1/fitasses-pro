@@ -80,7 +80,9 @@ export function initRoutineBuilder() {
     const selectedMuscle = muscleFilter?.value ?? "Todos";
     const selectedEquipment = equipmentFilter?.value ?? "Todos";
 
-    libraryButtons.forEach((button) => {
+    const filterTargets = [...libraryButtons, ...exercisePickCards];
+
+    filterTargets.forEach((button) => {
       const category = button.dataset.exerciseCategory ?? "";
       const muscle = button.dataset.exerciseMuscle ?? "";
       const equipment = button.dataset.exerciseEquipment ?? "";
@@ -342,6 +344,8 @@ export function initRoutineBuilder() {
       applyLibraryFilters();
     });
   });
+
+  applyLibraryFilters();
 
   customLibraryButton?.addEventListener("click", () => {
     const targetDay = selectedDayCard ?? getDayCards()[0] ?? null;

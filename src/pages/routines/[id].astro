@@ -125,7 +125,7 @@ const completedDays = routine.days.filter((day) => day.completed_at).length;
 
                 <div class="mt-5 space-y-3">
                   {day.exercises.map((exercise) => (
-                    <ExerciseCard exercise={exercise} />
+                    <ExerciseCard exercise={exercise} trainerId={routine.trainer_id} detailsHref={`/exercises/${exercise.exercise_key ?? exercise.name}`} />
                   ))}
                 </div>
 
@@ -219,6 +219,15 @@ const completedDays = routine.days.filter((day) => day.completed_at).length;
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Cliente</p>
               <p class="mt-1 font-semibold text-slate-900 dark:text-slate-100">{routine.client_name ?? "Sin asignar"}</p>
             </div>
+
+            {routine.client_id && (
+              <form method="POST" action="/api/routines/unassign" class="mt-4">
+                <input type="hidden" name="routine_id" value={routine.id} />
+                <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30">
+                  Quitar rutina del usuario
+                </button>
+              </form>
+            )}
           </div>
         )}
       </aside>

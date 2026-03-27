@@ -1,7 +1,8 @@
 ---
 import AppLayout from "../layouts/layout.astro";
 import SectionHeader from "../components/ui/SectionHeader.astro";
-import { exerciseLibrary, getExerciseLibraryItem } from "../lib/utils/exercise-library";
+import { getExerciseCatalog } from "../lib/utils/exercise-library";
+import { getClientByUserId } from "../lib/utils/client-profile";
 import ExerciseCard from "../components/exercises/ExerciseCard.astro";
 
 const user = Astro.locals.user;
@@ -14,8 +15,18 @@ const search = Astro.url.searchParams.get("q")?.trim().toLowerCase() ?? "";
 const category = Astro.url.searchParams.get("category") ?? "Todos";
 const muscle = Astro.url.searchParams.get("muscle") ?? "Todos";
 const equipment = Astro.url.searchParams.get("equipment") ?? "Todos";
+const pageSize = 24;
+const currentPage = Math.max(1, Number(Astro.url.searchParams.get("page") ?? "1") || 1);
+const buildPageHref = (page: number) => {
+  const params = new URLSearchParams(Astro.url.searchParams);
+  params.set("page", String(page));
+  return `/client-exercises?${params.toString()}`;
+};
 
-const exerciseCatalog = exerciseLibrary as any[];
+const client = user.role === "client" ? await getClientByUserId(user.id) : null;
+const ownerTrainerId = user.role === "trainer" ? user.id : client?.trainer_id ?? null;
+
+const exerciseCatalog = await getExerciseCatalog(ownerTrainerId);
 
 const catalog = exerciseCatalog.filter((exercise) => {
   const matchesSearch = !search || `${exercise.name} ${exercise.category} ${exercise.muscle} ${exercise.equipment}`.toLowerCase().includes(search);
@@ -25,6 +36,14 @@ const catalog = exerciseCatalog.filter((exercise) => {
 
   return matchesSearch && matchesCategory && matchesMuscle && matchesEquipment;
 });
+
+const totalExercises = catalog.length;
+const totalPages = Math.max(1, Math.ceil(totalExercises / pageSize));
+const pageIndex = Math.min(currentPage, totalPages);
+const startIndex = (pageIndex - 1) * pageSize;
+const visibleCatalog = catalog.slice(startIndex, startIndex + pageSize);
+const displayStart = totalExercises === 0 ? 0 : startIndex + 1;
+const displayEnd = totalExercises === 0 ? 0 : Math.min(startIndex + pageSize, totalExercises);
 
 const categories = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.category))];
 const muscles = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.muscle))];
@@ -70,6 +89,10 @@ const equipments = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exerci
         </select>
       </label>
 
+      <input type="hidden" name="page" value="1" />
+
+      <input type="hidden" name="page" value="1" />
+
       <div class="sm:col-span-2 xl:col-span-4 flex flex-wrap gap-3">
         <button type="submit" class="rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300">
           Aplicar filtros
@@ -81,16 +104,27 @@ const equipments = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exerci
     </form>
 
     <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {catalog.map((exercise) => {
-        const libraryItem = getExerciseLibraryItem(exercise.key);
+      {visibleCatalog.map((exercise) => (
+        <article class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
+          <ExerciseCard exercise={exercise} trainerId={ownerTrainerId} detailsHref={`/exercises/${exercise.key}`} showDetails={true} />
+        </article>
+      ))}
+    </div>
 
-        return (
-          <article class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
-            <ExerciseCard exercise={exercise} detailsHref={`/exercises/${exercise.key}`} showDetails={true} />
-          </article>
-        );
-      })}
+    <div class="mt-8 flex flex-col items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/80 md:flex-row">
+      <p class="text-sm text-slate-600 dark:text-slate-400">Mostrando {displayStart}-{displayEnd} de {totalExercises}</p>
+      <div class="flex items-center gap-2">
+        <a href={buildPageHref(Math.max(1, pageIndex - 1))} class:list={[
+          "rounded-xl border px-4 py-2.5 text-sm font-semibold",
+          pageIndex === 1 ? "pointer-events-none border-slate-200 text-slate-400 dark:border-slate-800 dark:text-slate-600" : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800",
+        ]}>Anterior</a>
+        <span class="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200">Página {pageIndex} / {totalPages}</span>
+        <a href={buildPageHref(Math.min(totalPages, pageIndex + 1))} class:list={[
+          "rounded-xl border px-4 py-2.5 text-sm font-semibold",
+          pageIndex === totalPages ? "pointer-events-none border-slate-200 text-slate-400 dark:border-slate-800 dark:text-slate-600" : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800",
+        ]}>Siguiente</a>
+      </div>
     </div>
   </div>
 </AppLayout>

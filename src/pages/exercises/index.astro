@@ -4,7 +4,9 @@ import SectionHeader from "../../components/ui/SectionHeader.astro";
 import {
   ensureExerciseSchema,
   getExerciseCatalog,
+  getExerciseReferenceImage,
 } from "../../lib/utils/exercise-library";
+import { getClientByUserId } from "../../lib/utils/client-profile";
 
 const user = Astro.locals.user;
 
@@ -12,7 +14,21 @@ if (!user) {
   return Astro.redirect("/login");
 }
 
+const ownerClient = user.role === "client" ? await getClientByUserId(user.id) : null;
+const ownerTrainerId = user.role === "trainer" ? user.id : ownerClient?.trainer_id ?? null;
 const canEditExercise = user.role !== "client";
+const normalize = (value: string) => value.trim().toLowerCase();
+const search = normalize(Astro.url.searchParams.get("q") ?? "");
+const category = Astro.url.searchParams.get("category") ?? "Todos";
+const muscle = Astro.url.searchParams.get("muscle") ?? "Todos";
+const equipment = Astro.url.searchParams.get("equipment") ?? "Todos";
+const pageSize = 24;
+const currentPage = Math.max(1, Number(Astro.url.searchParams.get("page") ?? "1") || 1);
+const buildPageHref = (page: number) => {
+  const params = new URLSearchParams(Astro.url.searchParams);
+  params.set("page", String(page));
+  return `/exercises?${params.toString()}`;
+};
 
 await ensureExerciseSchema();
 
@@ -27,10 +43,31 @@ type ExerciseCardData = {
   imageUrl?: string | null;
   accent: string;
   glyph: string;
-  source?: "static" | "custom";
+  source?: "static" | "base" | "trainer";
 };
 
-const exerciseCatalog = (await getExerciseCatalog()) as ExerciseCardData[];
+const exerciseCatalog = (await getExerciseCatalog(ownerTrainerId)) as ExerciseCardData[];
+const filteredExercises = exerciseCatalog.filter((exercise) => {
+  const matchesSearch = !search || `${exercise.name} ${exercise.category} ${exercise.muscle} ${exercise.equipment}`.toLowerCase().includes(search);
+  const matchesCategory = category === "Todos" || exercise.category === category;
+  const matchesMuscle = muscle === "Todos" || exercise.muscle === muscle;
+  const matchesEquipment = equipment === "Todos" || exercise.equipment === equipment;
+
+  return matchesSearch && matchesCategory && matchesMuscle && matchesEquipment;
+});
+const totalExercises = filteredExercises.length;
+const totalPages = Math.max(1, Math.ceil(totalExercises / pageSize));
+const pageIndex = Math.min(currentPage, totalPages);
+const startIndex = (pageIndex - 1) * pageSize;
+const visibleExercises = filteredExercises.slice(startIndex, startIndex + pageSize);
+const displayStart = totalExercises === 0 ? 0 : startIndex + 1;
+const displayEnd = totalExercises === 0 ? 0 : Math.min(startIndex + pageSize, totalExercises);
+const visibleExercisesWithImages = await Promise.all(
+  visibleExercises.map(async (exercise) => ({
+    ...exercise,
+    displayImageUrl: exercise.imageUrl ?? (await getExerciseReferenceImage(exercise)) ?? null,
+  })),
+);
 const categories = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.category))];
 const muscles = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.muscle))];
 const equipments = ["Todos", ...new Set(exerciseCatalog.map((exercise) => exercise.equipment))];
@@ -40,7 +77,7 @@ const categoryCount = exerciseCatalog.reduce<Record<string, number>>((acc, exerc
   return acc;
 }, {});
 const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercise) => {
-  const source = exercise.source === "custom" ? "Personalizados" : "Base";
+  const source = exercise.source === "trainer" ? "Personalizados" : "Base";
   acc[source] = (acc[source] ?? 0) + 1;
   return acc;
 }, {});
@@ -63,87 +100,102 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
       </button>
     </SectionHeader>
 
-    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {categories.map((category) => {
-        const count = category === "Todos" ? exerciseCatalog.length : categoryCount[category] ?? 0;
+    <form method="GET" class="space-y-4">
+      <input type="hidden" name="page" value="1" />
 
-        return (
-          <button
-            type="button"
-            data-exercise-filter={category}
-            class:list={[
-              "rounded-3xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg",
-              category === "Todos"
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100",
-            ]}
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] opacity-70">{category}</p>
-            <p class="mt-2 text-2xl font-bold">{count}</p>
-            <p class="mt-1 text-sm opacity-80">Ejercicios</p>
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {categories.map((item) => {
+          const count = item === "Todos" ? exerciseCatalog.length : categoryCount[item] ?? 0;
+
+          return (
+            <button
+              type="submit"
+              name="category"
+              value={item}
+              class:list={[
+                "rounded-3xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg",
+                item === category
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100",
+              ]}
+            >
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] opacity-70">{item}</p>
+              <p class="mt-2 text-2xl font-bold">{count}</p>
+              <p class="mt-1 text-sm opacity-80">Ejercicios</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div class="mt-6 grid gap-3 lg:grid-cols-[1fr_auto]">
+        <label class="block space-y-2">
+          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Buscar ejercicio</span>
+          <input
+            type="search"
+            name="q"
+            value={Astro.url.searchParams.get("q") ?? ""}
+            placeholder="Sentadilla, press, core..."
+            class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10"
+          />
+        </label>
+
+        <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+          El botón <span class="font-semibold text-slate-900 dark:text-slate-100">Usar en rutina</span> abre el creador con ese ejercicio.
+        </div>
+      </div>
+
+      <div class="mt-8 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Filtros avanzados</p>
+            <h3 class="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">Refina la lista</h3>
+          </div>
+
+          <div class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+            Vista rápida: abre detalles
+          </div>
+        </div>
+
+        <div class="mt-4 grid gap-3 lg:grid-cols-2">
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Filtrar por músculo</span>
+            <select name="muscle" value={muscle} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10">
+              {muscles.map((item) => <option value={item}>{item}</option>)}
+            </select>
+          </label>
+
+          <label class="space-y-2">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Filtrar por equipo</span>
+            <select name="equipment" value={equipment} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10">
+              {equipments.map((item) => <option value={item}>{item}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button type="submit" class="rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300">
+            Aplicar filtros
           </button>
-        );
-      })}
-    </div>
-
-    <div class="mt-6 grid gap-3 lg:grid-cols-[1fr_auto]">
-      <label class="block space-y-2">
-        <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Buscar ejercicio</span>
-        <input
-          type="search"
-          data-exercise-search
-          placeholder="Sentadilla, press, core..."
-          class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10"
-        />
-      </label>
-
-      <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-        El botón <span class="font-semibold text-slate-900 dark:text-slate-100">Usar en rutina</span> abre el creador con ese ejercicio.
-      </div>
-    </div>
-
-    <div class="mt-8 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/40">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Filtros avanzados</p>
-          <h3 class="mt-1 text-base font-bold text-slate-900 dark:text-slate-100">Refina la lista</h3>
-        </div>
-
-        <div class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-          Vista rápida: abre detalles
+          <a href="/exercises" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            Limpiar
+          </a>
         </div>
       </div>
-
-      <div class="mt-4 grid gap-3 lg:grid-cols-2">
-        <label class="space-y-2">
-          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Filtrar por músculo</span>
-          <select data-exercise-muscle-filter class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10">
-            {muscles.map((muscle) => <option value={muscle}>{muscle}</option>)}
-          </select>
-        </label>
-
-        <label class="space-y-2">
-          <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Filtrar por equipo</span>
-          <select data-exercise-equipment-filter class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10">
-            {equipments.map((equipment) => <option value={equipment}>{equipment}</option>)}
-          </select>
-        </label>
-      </div>
-    </div>
+    </form>
 
     <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {exerciseCatalog.map((exercise) => (
+      {visibleExercisesWithImages.map((exercise) => (
         <article
           data-exercise-card
           data-category={exercise.category}
           data-name={exercise.name}
-          data-source={exercise.source === "custom" ? "Personalizados" : "Base"}
+          data-source={exercise.source === "trainer" ? "Personalizados" : "Base"}
           class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_16px_50px_rgba(15,23,42,0.10)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.16)] dark:border-slate-800 dark:bg-slate-950"
         >
           <div class="relative">
             <div class="h-2 w-full" style={`background:${exercise.accent}`}></div>
-            <div class="relative h-44 overflow-hidden bg-slate-950">
-              <img src={exercise.imageUrl ?? exercise.image} alt={exercise.name} class="h-full w-full object-cover" />
+          <div class="relative h-44 overflow-hidden bg-slate-950">
+              <img src={exercise.displayImageUrl ?? exercise.image} alt={exercise.name} class="h-full w-full object-cover" loading="lazy" decoding="async" />
               <div class="absolute inset-x-3 bottom-3 rounded-2xl border border-white/10 bg-slate-950/50 p-3 text-white backdrop-blur-md">
                 <div class="flex items-center justify-between gap-3">
                   <div>
@@ -152,7 +204,7 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
                   </div>
 
                   <span class="rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold text-white">
-                    {exercise.source === "custom" ? "Custom" : "Base"}
+                    {exercise.source === "trainer" ? "Custom" : "Base"}
                   </span>
                 </div>
               </div>
@@ -167,7 +219,7 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
             </div>
 
             <p class="mt-3 text-sm text-white/70">
-              {exercise.source === "custom" ? "Personalizado" : "Biblioteca base"}
+              {exercise.source === "trainer" ? "Personalizado" : "Biblioteca base"}
             </p>
 
             <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -177,11 +229,11 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
                 </a>
               )}
 
-              <a href={`/exercises/${exercise.key}`} class="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 sm:w-auto">
+              <a href={`/exercises/${exercise.key}${ownerTrainerId ? `?trainer_id=${ownerTrainerId}` : ""}`} class="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 sm:w-auto">
                 Detalles
               </a>
 
-              {exercise.source === "custom" ? (
+              {exercise.source === "trainer" ? (
                 <button
                   type="button"
                   data-open-modal="edit"
@@ -193,7 +245,7 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
                   data-exercise-equipment={exercise.equipment}
                   data-exercise-accent={exercise.accent}
                   data-exercise-glyph={exercise.glyph}
-                  data-exercise-image-url={exercise.imageUrl ?? ""}
+                  data-exercise-image-url={exercise.displayImageUrl ?? ""}
                   class="inline-flex w-full items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 sm:w-auto"
                 >
                   Editar
@@ -208,7 +260,7 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
                 </button>
               )}
 
-              {exercise.source === "custom" && exercise.id && (
+              {exercise.source === "trainer" && exercise.id && (
                 <form method="POST" action="/api/exercises/delete" onsubmit="return confirm('Eliminar este ejercicio?');">
                   <input type="hidden" name="id" value={exercise.id} />
                   <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-200 hover:bg-red-500/20 sm:w-auto">
@@ -220,6 +272,42 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
           </div>
         </article>
       ))}
+    </div>
+
+    <div class="mt-8 flex flex-col items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/80 md:flex-row">
+      <p class="text-sm text-slate-600 dark:text-slate-400">
+        Mostrando {displayStart}-{displayEnd} de {totalExercises}
+      </p>
+
+      <div class="flex items-center gap-2">
+        <a
+          href={buildPageHref(Math.max(1, pageIndex - 1))}
+          class:list={[
+            "rounded-xl border px-4 py-2.5 text-sm font-semibold",
+            pageIndex === 1
+              ? "pointer-events-none border-slate-200 text-slate-400 dark:border-slate-800 dark:text-slate-600"
+              : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800",
+          ]}
+        >
+          Anterior
+        </a>
+
+        <span class="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+          Página {pageIndex} / {totalPages}
+        </span>
+
+        <a
+          href={buildPageHref(Math.min(totalPages, pageIndex + 1))}
+          class:list={[
+            "rounded-xl border px-4 py-2.5 text-sm font-semibold",
+            pageIndex === totalPages
+              ? "pointer-events-none border-slate-200 text-slate-400 dark:border-slate-800 dark:text-slate-600"
+              : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800",
+          ]}
+        >
+          Siguiente
+        </a>
+      </div>
     </div>
   </div>
 

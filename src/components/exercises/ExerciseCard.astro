@@ -1,6 +1,6 @@
 ---
 import ExerciseMotionAvatar from "./ExerciseMotionAvatar.astro";
-import { generateExerciseKey, getExerciseByKey, type ExerciseLibraryItem } from "../../lib/utils/exercise-library";
+import { generateExerciseKey, getExerciseByKey, getExerciseReferenceImage, type ExerciseLibraryItem } from "../../lib/utils/exercise-library";
 
 type ExerciseLike = {
   name: string;
@@ -23,11 +23,13 @@ interface Props {
   detailsHref?: string;
   compact?: boolean;
   showDetails?: boolean;
+  trainerId?: number | null;
 }
 
-const { exercise, detailsHref, compact = false, showDetails = true } = Astro.props as Props;
-const libraryItem = await getExerciseByKey(exercise.exercise_key ?? exercise.key ?? exercise.name);
-const referenceImage = exercise.image ?? exercise.imageUrl ?? libraryItem?.imageUrl ?? libraryItem?.image ?? null;
+const { exercise, detailsHref, compact = false, showDetails = true, trainerId = null } = Astro.props as Props;
+const libraryItem = await getExerciseByKey(exercise.exercise_key ?? exercise.key ?? exercise.name, trainerId);
+const referenceImage = libraryItem?.imageUrl ?? exercise.imageUrl ?? (libraryItem ? await getExerciseReferenceImage(libraryItem) : null) ?? exercise.image ?? libraryItem?.image ?? null;
+const detailsUrl = detailsHref && trainerId ? `${detailsHref}${detailsHref.includes("?") ? "&" : "?"}trainer_id=${trainerId}` : detailsHref;
 
 const avatarItem =
   libraryItem ??
@@ -79,8 +81,8 @@ const labelClass = compact ? "text-sm" : "text-base";
 
       {exercise.notes && <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">{exercise.notes}</p>}
 
-      {showDetails && detailsHref && (
-        <a href={detailsHref} class="mt-3 inline-flex rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+      {showDetails && detailsUrl && (
+        <a href={detailsUrl} class="mt-3 inline-flex rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
           Ver detalle
         </a>
       )}
