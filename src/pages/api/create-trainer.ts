@@ -2,8 +2,16 @@ import type { APIRoute } from "astro";
 import { sql } from "../../lib/db/client";
 import { hashPassword } from "../../lib/auth/password";
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async (context) => {
     try {
+        if (!context.locals.user) {
+            return new Response(JSON.stringify({ error: "Debes iniciar sesion" }), { status: 401 });
+        }
+
+        if (context.locals.user.role !== "admin") {
+            return new Response(JSON.stringify({ error: "No autorizado" }), { status: 403 });
+        }
+
         const passwordHash = await hashPassword("admin");
 
         await sql`
@@ -19,8 +27,8 @@ export const GET: APIRoute = async () => {
         return new Response(
             JSON.stringify({
                 status: "trainer created",
-                email: "trainer@gmail.com",
-                password: "root",
+                email: "admin@gmail.com",
+                password: "admin",
             }),
             { status: 200 }
         );

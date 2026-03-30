@@ -1,9 +1,17 @@
 import { defineMiddleware } from "astro:middleware";
 import { getSessionUser } from "./lib/auth/auth";
 
-const PUBLIC_EXACT_PATHS = new Set(["/login", "/register"]);
+const PUBLIC_EXACT_PATHS = new Set([
+    "/",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/api/auth/password-reset-request",
+    "/api/auth/password-reset",
+]);
 const PUBLIC_PREFIXES = [
     "/clients/register/",
+    "/reset-password/",
     "/api/auth/login",
     "/api/auth/logout",
     "/api/auth/register-",

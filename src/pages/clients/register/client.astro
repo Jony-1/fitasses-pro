@@ -12,14 +12,14 @@ const errorMessages: Record<string, string> = {
     invalid_email: "Ingresa un correo válido.",
     password_mismatch: "Las contraseñas no coinciden.",
     weak_password:
-        "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.",
+        "La contraseña debe tener al menos 4 caracteres, una mayúscula y un número.",
     email_exists: "Ese correo ya está registrado.",
     invalid_birth_date: "La fecha de nacimiento no es válida.",
     invalid_gender: "El género seleccionado no es válido.",
     invalid_height: "La altura ingresada no es válida.",
     invalid_notes: "Las observaciones son demasiado largas.",
-    invalid_trainer: "Debes seleccionar un trainer válido.",
-    trainer_not_found: "El trainer seleccionado no existe.",
+    invalid_trainer: "Debes seleccionar un entrenador válido.",
+    trainer_not_found: "El entrenador seleccionado no existe.",
 };
 
 const errorMessage = error ? errorMessages[error] : null;
@@ -49,8 +49,8 @@ const trainerOptions = trainers as unknown as {
                 { href: "/login", label: "Iniciar sesión" },
                 { href: "/register", label: "Registro" },
                 { href: "/clients/register/client", label: "Cliente", active: true },
-                { href: "/clients/register/trainer", label: "Trainer" },
-                { href: "/clients/register/gym-manager", label: "Gym manager" },
+                { href: "/clients/register/trainer", label: "Entrenador" },
+                { href: "/clients/register/gym-manager", label: "Gestor" },
             ]}
         />
 
@@ -59,7 +59,7 @@ const trainerOptions = trainers as unknown as {
                 Crear cuenta de cliente
             </h1>
             <p class="mt-2 text-slate-600 dark:text-slate-400">
-                Regístrate para consultar tu progreso, valoraciones e historial con tu trainer asignado.
+                Regístrate para consultar tu progreso, valoraciones e historial con tu entrenador asignado.
             </p>
         </div>
 
@@ -107,11 +107,11 @@ const trainerOptions = trainers as unknown as {
                             name="password"
                             type="password"
                             required
-                            minlength="8"
+                            minlength="4"
                             maxlength="72"
                             autocomplete="new-password"
-                            pattern="^(?=.*[A-Z])(?=.*\d).{8,72}$"
-                            title="Debe tener al menos 8 caracteres, una mayúscula y un número."
+                            pattern="^(?=.*[A-Z])(?=.*\\d).{4,72}$"
+                            title="Debe tener al menos 4 caracteres, una mayúscula y un número."
                             class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                             placeholder="Crea una contraseña con mayúscula y número"
                         />
@@ -130,7 +130,7 @@ const trainerOptions = trainers as unknown as {
                         name="confirm_password"
                         type="password"
                         required
-                        minlength="8"
+                        minlength="4"
                         maxlength="72"
                         autocomplete="new-password"
                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
@@ -145,7 +145,7 @@ const trainerOptions = trainers as unknown as {
                         Requisitos de la contraseña
                     </p>
                     <ul class="mt-2 space-y-1">
-                        <li>• Mínimo 8 caracteres</li>
+                        <li>• Mínimo 4 caracteres</li>
                         <li>• Al menos una mayúscula</li>
                         <li>• Al menos un número</li>
                     </ul>

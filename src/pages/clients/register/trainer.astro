@@ -10,28 +10,28 @@ const errorMessages: Record<string, string> = {
     invalid_email: "Ingresa un correo válido.",
     password_mismatch: "Las contraseñas no coinciden.",
     weak_password:
-        "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.",
+        "La contraseña debe tener al menos 4 caracteres, una mayúscula y un número.",
     email_exists: "Ese correo ya está registrado.",
 };
 
 const errorMessage = error ? errorMessages[error] : null;
 ---
 
-<AppLayout title="Registro de trainer">
+<AppLayout title="Registro de entrenador">
     <div class="mx-auto max-w-2xl px-4 py-8 sm:py-10">
         <AuthNav
             items={[
                 { href: "/login", label: "Iniciar sesión" },
                 { href: "/register", label: "Registro" },
                 { href: "/clients/register/client", label: "Cliente" },
-                { href: "/clients/register/trainer", label: "Trainer", active: true },
-                { href: "/clients/register/gym-manager", label: "Gym manager" },
+                { href: "/clients/register/trainer", label: "Entrenador", active: true },
+                { href: "/clients/register/gym-manager", label: "Gestor" },
             ]}
         />
 
         <div class="mb-6 text-center">
             <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                Crear cuenta de trainer
+                Crear cuenta de entrenador
             </h1>
             <p class="mt-2 text-slate-600 dark:text-slate-400">
                 Regístrate para administrar clientes, valoraciones y progreso dentro de tu gimnasio.
@@ -103,11 +103,11 @@ const errorMessage = error ? errorMessages[error] : null;
                         name="password"
                         type="password"
                         required
-                        minlength="8"
+                        minlength="4"
                         maxlength="72"
                         autocomplete="new-password"
-                        pattern="^(?=.*[A-Z])(?=.*\d).{8,72}$"
-                        title="Debe tener al menos 8 caracteres, una mayúscula y un número."
+                        pattern="^(?=.*[A-Z])(?=.*\\d).{4,72}$"
+                        title="Debe tener al menos 4 caracteres, una mayúscula y un número."
                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                         placeholder="Crea una contraseña con mayúscula y número"
                     />
@@ -125,7 +125,7 @@ const errorMessage = error ? errorMessages[error] : null;
                         name="confirm_password"
                         type="password"
                         required
-                        minlength="8"
+                        minlength="4"
                         maxlength="72"
                         autocomplete="new-password"
                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
@@ -140,7 +140,7 @@ const errorMessage = error ? errorMessages[error] : null;
                         Requisitos de la contraseña
                     </p>
                     <ul class="mt-2 space-y-1">
-                        <li>• Mínimo 8 caracteres</li>
+                        <li>• Mínimo 4 caracteres</li>
                         <li>• Al menos una mayúscula</li>
                         <li>• Al menos un número</li>
                     </ul>

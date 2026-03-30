@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import { sql } from "../lib/db/client";
+import { normalizePath, getHrefPath, isActive, computeNavItemsWithActive } from "../lib/utils/navigation";
 
 interface Props {
   title?: string;
@@ -44,36 +45,30 @@ const clientRecord = isClient && user ? await sql`
 const clientId = isClient ? (clientRecord[0]?.id as number | undefined) ?? null : null;
 
 const panelTitle = isAdmin
-  ? "Admin Panel"
+  ? "Panel de administracion"
   : isGymManager
-    ? "Gym Manager Panel"
+    ? "Panel del gimnasio"
   : isTrainer
-    ? "Trainer Panel"
+    ? "Panel del entrenador"
   : isClient
-      ? "Client Panel"
+      ? "Panel del cliente"
       : "FitAssess Pro";
 
-function normalizePath(path: string) {
-  if (path === "/") return "/";
 
-  return path.replace(/\/+$/, "");
-}
 
-function getHrefPath(href: string) {
-  return normalizePath(href.split(/[?#]/)[0] ?? href);
-}
+
 
 const navItems = [
-  { label: "Dashboard", href: dashboardHref, icon: "📊", visible: !!user && !isClient },
+  { label: "Panel", href: dashboardHref, icon: "📊", visible: !!user && !isClient },
   { label: "Mi cuenta", href: "/client-home", icon: "🏠", visible: isClient },
   { label: "Mi rutina", href: clientId ? `/clients/${clientId}/routine` : "/client-home", icon: "🗓️", visible: isClient && !!clientId },
   { label: "Ejercicios", href: "/client-exercises", icon: "🎴", visible: isClient },
   { label: "Mi progreso", href: clientId ? `/clients/${clientId}/progress` : "/client-home", icon: "📈", visible: isClient && !!clientId },
   { label: "Valoraciones", href: clientId ? `/clients/${clientId}/assessments` : "/client-home", icon: "🧾", visible: isClient && !!clientId },
-  { label: "Clients", href: "/clients", icon: "👥", visible: canManageClients },
+  { label: "Clientes", href: "/clients", icon: "👥", visible: canManageClients },
   { label: "Ejercicios", href: "/exercises", icon: "🎴", visible: canManageRoutines },
   {
-    label: "New Client",
+    label: "Nuevo cliente",
     href: "/clients/new",
     icon: "➕",
     visible: canManageClients,
@@ -85,7 +80,7 @@ const navItems = [
     visible: canManageRoutines,
   },
   {
-    label: "Trainers",
+    label: "Entrenadores",
     href: "/admin/trainers",
     icon: "🏋️",
     visible: canManageTrainers,
@@ -94,9 +89,9 @@ const navItems = [
   { label: "Administración", href: "/admin", icon: "🏴‍☠️", visible: isAdmin },
 ].filter((item) => item.visible);
 
-function isActive(href: string) {
-  return normalizePath(currentPath) === getHrefPath(href);
-}
+const navItemsWithActive = computeNavItemsWithActive(navItems, currentPath);
+
+
 ---
 
 <!doctype html>
@@ -115,14 +110,12 @@ function isActive(href: string) {
 
     <script is:inline>
       const savedTheme = localStorage.getItem("theme");
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      ).matches;
 
-      if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
-        document.documentElement.classList.add("dark");
-      } else {
+      // Dark mode por defecto para todos los nuevos usuarios
+      if (savedTheme === "light") {
         document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.classList.add("dark");
       }
     </script>
   </head>
@@ -155,14 +148,15 @@ function isActive(href: string) {
           </div>
         </div>
 
-        <nav class="flex-1 space-y-2 p-4">
+        <nav aria-label="Navegación principal" class="flex-1 space-y-2 p-4">
           {
-            navItems.map((item) => (
+            navItemsWithActive.map((item) => (
               <a
                 href={item.href}
+                aria-current={item.active ? "page" : undefined}
                 class:list={[
                   "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
-                  isActive(item.href)
+                  item.active
                     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
                     : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
                 ]}
@@ -261,14 +255,15 @@ function isActive(href: string) {
           <div
             class="border-t border-slate-200 px-4 py-3 dark:border-slate-800 md:hidden"
           >
-            <nav class="flex gap-2 overflow-x-auto pb-1">
+            <nav aria-label="Navegación móvil" class="flex gap-2 overflow-x-auto pb-1">
               {
-                navItems.map((item) => (
+                navItemsWithActive.map((item) => (
                   <a
                     href={item.href}
+                    aria-current={item.active ? "page" : undefined}
                     class:list={[
                       "whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition",
-                      isActive(item.href)
+                      item.active
                         ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
                         : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
                     ]}

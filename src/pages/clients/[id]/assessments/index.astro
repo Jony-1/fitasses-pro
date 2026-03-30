@@ -57,6 +57,9 @@ const assessments = await sql`
   ORDER BY a.assessment_date DESC, a.id DESC
 `;
 
+const latestAssessment = assessments[0] ?? null;
+const previousAssessment = assessments[1] ?? null;
+
 function formatNumber(value: unknown, suffix = "") {
     if (value === null || value === undefined || value === "") return "-";
 
@@ -65,6 +68,24 @@ function formatNumber(value: unknown, suffix = "") {
     if (Number.isNaN(num)) return "-";
 
     return `${num}${suffix}`;
+}
+
+function getDelta(current: unknown, previous: unknown) {
+    const currentValue = Number(current);
+    const previousValue = Number(previous);
+
+    if (Number.isNaN(currentValue) || Number.isNaN(previousValue)) {
+        return null;
+    }
+
+    return currentValue - previousValue;
+}
+
+function formatDelta(value: number | null, suffix = "") {
+    if (value === null) return "-";
+
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${value}${suffix}`;
 }
 ---
 
@@ -104,6 +125,47 @@ function formatNumber(value: unknown, suffix = "") {
                 )
             }
         </ClientPageHeader>
+
+        {latestAssessment && (
+            <section class="mb-6 rounded-3xl border border-blue-200 bg-blue-50 p-5 shadow-sm dark:border-blue-900/40 dark:bg-blue-950/20">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-700 dark:text-blue-300">Última valoración</p>
+                        <h2 class="mt-2 text-2xl font-bold text-blue-950 dark:text-blue-100">{formatDateOnly(latestAssessment.assessment_date)}</h2>
+                        <p class="mt-2 text-sm text-blue-800 dark:text-blue-200">Este resumen permite explicar rápidamente qué cambió desde la valoración anterior y hacia dónde debería ir el seguimiento.</p>
+                    </div>
+
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                        <a href={`/clients/${client.id}/progress`} class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                            Ver progreso
+                        </a>
+                        {canManageAssessments && (
+                            <a href={`/clients/${client.id}/assessments/valoration_new`} class="inline-flex items-center justify-center rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/30">
+                                Nueva valoración
+                            </a>
+                        )}
+                    </div>
+                </div>
+
+                <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900/70">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Peso</p>
+                        <p class="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{formatNumber(latestAssessment.weight_kg, " kg")}</p>
+                        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Cambio: {formatDelta(getDelta(latestAssessment.weight_kg, previousAssessment?.weight_kg), " kg")}</p>
+                    </div>
+                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900/70">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Grasa corporal</p>
+                        <p class="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{formatNumber(latestAssessment.body_fat_pct, " %")}</p>
+                        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Cambio: {formatDelta(getDelta(latestAssessment.body_fat_pct, previousAssessment?.body_fat_pct), " %")}</p>
+                    </div>
+                    <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900/70">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Masa muscular</p>
+                        <p class="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{formatNumber(latestAssessment.muscle_pct, " %")}</p>
+                        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Cambio: {formatDelta(getDelta(latestAssessment.muscle_pct, previousAssessment?.muscle_pct), " %")}</p>
+                    </div>
+                </div>
+            </section>
+        )}
 
         {
             assessments.length === 0 ? (

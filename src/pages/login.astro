@@ -45,7 +45,7 @@ if (error === "missing_fields") {
                 Iniciar sesión
             </h1>
             <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                Accede como cliente, trainer, gym manager o administrador.
+                Entra al FitAssess Pro con el rol que quieras presentar y recorre el flujo completo del producto.
             </p>
         </div>
 
@@ -64,9 +64,17 @@ if (error === "missing_fields") {
         )}
 
         <div class="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:p-8">
+            <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+                <p class="font-semibold">Ruta recomendada</p>
+                <p class="mt-1">Empieza con una cuenta de entrenador para mostrar panel, clientes, rutina, entrenamiento guiado y progreso. Si ya tienes usuarios creados, usa cualquiera segun el rol que quieras ensenar.</p>
+                <a href="/" class="mt-3 inline-flex text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
+                    Volver al inicio
+                </a>
+            </div>
+
             <div class="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400">
                 <p class="font-semibold text-slate-900 dark:text-slate-200">Acceso según tu rol</p>
-                <p class="mt-1">Los gym managers entran a su panel del gimnasio, los trainers a sus clientes y los administradores al panel general.</p>
+                <p class="mt-1">Cliente: progreso y valoraciones. Entrenador: clientes y seguimiento. Gestor de gimnasio: panel del gimnasio. Administrador: vista global de la plataforma.</p>
             </div>
 
             <form action="/api/auth/login" method="POST" class="space-y-5">

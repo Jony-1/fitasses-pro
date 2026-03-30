@@ -57,7 +57,7 @@ const trainerRows = await sql`
 `;
 ---
 
-<AppLayout title="Gym Manager Panel">
+<AppLayout title="Panel del gimnasio">
     <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         <SectionHeader
             eyebrow={gym ? gym.name : "Mi gimnasio"}
@@ -74,7 +74,7 @@ const trainerRows = await sql`
 
             <a
                 slot="actions"
-                href="/admin/gyms"
+                href="/gym-manager"
                 class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto"
             >
                 Ver gimnasio

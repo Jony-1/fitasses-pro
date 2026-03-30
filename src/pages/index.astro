@@ -1,3 +1,279 @@
 ---
-return Astro.redirect("/clients");
+import "../styles/global.css";
+
+const user = Astro.locals.user;
+
+if (user) {
+  return Astro.redirect(String(user.role) === "gym_manager" ? "/gym-manager" : "/dashboard");
+}
+
+const roleCards = [
+  {
+    title: "Cliente",
+    description: "Consulta tu rutina del dia, revisa tu progreso y sigue tus valoraciones sin ruido innecesario.",
+  },
+  {
+    title: "Entrenador",
+    description: "Gestiona clientes, detecta seguimiento pendiente y acompana cada sesion con datos reales.",
+  },
+  {
+    title: "Gestor de gimnasio",
+    description: "Supervisa a tu equipo, revisa actividad reciente y mantén una vista clara del gimnasio.",
+  },
+  {
+    title: "Administrador",
+    description: "Controla la plataforma, gimnasios y entrenadores desde una sola vista operativa.",
+  },
+];
+
+const pillars = [
+  {
+    title: "Seguimiento real",
+    description: "Cada cliente tiene rutina, progreso y valoraciones conectadas en el mismo flujo.",
+  },
+  {
+    title: "Entrenamiento guiado",
+    description: "La rutina deja de ser una lista estatica y se convierte en una sesion paso a paso.",
+  },
+  {
+    title: "Operacion clara",
+    description: "El panel muestra alertas, actividad y prioridades para actuar rapido.",
+  },
+];
+
+const workflow = [
+  "Organiza clientes y equipo segun el rol.",
+  "Registra valoraciones y construye historial medible.",
+  "Activa rutinas, entrena y demuestra progreso visible.",
+];
+
+const stats = [
+  { value: "4", label: "roles conectados" },
+  { value: "1", label: "flujo central" },
+  { value: "SSR", label: "app Astro + Node" },
+  { value: "SQL", label: "datos persistentes" },
+];
 ---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FitAssess Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script is:inline>
+      const savedTheme = localStorage.getItem("theme");
+
+      // Dark mode por defecto para todos los nuevos usuarios
+      if (savedTheme === "light") {
+        document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
+  </head>
+
+  <body class="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+    <div class="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.10),_transparent_30%),radial-gradient(circle_at_right,_rgba(56,189,248,0.10),_transparent_24%)] dark:bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_28%),radial-gradient(circle_at_right,_rgba(14,165,233,0.12),_transparent_22%)]">
+      <header class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+        <a href="/" class="inline-flex items-center gap-3">
+          <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-lg font-black text-white shadow-lg shadow-slate-900/20 dark:bg-white dark:text-slate-950">F</span>
+          <span>
+            <span class="block text-base font-black tracking-tight text-slate-950 dark:text-white">FitAssess Pro</span>
+            <span class="block text-xs font-medium text-slate-500 dark:text-slate-400">Rutinas, progreso y seguimiento en un solo lugar</span>
+          </span>
+        </a>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+          <button
+            id="theme-toggle"
+            type="button"
+            class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            aria-label="Cambiar tema"
+          >
+          <span class="dark:hidden">🌙</span>
+          <span class="hidden dark:inline">☀️</span>
+          </button>
+
+          <a href="/login" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+            Iniciar sesion
+          </a>
+          <a href="/register" class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+            Registrarse
+          </a>
+        </div>
+      </header>
+
+      <main class="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8 lg:pb-16">
+        <section class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white/90 shadow-[0_24px_90px_rgba(15,23,42,0.12)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/88">
+          <div class="grid gap-10 px-6 py-8 sm:px-8 sm:py-10 lg:grid-cols-[1.08fr_0.92fr] lg:px-12 lg:py-14">
+            <div>
+              <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+                Plataforma de seguimiento fitness
+              </div>
+
+              <h1 class="mt-6 max-w-3xl text-4xl font-black tracking-tight text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
+                Evalua, organiza y demuestra progreso en un solo sistema.
+              </h1>
+
+              <p class="mt-5 max-w-2xl text-base text-slate-600 dark:text-slate-300 sm:text-lg">
+                FitAssess Pro conecta clientes, valoraciones, rutinas y entrenamiento guiado para que el progreso no se quede en una hoja de calculo ni en mensajes sueltos.
+              </p>
+
+              <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                <a href="/login" class="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-600">
+                  Entrar ahora
+                </a>
+                <a href="/register" class="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+                  Crear cuenta
+                </a>
+              </div>
+
+              <div class="mt-8 grid gap-3 sm:grid-cols-3">
+                {pillars.map((item) => (
+                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-950/60">
+                    <p class="text-sm font-bold text-slate-900 dark:text-slate-100">{item.title}</p>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div class="rounded-[2rem] border border-slate-200 bg-slate-950 p-6 text-white shadow-inner dark:border-slate-800">
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">Flujo principal</p>
+              <h2 class="mt-3 text-2xl font-bold">De la rutina al resultado</h2>
+              <p class="mt-3 text-sm text-slate-300">
+                El producto esta pensado para mostrar valor rapido: entras al panel, eliges un cliente, activas la rutina del dia, registras la sesion y cierras en progreso y valoraciones.
+              </p>
+
+              <div class="mt-6 space-y-3">
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-emerald-300">1. Panel operativo</p>
+                  <p class="mt-1 text-sm text-slate-200">Metricas, alertas y prioridades para actuar en segundos.</p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-emerald-300">2. Rutina guiada</p>
+                  <p class="mt-1 text-sm text-slate-200">Cada ejercicio se convierte en una sesion paso a paso con descansos y registro real.</p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p class="text-xs font-semibold uppercase tracking-wide text-emerald-300">3. Progreso visible</p>
+                  <p class="mt-1 text-sm text-slate-200">El entrenamiento y las valoraciones terminan en indicadores claros para seguimiento.</p>
+                </div>
+              </div>
+
+              <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                {stats.map((item) => (
+                  <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p class="text-2xl font-black text-white">{item.value}</p>
+                    <p class="mt-1 text-sm text-slate-300">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mt-8 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">Una vista para cada rol</p>
+              <h2 class="mt-2 text-3xl font-bold text-slate-950 dark:text-slate-100">La experiencia cambia segun quien entra</h2>
+            </div>
+            <p class="max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+              El cliente tiene claridad, el entrenador tiene control, el gimnasio tiene supervision y el administrador tiene una vista completa del sistema.
+            </p>
+          </div>
+
+          <div class="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {roleCards.map((item) => (
+              <article class="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60">
+                <h3 class="text-lg font-bold text-slate-950 dark:text-slate-100">{item.title}</h3>
+                <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">{item.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section class="mt-8 grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+          <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">Como funciona</p>
+            <h2 class="mt-2 text-3xl font-bold text-slate-950 dark:text-slate-100">Un flujo corto y facil de entender</h2>
+            <div class="mt-6 space-y-4">
+              {workflow.map((step, index) => (
+                <div class="flex gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-400 text-sm font-black text-slate-950">
+                    {index + 1}
+                  </div>
+                  <p class="text-sm text-slate-700 dark:text-slate-300">{step}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-8">
+            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">Valor del producto</p>
+            <h2 class="mt-2 text-3xl font-bold text-slate-950 dark:text-slate-100">No solo guarda datos, los vuelve accionables</h2>
+            <div class="mt-6 space-y-4">
+              <div class="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950/60">
+                <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">Lo que normalmente esta disperso, aqui vive conectado.</p>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Clientes, rutinas, progreso y valoraciones dejan de ser tareas separadas y pasan a ser parte del mismo seguimiento.</p>
+              </div>
+              <div class="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-100">La mejor parte del recorrido es el entrenamiento guiado.</p>
+                <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-200">Esa experiencia es la que convierte una rutina en una sesion real con contexto, continuidad y resultado visible.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mt-8 rounded-[2rem] border border-slate-200 bg-slate-950 px-6 py-8 text-white shadow-sm dark:border-slate-800 sm:px-8 sm:py-10">
+          <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">Empieza cuando quieras</p>
+              <h2 class="mt-2 text-3xl font-bold">Accede al sistema y recorre el flujo completo.</h2>
+              <p class="mt-3 max-w-2xl text-sm text-slate-300">
+                Si quieres ver el producto en su mejor recorrido, entra como entrenador y abre un cliente con rutina activa.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row">
+              <a href="/login" class="inline-flex items-center justify-center rounded-2xl bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300">
+                Iniciar sesion
+              </a>
+              <a href="/register" class="inline-flex items-center justify-center rounded-2xl border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+                Registrarse
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script is:inline>
+      const themeToggle = document.getElementById("theme-toggle");
+      const themeToggleLabel = document.getElementById("theme-toggle-label");
+
+      function syncThemeLabel() {
+        const isDark = document.documentElement.classList.contains("dark");
+        if (themeToggleLabel) {
+          themeToggleLabel.textContent = isDark ? "Modo claro" : "Modo noche";
+        }
+      }
+
+      syncThemeLabel();
+
+      themeToggle?.addEventListener("click", () => {
+        const isDark = document.documentElement.classList.toggle("dark");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+        syncThemeLabel();
+      });
+    </script>
+  </body>
+</html>

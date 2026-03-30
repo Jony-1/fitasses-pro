@@ -31,14 +31,22 @@ export const GET: APIRoute = async (context) => {
     }
 
     try {
-        requireTrainer(context);
+        const user = requireTrainer(context);
 
-        const result = await sql`
-      SELECT id, full_name, birth_date, height_m, notes, gender, user_id, created_at
-      FROM clients
-      WHERE id = ${id}
-      LIMIT 1
-    `;
+        const result = user.role === "admin"
+            ? await sql`
+                SELECT id, full_name, birth_date, height_m, notes, gender, user_id, created_at
+                FROM clients
+                WHERE id = ${id}
+                LIMIT 1
+              `
+            : await sql`
+                SELECT id, full_name, birth_date, height_m, notes, gender, user_id, created_at
+                FROM clients
+                WHERE id = ${id}
+                  AND trainer_id = ${user.id}
+                LIMIT 1
+              `;
 
         const client = result[0];
 
@@ -69,7 +77,7 @@ export const PUT: APIRoute = async (context) => {
     }
 
     try {
-        requireTrainer(context);
+        const user = requireTrainer(context);
 
         const body = await context.request.json();
 
@@ -109,17 +117,30 @@ export const PUT: APIRoute = async (context) => {
             return json({ error: "El nombre es obligatorio" }, 400);
         }
 
-        const result = await sql`
-      UPDATE clients
-      SET
-        full_name = ${full_name},
-        birth_date = ${birth_date || null},
-        height_m = ${height_m},
-        notes = ${notes || null},
-        gender = ${gender || null}
-      WHERE id = ${id}
-      RETURNING id, full_name, birth_date, height_m, notes, gender, created_at
-    `;
+        const result = user.role === "admin"
+            ? await sql`
+                UPDATE clients
+                SET
+                  full_name = ${full_name},
+                  birth_date = ${birth_date || null},
+                  height_m = ${height_m},
+                  notes = ${notes || null},
+                  gender = ${gender || null}
+                WHERE id = ${id}
+                RETURNING id, full_name, birth_date, height_m, notes, gender, created_at
+              `
+            : await sql`
+                UPDATE clients
+                SET
+                  full_name = ${full_name},
+                  birth_date = ${birth_date || null},
+                  height_m = ${height_m},
+                  notes = ${notes || null},
+                  gender = ${gender || null}
+                WHERE id = ${id}
+                  AND trainer_id = ${user.id}
+                RETURNING id, full_name, birth_date, height_m, notes, gender, created_at
+              `;
 
         const updatedClient = result[0];
 
@@ -156,13 +177,20 @@ export const DELETE: APIRoute = async (context) => {
     }
 
     try {
-        requireTrainer(context);
+        const user = requireTrainer(context);
 
-        const result = await sql`
-      DELETE FROM clients
-      WHERE id = ${id}
-      RETURNING id
-    `;
+        const result = user.role === "admin"
+            ? await sql`
+                DELETE FROM clients
+                WHERE id = ${id}
+                RETURNING id
+              `
+            : await sql`
+                DELETE FROM clients
+                WHERE id = ${id}
+                  AND trainer_id = ${user.id}
+                RETURNING id
+              `;
 
         if (!result.length) {
             return json({ error: "Cliente no encontrado" }, 404);

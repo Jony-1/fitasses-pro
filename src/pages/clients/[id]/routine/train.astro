@@ -386,6 +386,8 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
   const currentExerciseLabel = document.getElementById("current-exercise-label");
   const nextUpList = document.getElementById("next-up-list");
   const trainingTitle = document.getElementById("training-title");
+  const completionPanel = document.getElementById("training-complete-panel");
+  const submitHelper = document.getElementById("submit-helper");
 
   let activeIndex = -1;
   let restInterval = null;
@@ -428,6 +430,31 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
 
   function updateSessionStateLine(text) {
     if (sessionStateLine) sessionStateLine.textContent = text;
+  }
+
+  function isWorkoutComplete() {
+    return exerciseCards.length > 0 && exerciseCards.every((card) => card.dataset.completed === "true");
+  }
+
+  function updateSubmitState() {
+    if (!(submitButton instanceof HTMLButtonElement)) return;
+
+    const completed = isWorkoutComplete();
+
+    submitButton.disabled = !completed;
+    submitButton.className = completed
+      ? "inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:text-slate-950"
+      : "inline-flex items-center justify-center rounded-xl bg-slate-300 px-5 py-3 text-sm font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200 disabled:cursor-not-allowed disabled:opacity-60";
+
+    if (submitHelper) {
+      submitHelper.textContent = completed
+        ? "Todo listo. Guarda la sesión para registrar el entrenamiento."
+        : "Se habilita al completar la rutina.";
+    }
+
+    if (completionPanel) {
+      completionPanel.classList.toggle("hidden", !completed);
+    }
   }
 
   function saveDraft() {
@@ -604,7 +631,7 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
     if (progress) progress.textContent = `${Math.min(completed, total)}/${total}`;
     if (state) state.textContent = completed < total ? `Serie ${completed + 1} de ${total}` : "Ejercicio completo";
     if (button instanceof HTMLButtonElement) {
-      button.textContent = completed < total ? "Cumplí serie" : "Ejercicio listo";
+      button.textContent = completed < total ? "Completar serie" : "Ejercicio listo";
       button.disabled = false;
     }
   }
@@ -706,8 +733,9 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
     const total = exerciseCards.length;
     if (progressPill) progressPill.textContent = `${Math.max(1, activeIndex + 1)} / ${total}`;
     if (trainingTitle) trainingTitle.textContent = activeIndex >= 0 ? `Paso ${activeIndex + 1} de ${total}` : trainingTitle.textContent || "Entrenamiento";
-    if (sessionState) sessionState.textContent = completedCount >= total ? "Listo para guardar" : activeIndex >= 0 ? "En curso" : "Listo para empezar";
+    if (sessionState) sessionState.textContent = completedCount >= total ? "Todo listo para cerrar la sesión" : activeIndex >= 0 ? "En curso" : "Preparado para arrancar";
     updateSessionProgressUI();
+    updateSubmitState();
   }
 
   function updateNextUp() {
@@ -777,7 +805,7 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
     if (nextIndex >= exerciseCards.length) {
       clearRestTimer();
       if (restTimer) restTimer.textContent = "00:00";
-      setSessionState("Rutina completa, lista para guardar");
+      setSessionState("Entrenamiento completado. Todo listo para cerrar la sesión");
       setCurrentExerciseLabel("Finalizado");
       updateProgress();
       updateNextUp();
@@ -855,7 +883,7 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
       card.dataset.seriesCompleted = String(total);
       syncSeriesUI(card);
       finishExercise(card);
-      setSessionState("Ejercicio completado");
+        setSessionState("Ejercicio completado");
       queueDraftSave();
       startRest(restSeconds, () => {
         updateProgress();
@@ -974,19 +1002,28 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No se pudo guardar la sesión");
 
-      showMessage("Sesión guardada correctamente", "success");
+      showMessage("Sesión guardada. Tu progreso quedó registrado.", "success");
       setSessionState("Sesión guardada");
+      if (completionPanel) {
+        completionPanel.classList.remove("hidden");
+        completionPanel.innerHTML = `
+          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-300">Sesión guardada</p>
+          <h3 class="mt-2 text-lg font-bold">Tu progreso quedó registrado correctamente</h3>
+          <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-200">Redirigiendo al resumen de la rutina para continuar el seguimiento.</p>
+        `;
+      }
       clearDraft();
 
       setTimeout(() => {
         window.location.href = `/clients/${clientId}/routine?status=success&message=Sesión%20guardada`;
-      }, 800);
+      }, 1400);
     } catch (error) {
       showMessage(error instanceof Error ? error.message : "Ocurrió un error inesperado");
       if (submitButton) {
-        submitButton.textContent = "Guardar sesión";
+        submitButton.textContent = "Guardar y finalizar";
         submitButton.removeAttribute("disabled");
       }
+      updateSubmitState();
     }
   });
 

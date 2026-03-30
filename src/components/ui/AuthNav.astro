@@ -13,10 +13,11 @@ const { items } = Astro.props as Props;
 const activeIndex = items.findIndex((item) => item.active);
 ---
 
-<nav class="mb-8 flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/70">
+<nav aria-label="Navegación de autenticación" class="mb-8 flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/70">
     {items.map((item, index) => (
         <a
             href={item.href}
+            aria-current={index === activeIndex ? "page" : undefined}
             class:list={[
                 "whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition",
                 index === activeIndex

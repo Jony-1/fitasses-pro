@@ -48,7 +48,7 @@ export const POST: APIRoute = async (context) => {
             return redirectToEdit(
                 clientId,
                 "error",
-                "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número.",
+                "La contraseña debe tener al menos 4 caracteres, una mayúscula y un número.",
             );
         }
 

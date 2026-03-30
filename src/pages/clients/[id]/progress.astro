@@ -63,6 +63,11 @@ const {
 
 const summaryLatestAssessment = latestAssessment as AssessmentSummary | null;
 const canManageAssessments = user?.role === "trainer" || user?.role === "admin";
+const positiveChanges = [
+    weightChange !== null && weightChange < 0 ? "Peso a la baja" : null,
+    bodyFatChange !== null && bodyFatChange < 0 ? "Grasa corporal a la baja" : null,
+    muscleChange !== null && muscleChange > 0 ? "Masa muscular al alza" : null,
+].filter(Boolean) as string[];
 ---
 
 <AppLayout title={`Progreso - ${client.full_name}`}>
@@ -107,6 +112,42 @@ const canManageAssessments = user?.role === "trainer" || user?.role === "admin";
                 </a>
             )}
         </ClientPageHeader>
+
+        <div class="mb-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <div class="rounded-3xl border border-sky-200 bg-sky-50 p-5 shadow-sm dark:border-sky-900/40 dark:bg-sky-950/20">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700 dark:text-sky-300">Lectura rápida</p>
+                <h2 class="mt-2 text-xl font-bold text-sky-950 dark:text-sky-100">Así se ve el avance del cliente</h2>
+                <p class="mt-2 text-sm text-sky-800 dark:text-sky-200">
+                    {summaryLatestAssessment
+                        ? `Última valoración registrada con ${totalAssessments} mediciones acumuladas. Este es el mejor lugar para cerrar, mostrando resultados.`
+                        : "Aún no hay una valoración registrada. Cuando la haya, aquí verás el resumen del avance físico."}
+                </p>
+
+                {positiveChanges.length > 0 && (
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        {positiveChanges.map((item) => (
+                            <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-sky-800 shadow-sm dark:bg-sky-900/40 dark:text-sky-100">{item}</span>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">Siguiente acción</p>
+                <h2 class="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">Mantén el flujo activo</h2>
+                <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Después de revisar el progreso puedes volver a la rutina del día o registrar una nueva valoración para seguir comparando resultados.</p>
+                <div class="mt-4 flex flex-col gap-3 sm:flex-row">
+                    <a href={`/clients/${client.id}/routine`} class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                        Ver rutina de hoy
+                    </a>
+                    {canManageAssessments && (
+                        <a href={`/clients/${client.id}/assessments/valoration_new`} class="inline-flex items-center justify-center rounded-xl border border-emerald-300 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30">
+                            Registrar valoración
+                        </a>
+                    )}
+                </div>
+            </div>
+        </div>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <ClientSummaryCard client={client as any} />

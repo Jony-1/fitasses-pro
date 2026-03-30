@@ -722,7 +722,7 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
         alerts.push({
             tone: "success",
             title: "Vista administrativa activa",
-            description: "Puedes revisar el crecimiento del sistema y la carga de trainers.",
+            description: "Puedes revisar el crecimiento del sistema y la carga de entrenadores.",
             href: "/admin/trainers",
         });
     }
@@ -737,7 +737,7 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
                       icon: "🗓️",
                   },
                   {
-                      title: "Gestionar trainers",
+                      title: "Gestionar entrenadores",
                       description: "Ver y administrar cuentas de entrenadores.",
                       href: "/admin/trainers",
                       icon: "👨‍🏫",
@@ -755,7 +755,7 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
                       icon: "👥",
                   },
                   {
-                      title: "Crear trainer",
+                      title: "Crear entrenador",
                       description: "Registrar una nueva cuenta de entrenador.",
                       href: "/admin/trainers/new",
                       icon: "➕",
@@ -770,19 +770,13 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
             : user.role === "gym_manager"
               ? [
                     {
-                        title: "Rutinas",
-                        description: "Revisar rutinas creadas por tu equipo.",
-                        href: "/routines",
-                        icon: "🗓️",
-                    },
-                    {
-                        title: "Mis trainers",
+                        title: "Mis entrenadores",
                         description: "Revisar y administrar tu equipo.",
                         href: "/admin/trainers",
                         icon: "🏋️",
                     },
                     {
-                        title: "Nuevo trainer",
+                        title: "Nuevo entrenador",
                         description: "Crear un entrenador para tu gimnasio.",
                         href: "/admin/trainers/new",
                         icon: "➕",
@@ -790,13 +784,13 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
                     {
                         title: "Mi gimnasio",
                         description: "Ver el resumen principal del gimnasio.",
-                        href: "/dashboard",
+                        href: "/gym-manager",
                         icon: "🏢",
                     },
                     {
                         title: "Seguimiento",
                         description: "Revisar clientes en riesgo del gimnasio.",
-                        href: "/dashboard",
+                        href: "/gym-manager",
                         icon: "⚠️",
                     },
                 ]

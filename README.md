@@ -1,146 +1,104 @@
-# 🚀 Fitasses
+# FitAssess Pro
 
-Fitasses es una aplicación web enfocada en el seguimiento del progreso físico de los usuarios. Permite registrar datos como peso, estatura y otras métricas, para poder ver la evolución en el tiempo de forma clara.
+FitAssess Pro es una plataforma web para gimnasios, entrenadores, clientes y administradores que conecta gestion, valoraciones, rutinas y progreso fisico en un solo flujo.
 
-La idea del proyecto es tener una herramienta práctica para llevar el control del progreso físico, pero también que pueda escalar a futuro con más funcionalidades orientadas a entrenamiento y análisis.
+## Pitch
 
-A nivel técnico, el proyecto está desarrollado con Astro en el frontend y Node.js con TypeScript en el backend, aplicando buenas prácticas en la estructura del código y manejo de datos.
+FitAssess Pro convierte el seguimiento fitness en una experiencia operativa y medible.
 
----
+En lugar de repartir la informacion entre chats, hojas de calculo, notas sueltas y rutinas externas, concentra todo en una sola aplicacion con vistas diferenciadas por rol y un recorrido claro desde la planificacion hasta el resultado.
 
-## 🔗 Demo
+## Problema
 
-👉 [https://fitasses.cubepath.app ](https://fitassess.devjonathan.org/)*
+El seguimiento de clientes en gimnasios y entrenamiento personalizado suele romperse por tres motivos:
 
-## 🔐 Acceso de prueba
+- la informacion se guarda en herramientas separadas
+- el entrenador pierde visibilidad de quien necesita seguimiento
+- el cliente no tiene una experiencia clara para ejecutar su rutina y ver su avance
 
+## Solucion
 
-Se pueden registrar la idea es que sea como entrenador, ya que el usuario cliente solo puede ver estadisticas y hacer login
----
+FitAssess Pro unifica en una sola plataforma:
 
-## 📦 Repositorio
+- gestion de clientes y entrenadores
+- valoraciones fisicas e historial corporal
+- rutinas activas por cliente
+- modo entrenamiento guiado con registro de sesion
+- dashboard con alertas, tendencias y seguimiento
 
-👉 https://github.com/Jony-1
+## Roles
 
----
+- Administrador: gestiona gimnasios, entrenadores y vision general del sistema.
+- Gestor de gimnasio: supervisa su gimnasio y el rendimiento operativo de su equipo.
+- Entrenador: administra clientes, registra valoraciones, asigna rutinas y da seguimiento.
+- Cliente: consulta su rutina, progreso y valoraciones desde una experiencia simple.
 
-## 📸 Capturas del proyecto
+## Flujo de demo recomendado
 
-### 🧑 Vista del usuario
-Interfaz donde el usuario puede ver su información y progreso.
+1. Inicia sesion como entrenador.
+2. Abre el panel para mostrar clientes en riesgo, valoraciones recientes y acciones rapidas.
+3. Entra al listado de clientes y selecciona uno.
+4. Abre la rutina del cliente y entra a modo entrenamiento.
+5. Registra una sesion para mostrar el flujo guiado.
+6. Vuelve a progreso para ensenar el cierre visual del seguimiento.
+7. Abre valoraciones para mostrar el historial y la comparacion entre mediciones.
 
-![Vista usuario](https://github.com/user-attachments/assets/93663fb8-a830-4164-906d-182acd7b3677)
+## Por que destaca
 
----
+- Conecta cuatro roles reales en una sola experiencia.
+- No es solo un panel: tiene flujo completo de gestion, ejecucion y medicion.
+- El modo entrenamiento guiado crea un momento fuerte para demo.
+- El dashboard aterriza la informaciOn en seguimiento accionable.
+- El producto ya esta preparado para mostrarse como una herramienta usable, no solo como prototipo visual.
 
-### 📊 Métricas
-Registro y visualización de métricas como peso y evolución.
+## Stack
 
-![Métricas](https://github.com/user-attachments/assets/b849b9d1-c0a4-4d4d-aeb2-c72816a85253)
+- Astro
+- TypeScript
+- Node.js
+- PostgreSQL
+- Drizzle ORM
+- Tailwind CSS
+- Chart.js
 
----
+## Instalacion
 
-### ⭐ Valoraciones
-Seguimiento adicional del progreso del usuario.
+```bash
+npm install
+npm run dev
+```
 
-![Valoraciones](https://github.com/user-attachments/assets/5646d7d7-8b38-4279-bbaa-0219ebb3d8a6)
+## Build de produccion
 
----
+```bash
+npm run build
+npm run start
+```
 
-## 🧑‍🏫 Vista del entrenador (Trainer)
+## Validacion recomendada
 
-### 🔍 Gestión de usuarios
-El trainer puede filtrar y buscar usuarios.
+Para cambios importantes en la interfaz o en la logica principal:
 
-![Trainer](https://github.com/user-attachments/assets/fa7d62d8-a6f6-4a43-89c5-8ee4045cb6ea)
+```bash
+npm run build
+```
 
----
+## Demo
 
-### ✏️ Edición de cliente
-Permite editar datos del cliente.  
-La edad se calcula automáticamente según la fecha de nacimiento.
+- Inicio: `/`
+- Login: `/login`
 
-![Editar cliente](https://github.com/user-attachments/assets/c03b42f6-ed35-4b91-a9e1-ced9dc4d9cf7)
+## Estado del proyecto
 
----
+FitAssess Pro ya cuenta con:
 
-### 🔐 Creación de usuarios
-El trainer crea usuarios y contraseñas.  
-Actualmente no se valida el correo (pendiente de mejora).
+- autenticacion por roles
+- dashboards operativos
+- gestion de clientes
+- valoraciones corporales
+- progreso visual
+- rutinas activas
+- entrenamiento guiado
+- modo oscuro
 
-![Crear usuario](https://github.com/user-attachments/assets/002ffd5e-9ceb-4249-9fc6-913307ce2eed)
-
----
-
-### ⭐ Valoraciones
-Puede crear valoraciones que luego ve el cliente.
-
-![Valoraciones trainer](https://github.com/user-attachments/assets/c9fb9b17-236d4c10-b461-c2834233d706)
-
----
-
-### 👥 Asignación de clientes
-Los clientes quedan asociados a un solo entrenador.
-
-![Asignación](https://github.com/user-attachments/assets/3d4cdc85-a3c9-4493-a5ca-5f4dddf5fe2f)
-
----
-
-## 🛠️ Vista del administrador
-
-Vista exclusiva del administrador donde gestiona el sistema.
-
-![Admin](https://github.com/user-attachments/assets/39cb31ae-cee9-40c8-a158-f7bc5e3dcb39)
-
----
-
-### 👨‍🏫 Gestión de trainers
-Puede ver y gestionar entrenadores.
-
-![Listado trainers](https://github.com/user-attachments/assets/d8b5278f-f3d1-4120-9f07-9d594260a054)
-
----
-
-### ➕ Creación de trainer
-
-![Crear trainer](https://github.com/user-attachments/assets/05df4a03-38be-4cea-9f7c-26959d50ab19)
-
----
-
-### ✏️ Edición de trainer
-Puede modificar correo, nombre y password.
-
-![Editar trainer](https://github.com/user-attachments/assets/5ffa880f-4f89-4c3b-9d0e-6e83a9148135)
-
----
-
-### 👥 Asignación de usuarios
-Puede crear usuarios y asignarlos a trainers existentes.
-
-![Asignación usuarios](https://github.com/user-attachments/assets/2d07809e-a475-4922-9dda-01721e58d44e)
-
----
-
-## 🌙 Modo claro y oscuro
-
-Para mí, uno de los mejores puntos del proyecto es el cambio entre modo noche y claro.
-
-![Modo oscuro](https://github.com/user-attachments/assets/0fca9474-094a-4450-9c10-315da18ce588)
-
----
-
-## ☁️ Uso de CubePath
-
-He utilizado el link de Midudev para registrarme en CubePath y con esto adquirí un VPS de 5 dólares.
-
-Sobre este VPS monté un servidor con Ubuntu 25 y comencé utilizando Coolify para integrar mis servicios. Empecé desplegando mi proyecto, donde tuve algunos inconvenientes iniciales con las variables de entorno.
-
-Luego configuré la base de datos en PostgreSQL v18 y añadí pgAdmin para poder gestionarla. En este proceso aprendí a conectarme correctamente usando la IP del servidor y el puerto expuesto.
-
-Finalmente, configuré correctamente las variables de entorno y añadí un dominio dentro de la integración para que el proyecto se vea más profesional y accesible.
-
----
-
-## 🧠 Notas finales
-
-El proyecto está pensado como una base para crecer a futuro, añadiendo más funcionalidades relacionadas con entrenamiento, análisis de datos y seguimiento personalizado.
+La base esta lista para seguir creciendo hacia automatizacion, analitica avanzada y seguimiento mas inteligente.

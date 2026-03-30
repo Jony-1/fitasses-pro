@@ -19,7 +19,7 @@ const { stats, role } = Astro.props as Props;
 
     {(role === "admin" || role === "gym_manager") && (
         <>
-            <StatCard label="Trainers" value={stats.trainersTotal ?? 0} />
+            <StatCard label="Entrenadores" value={stats.trainersTotal ?? 0} />
             {role === "admin" && (
                 <StatCard label="Usuarios cliente" value={stats.clientUsersTotal ?? 0} />
             )}

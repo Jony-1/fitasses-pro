@@ -1,21 +1,44 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
+import { requireTrainer } from "../../../lib/auth/guards";
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async (context) => {
+  try {
+    const user = requireTrainer(context);
 
-  const clients = await sql`
-    SELECT id, full_name, birth_date, height_m, gender, user_id
-    FROM clients
-    ORDER BY id DESC
-  `;
+    const clients = user.role === "admin"
+      ? await sql`
+          SELECT id, full_name, birth_date, height_m, gender, user_id
+          FROM clients
+          ORDER BY id DESC
+        `
+      : await sql`
+          SELECT id, full_name, birth_date, height_m, gender, user_id
+          FROM clients
+          WHERE trainer_id = ${user.id}
+          ORDER BY id DESC
+        `;
 
-  return new Response(
-    JSON.stringify(clients),
-    {
-      status: 200,
-      headers: {
-        "content-type": "application/json"
+    return new Response(
+      JSON.stringify(clients),
+      {
+        status: 200,
+        headers: {
+          "content-type": "application/json"
+        }
       }
+    );
+  } catch (error) {
+    if (error instanceof Error && (error.message === "UNAUTHORIZED" || error.message === "FORBIDDEN")) {
+      return new Response(JSON.stringify({ error: "No autorizado" }), {
+        status: 403,
+        headers: { "content-type": "application/json" },
+      });
     }
-  );
+
+    return new Response(JSON.stringify({ error: "No se pudo listar clientes" }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
+  }
 };

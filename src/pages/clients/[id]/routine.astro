@@ -102,6 +102,11 @@ const canManageClient = user.role === "trainer" || user.role === "admin";
 const canManageAssessments = user.role === "trainer" || user.role === "admin";
 const canViewExercises = true;
 const trainingHref = `/clients/${client.id}/routine/train`;
+const status = Astro.url.searchParams.get("status");
+const message = Astro.url.searchParams.get("message") ?? "";
+const successMessage = status === "success"
+    ? message || "Sesión guardada correctamente."
+    : "";
 
 function getExerciseDetailsHref(exercise: any) {
     const libraryItem = getExerciseLibraryItem(exercise.exercise_key ?? exercise.name);
@@ -112,6 +117,27 @@ function getExerciseDetailsHref(exercise: any) {
 
 <AppLayout title={`Rutina - ${client.full_name}`}>
     <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        {successMessage && (
+            <div class="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/20">
+                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-300">Sesión completada</p>
+                        <h2 class="mt-2 text-xl font-bold text-emerald-950 dark:text-emerald-100">{successMessage}</h2>
+                        <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-200">Tu sesión ya quedó registrada. El siguiente paso recomendado es revisar el progreso del cliente.</p>
+                    </div>
+
+                    <div class="flex flex-col gap-3 sm:flex-row">
+                        <a href={`/clients/${client.id}/progress`} class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                            Ver mi progreso
+                        </a>
+                        <a href={trainingHref} class="inline-flex items-center justify-center rounded-xl border border-emerald-300 px-4 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-200 dark:hover:bg-emerald-950/30">
+                            Repetir entrenamiento
+                        </a>
+                    </div>
+                </div>
+            </div>
+        )}
+
         <ClientPageHeader
             title={client.full_name}
             description="Vista limpia de tu rutina: solo lo que tienes que hacer hoy."

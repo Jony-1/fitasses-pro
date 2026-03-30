@@ -140,6 +140,7 @@ export async function ensureRoutineSchema() {
   `;
 
   await sql`CREATE INDEX IF NOT EXISTS routines_client_active_idx ON routines (client_id, active, is_template, created_at DESC, id DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS routines_trainer_name_template_idx ON routines (trainer_id, name, is_template)`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS routine_days (
@@ -395,7 +396,7 @@ async function ensureExampleRoutineTemplates() {
     )
   `;
 
-  const seedVersion = "2026-03-26-one-day-split-v1";
+  const seedVersion = "2026-03-30-preloaded-routines-v1";
   const seedRows = await sql`
     SELECT version
     FROM routine_example_seed_state
@@ -411,223 +412,387 @@ async function ensureExampleRoutineTemplates() {
     SELECT id
     FROM users
     WHERE role IN ('trainer', 'admin')
-    ORDER BY CASE WHEN role = 'trainer' THEN 0 ELSE 1 END, id ASC
-    LIMIT 1
+    ORDER BY id ASC
   `;
 
-  const trainerId = (trainerRows[0]?.id as number | undefined) ?? null;
-
-  if (!trainerId) {
+  if (trainerRows.length === 0) {
     return;
   }
 
   const templates: ExampleRoutineTemplate[] = [
     {
-      name: "Lunes - Tren superior: pectoral + espalda",
-      objective: "Hipertrofia intensa",
-      level: "Intermedio",
-      duration_weeks: 4,
-      notes: "Ejemplo de un solo día. Mantén descansos de 60-90s y busca RIR 1-2 en los básicos.",
+      name: "Rutina de Fuerza (3 días)",
+      objective: "Desarrollo de fuerza máxima",
+      level: "Intermedio-Avanzado",
+      duration_weeks: 8,
+      notes: "Rutina enfocada en mejorar la fuerza en los movimientos compuestos principales. Descansos de 2-3 minutos entre series.",
       days: [
         {
           day_number: 1,
-          title: "Pectoral + espalda",
-          focus: "Empuje y tirón",
-          notes: "Trabaja pecho y espalda en una sola sesión con intensidad media-alta.",
+          title: "Día 1: Sentadilla + Empuje",
+          focus: "Fuerza inferior y pecho",
+          notes: "Enfócate en técnica perfecta y progresión de carga.",
           exercises: [
-            { exercise_key: "incline_press", name: "Press inclinado", sets: 4, reps: "8-10", rest_seconds: 90, notes: "Carga progresiva" },
-            { exercise_key: "row", name: "Remo con barra", sets: 4, reps: "8-10", rest_seconds: 90, notes: "Espalda firme" },
-            { exercise_key: "bench_press", name: "Press banca", sets: 3, reps: "6-8", rest_seconds: 90, notes: "Control en la bajada" },
-            { exercise_key: "pull_up", name: "Dominadas", sets: 3, reps: "6-8", rest_seconds: 90, notes: "Agarre completo" },
-            { exercise_key: "cable_fly", name: "Cruce de poleas", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Apretar 1s" },
-            { exercise_key: "face_pull", name: "Face pull", sets: 3, reps: "15-20", rest_seconds: 45, notes: "Salud del hombro" },
+            { exercise_key: "squat", name: "Sentadilla", sets: 5, reps: "5", rest_seconds: 180, notes: "Profundidad completa, espalda neutra" },
+            { exercise_key: "bench_press", name: "Press banca", sets: 5, reps: "5", rest_seconds: 180, notes: "Control en la bajada, explosivo al subir" },
+            { exercise_key: "row", name: "Remo con barra", sets: 3, reps: "8-10", rest_seconds: 120, notes: "Espalda recta, contraer escapulas" },
+            { exercise_key: "leg_extension", name: "Extensión de cuádriceps", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Contracción máxima" },
+            { exercise_key: "triceps_pushdown", name: "Pushdown tríceps", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Extensión completa" },
+          ],
+        },
+        {
+          day_number: 2,
+          title: "Día 2: Peso muerto + Tirón",
+          focus: "Fuerza posterior y espalda",
+          notes: "Mantén la espalda neutral en el peso muerto.",
+          exercises: [
+            { exercise_key: "deadlift", name: "Peso muerto", sets: 5, reps: "3", rest_seconds: 180, notes: "Cadera atrás, barra cerca del cuerpo" },
+            { exercise_key: "pull_up", name: "Dominadas", sets: 4, reps: "5-8", rest_seconds: 150, notes: "Agarre prono, pecho a la barra" },
+            { exercise_key: "romanian_deadlift", name: "Peso muerto rumano", sets: 3, reps: "8-10", rest_seconds: 120, notes: "Estirar isquios, sin redondear espalda" },
+            { exercise_key: "seated_row", name: "Remo sentado", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Contracción de espalda media" },
+            { exercise_key: "biceps_curl", name: "Curl bíceps", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Sin balanceo, movimiento controlado" },
+          ],
+        },
+        {
+          day_number: 3,
+          title: "Día 3: Press militar + Accesorios",
+          focus: "Fuerza superior y estabilidad",
+          notes: "Core firme en el press militar.",
+          exercises: [
+            { exercise_key: "overhead_press", name: "Press militar", sets: 5, reps: "5", rest_seconds: 180, notes: "Core apretado, sin arquear espalda" },
+            { exercise_key: "front_squat", name: "Sentadilla frontal", sets: 3, reps: "6-8", rest_seconds: 150, notes: "Codos altos, torso vertical" },
+            { exercise_key: "lat_pulldown", name: "Jalón al pecho", sets: 3, reps: "8-10", rest_seconds: 120, notes: "Agarre ancho, contraer dorsales" },
+            { exercise_key: "lateral_raise", name: "Elevaciones laterales", sets: 3, reps: "12-15", rest_seconds: 90, notes: "Elevar hasta altura hombros" },
+            { exercise_key: "plank", name: "Plancha", sets: 3, reps: "45-60s", rest_seconds: 60, notes: "Abdomen firme, cadera alineada" },
           ],
         },
       ],
     },
     {
-      name: "Martes - Tren inferior: cuádriceps + aductores",
-      objective: "Hipertrofia intensa",
+      name: "Rutina de Hipertrofia (4 días)",
+      objective: "Desarrollo muscular",
       level: "Intermedio",
-      duration_weeks: 4,
-      notes: "Ejemplo de un solo día. Enfocada en cuádriceps y aductores con trabajo pesado y controlado.",
+      duration_weeks: 6,
+      notes: "Rutina dividida para maximizar crecimiento muscular. Descansos de 60-90 segundos.",
       days: [
         {
           day_number: 1,
-          title: "Cuádriceps + aductores",
-          focus: "Dominante de rodilla",
-          notes: "Empieza con un patrón dominante de rodilla y cierra con aductores.",
+          title: "Día 1: Pecho + Tríceps",
+          focus: "Empuje horizontal y extensión de codos",
+          notes: "Concéntrate en la conexión mente-músculo.",
           exercises: [
-            { exercise_key: "back_squat", name: "Sentadilla trasera", sets: 4, reps: "6-8", rest_seconds: 120, notes: "Profundidad segura" },
-            { exercise_key: "leg_press", name: "Prensa", sets: 4, reps: "10-12", rest_seconds: 90, notes: "Pies medios" },
-            { exercise_key: "leg_extension", name: "Extensión de cuádriceps", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Pausa arriba" },
-            { exercise_key: "hip_adduction", name: "Aducción de cadera", sets: 4, reps: "12-15", rest_seconds: 60, notes: "Apretar fuerte" },
-            { exercise_key: "bulgarian_split_squat", name: "Búlgaras", sets: 3, reps: "10-12", rest_seconds: 75, notes: "Tronco estable" },
-            { exercise_key: "cossack_squat", name: "Cossack squat", sets: 2, reps: "10 por lado", rest_seconds: 45, notes: "Movilidad y aductores" },
+            { exercise_key: "bench_press", name: "Press banca", sets: 4, reps: "8-10", rest_seconds: 90, notes: "Control excéntrico 3 segundos" },
+            { exercise_key: "incline_press", name: "Press inclinado", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Ángulo 30-45 grados" },
+            { exercise_key: "cable_fly", name: "Cruce de poleas", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Apretar pecho al final" },
+            { exercise_key: "triceps_pushdown", name: "Pushdown tríceps", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Codos pegados al cuerpo" },
+            { exercise_key: "dips", name: "Fondos", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Inclinación adelante para pecho" },
           ],
         },
-      ],
-    },
-    {
-      name: "Miércoles - Hombros + brazos",
-      objective: "Hipertrofia intensa",
-      level: "Intermedio",
-      duration_weeks: 4,
-      notes: "Ejemplo de un solo día. Busca congestión con buena técnica y descansos cortos.",
-      days: [
         {
-          day_number: 1,
-          title: "Hombros + brazos",
-          focus: "Deltoides y brazos",
-          notes: "Trabaja hombro completo y accesorios para bíceps/tríceps.",
+          day_number: 2,
+          title: "Día 2: Espalda + Bíceps",
+          focus: "Tirón y flexión de codos",
+          notes: "Retraer escápulas en cada repetición.",
           exercises: [
-            { exercise_key: "machine_shoulder_press", name: "Press hombros máquina", sets: 4, reps: "8-10", rest_seconds: 90, notes: "Estabilidad" },
-            { exercise_key: "lateral_raise", name: "Elevaciones laterales", sets: 4, reps: "12-15", rest_seconds: 45, notes: "Subida controlada" },
-            { exercise_key: "arnold_press", name: "Press Arnold", sets: 3, reps: "10-12", rest_seconds: 75, notes: "Recorrido completo" },
-            { exercise_key: "biceps_curl", name: "Curl bíceps", sets: 3, reps: "10-12", rest_seconds: 60, notes: "Sin balanceo" },
-            { exercise_key: "triceps_pushdown", name: "Pushdown tríceps", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Extensión total" },
-            { exercise_key: "rear_delt_fly", name: "Pájaros", sets: 3, reps: "15-20", rest_seconds: 45, notes: "Deltoide posterior" },
+            { exercise_key: "pull_up", name: "Dominadas", sets: 4, reps: "6-8", rest_seconds: 90, notes: "Agarre supino para bíceps" },
+            { exercise_key: "row", name: "Remo con barra", sets: 4, reps: "8-10", rest_seconds: 90, notes: "Pecho alto, espalda recta" },
+            { exercise_key: "lat_pulldown", name: "Jalón al pecho", sets: 3, reps: "10-12", rest_seconds: 60, notes: "Agarre prono, contraer dorsales" },
+            { exercise_key: "biceps_curl", name: "Curl bíceps", sets: 3, reps: "10-12", rest_seconds: 60, notes: "Sin balanceo, pico de contracción" },
+            { exercise_key: "seated_row", name: "Remo sentado", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Mantener tensión constante" },
           ],
         },
-      ],
-    },
-    {
-      name: "Jueves - Glúteos + isquios",
-      objective: "Hipertrofia intensa",
-      level: "Intermedio",
-      duration_weeks: 4,
-      notes: "Ejemplo de un solo día. Enfoque en cadena posterior con tensión constante.",
-      days: [
         {
-          day_number: 1,
-          title: "Glúteos + isquios",
-          focus: "Cadena posterior",
-          notes: "Mantén la técnica en bisagra y controla el estiramiento.",
+          day_number: 3,
+          title: "Día 3: Piernas",
+          focus: "Desarrollo completo de piernas",
+          notes: "Calentar bien, priorizar técnica sobre peso.",
           exercises: [
-            { exercise_key: "hip_thrust", name: "Hip thrust", sets: 4, reps: "8-10", rest_seconds: 90, notes: "Pausa arriba" },
-            { exercise_key: "romanian_deadlift", name: "Peso muerto rumano", sets: 4, reps: "8-10", rest_seconds: 90, notes: "Cadera atrás" },
-            { exercise_key: "leg_curl", name: "Curl femoral", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Contracción fuerte" },
-            { exercise_key: "glute_bridge", name: "Puente glúteo", sets: 3, reps: "15", rest_seconds: 60, notes: "Apretar glúteos" },
-            { exercise_key: "good_morning", name: "Buenos días", sets: 3, reps: "10-12", rest_seconds: 75, notes: "Espalda neutra" },
-            { exercise_key: "hamstring_curl", name: "Curl femoral extra", sets: 2, reps: "15", rest_seconds: 45, notes: "Finalizador" },
+            { exercise_key: "squat", name: "Sentadilla", sets: 4, reps: "8-10", rest_seconds: 120, notes: "Profundidad paralela o más" },
+            { exercise_key: "leg_press", name: "Prensa", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Pies al ancho de hombros" },
+            { exercise_key: "leg_extension", name: "Extensión de cuádriceps", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Pausa arriba 1 segundo" },
+            { exercise_key: "leg_curl", name: "Curl femoral", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Contracción fuerte de isquios" },
+            { exercise_key: "calf_raise", name: "Elevación de gemelos", sets: 4, reps: "15-20", rest_seconds: 45, notes: "Estiramiento completo" },
           ],
         },
-      ],
-    },
-    {
-      name: "Viernes - Core + cardio",
-      objective: "Acondicionamiento",
-      level: "Intermedio",
-      duration_weeks: 4,
-      notes: "Ejemplo de un solo día. Ideal para cerrar la semana con trabajo de core y gasto calórico.",
-      days: [
         {
-          day_number: 1,
-          title: "Core + cardio",
-          focus: "Estabilidad y energía",
-          notes: "Circuito mixto para abdomen, postura y ritmo cardiaco.",
+          day_number: 4,
+          title: "Día 4: Hombros + Abdominales",
+          focus: "Deltoides y core",
+          notes: "Variedad de ángulos para hombros.",
           exercises: [
-            { exercise_key: "plank", name: "Plancha", sets: 4, reps: "30-45s", rest_seconds: 45, notes: "Mantener abdomen firme" },
+            { exercise_key: "overhead_press", name: "Press militar", sets: 4, reps: "8-10", rest_seconds: 90, notes: "De pie o sentado con apoyo" },
+            { exercise_key: "lateral_raise", name: "Elevaciones laterales", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Controlar la bajada" },
+            { exercise_key: "rear_delt_fly", name: "Pájaros", sets: 3, reps: "15-20", rest_seconds: 60, notes: "Deltoide posterior, pecho en banco" },
             { exercise_key: "russian_twist", name: "Russian twist", sets: 3, reps: "20", rest_seconds: 45, notes: "Rotación controlada" },
-            { exercise_key: "mountain_climbers", name: "Mountain climbers", sets: 3, reps: "30-40s", rest_seconds: 45, notes: "Ritmo constante" },
-            { exercise_key: "rope_jump", name: "Saltar cuerda", sets: 4, reps: "45s", rest_seconds: 30, notes: "Mantener respiración" },
-            { exercise_key: "bike", name: "Bicicleta", sets: 3, reps: "2 min", rest_seconds: 45, notes: "Ritmo moderado" },
-            { exercise_key: "dead_bug", name: "Dead bug", sets: 3, reps: "12 por lado", rest_seconds: 45, notes: "Control lumbo-pélvico" },
+            { exercise_key: "dead_bug", name: "Dead bug", sets: 3, reps: "12 por lado", rest_seconds: 45, notes: "Mantener espalda pegada al suelo" },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Rutina de Principiantes (3 días)",
+      objective: "Adaptación y aprendizaje",
+      level: "Principiante",
+      duration_weeks: 4,
+      notes: "Rutina full body para aprender técnica y crear hábito. Descansos de 60-90 segundos.",
+      days: [
+        {
+          day_number: 1,
+          title: "Full Body A",
+          focus: "Movimientos básicos",
+          notes: "Enfócate en técnica, no en peso.",
+          exercises: [
+            { exercise_key: "squat", name: "Sentadilla", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Con barra vacía o peso corporal" },
+            { exercise_key: "bench_press", name: "Press banca", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Con barra vacía o mancuernas ligeras" },
+            { exercise_key: "row", name: "Remo con barra", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Espalda recta, contraer escapulas" },
+            { exercise_key: "plank", name: "Plancha", sets: 3, reps: "30s", rest_seconds: 45, notes: "Forma correcta" },
+            { exercise_key: "walk", name: "Caminata", sets: 1, reps: "10 min", rest_seconds: 0, notes: "Ritmo moderado para activación" },
+          ],
+        },
+        {
+          day_number: 2,
+          title: "Full Body B",
+          focus: "Variación de patrones",
+          notes: "Mantén intensidad moderada.",
+          exercises: [
+            { exercise_key: "leg_press", name: "Prensa", sets: 3, reps: "12-15", rest_seconds: 90, notes: "Pies cómodos, no bloquear rodillas" },
+            { exercise_key: "overhead_press", name: "Press militar", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Con barra vacía o mancuernas" },
+            { exercise_key: "lat_pulldown", name: "Jalón al pecho", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Agarre ancho, controlado" },
+            { exercise_key: "glute_bridge", name: "Puente glúteo", sets: 3, reps: "15", rest_seconds: 60, notes: "Apretar glúteos en la parte alta" },
+            { exercise_key: "bike", name: "Bicicleta", sets: 1, reps: "10 min", rest_seconds: 0, notes: "Ritmo suave" },
+          ],
+        },
+        {
+          day_number: 3,
+          title: "Full Body C",
+          focus: "Estabilidad y movilidad",
+          notes: "Enfasis en control y rango de movimiento.",
+          exercises: [
+            { exercise_key: "romanian_deadlift", name: "Peso muerto rumano", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Con barra ligera o mancuernas" },
+            { exercise_key: "push_up", name: "Flexiones", sets: 3, reps: "8-12", rest_seconds: 90, notes: "Rodillas si es necesario" },
+            { exercise_key: "seated_row", name: "Remo sentado", sets: 3, reps: "10-12", rest_seconds: 90, notes: "Espalda recta, sin balanceo" },
+            { exercise_key: "russian_twist", name: "Russian twist", sets: 3, reps: "15", rest_seconds: 45, notes: "Sin peso, rotación controlada" },
+            { exercise_key: "stretch_flow", name: "Movilidad", sets: 1, reps: "5 min", rest_seconds: 0, notes: "Estiramientos dinámicos" },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Rutina de Mantenimiento (3 días)",
+      objective: "Mantener condición física",
+      level: "Intermedio",
+      duration_weeks: 12,
+      notes: "Rutina equilibrada para mantener masa muscular y condición cardiovascular.",
+      days: [
+        {
+          day_number: 1,
+          title: "Circuito Superior",
+          focus: "Torso completo",
+          notes: "Circuito con poco descanso entre ejercicios.",
+          exercises: [
+            { exercise_key: "bench_press", name: "Press banca", sets: 3, reps: "8-10", rest_seconds: 60, notes: "Intensidad moderada" },
+            { exercise_key: "row", name: "Remo con barra", sets: 3, reps: "8-10", rest_seconds: 60, notes: "Contraer espalda" },
+            { exercise_key: "overhead_press", name: "Press militar", sets: 3, reps: "10-12", rest_seconds: 60, notes: "Controlado" },
+            { exercise_key: "lat_pulldown", name: "Jalón al pecho", sets: 3, reps: "10-12", rest_seconds: 60, notes: "Sin impulso" },
+            { exercise_key: "plank", name: "Plancha", sets: 3, reps: "45s", rest_seconds: 30, notes: "Forma perfecta" },
+          ],
+        },
+        {
+          day_number: 2,
+          title: "Circuito Inferior",
+          focus: "Piernas y core",
+          notes: "Enfoque en resistencia muscular.",
+          exercises: [
+            { exercise_key: "squat", name: "Sentadilla", sets: 3, reps: "10-12", rest_seconds: 60, notes: "Peso moderado" },
+            { exercise_key: "leg_press", name: "Prensa", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Rango completo" },
+            { exercise_key: "leg_curl", name: "Curl femoral", sets: 3, reps: "12-15", rest_seconds: 60, notes: "Contracción lenta" },
+            { exercise_key: "glute_bridge", name: "Puente glúteo", sets: 3, reps: "15", rest_seconds: 45, notes: "Apretar glúteos" },
+            { exercise_key: "calf_raise", name: "Elevación de gemelos", sets: 3, reps: "15-20", rest_seconds: 45, notes: "Estiramiento completo" },
+          ],
+        },
+        {
+          day_number: 3,
+          title: "Circuito Cardio y Core",
+          focus: "Condición y estabilidad",
+          notes: "Circuito mixto, mantener ritmo constante.",
+          exercises: [
+            { exercise_key: "bike", name: "Bicicleta", sets: 3, reps: "5 min", rest_seconds: 60, notes: "Ritmo moderado-alto" },
+            { exercise_key: "mountain_climbers", name: "Mountain climbers", sets: 3, reps: "45s", rest_seconds: 30, notes: "Ritmo rápido" },
+            { exercise_key: "russian_twist", name: "Russian twist", sets: 3, reps: "20", rest_seconds: 30, notes: "Con peso ligero" },
+            { exercise_key: "rope_jump", name: "Saltar cuerda", sets: 3, reps: "2 min", rest_seconds: 60, notes: "Ritmo constante" },
+            { exercise_key: "dead_bug", name: "Dead bug", sets: 3, reps: "12 por lado", rest_seconds: 30, notes: "Control lumbo-pélvico" },
+          ],
+        },
+      ],
+    },
+    {
+      name: "Rutina de Definición (4 días)",
+      objective: "Pérdida de grasa y preservación muscular",
+      level: "Intermedio-Avanzado",
+      duration_weeks: 8,
+      notes: "Rutina combinada con énfasis en intensidad y volumen moderado-alto. Incluye cardio.",
+      days: [
+        {
+          day_number: 1,
+          title: "Fuerza Metabólica - Superior",
+          focus: "Alta intensidad, poco descanso",
+          notes: "Supersets para mantener ritmo cardíaco alto.",
+          exercises: [
+            { exercise_key: "bench_press", name: "Press banca", sets: 4, reps: "8-10", rest_seconds: 60, notes: "Superset con remo" },
+            { exercise_key: "row", name: "Remo con barra", sets: 4, reps: "8-10", rest_seconds: 60, notes: "Superset con press banca" },
+            { exercise_key: "overhead_press", name: "Press militar", sets: 3, reps: "10-12", rest_seconds: 45, notes: "Circuito" },
+            { exercise_key: "lat_pulldown", name: "Jalón al pecho", sets: 3, reps: "10-12", rest_seconds: 45, notes: "Circuito" },
+            { exercise_key: "battle_ropes", name: "Battle ropes", sets: 3, reps: "30s", rest_seconds: 30, notes: "Alta intensidad" },
+          ],
+        },
+        {
+          day_number: 2,
+          title: "Cardio HIIT",
+          focus: "Quema de grasa",
+          notes: "Intervalos de alta intensidad.",
+          exercises: [
+            { exercise_key: "bike", name: "Bicicleta", sets: 8, reps: "30s sprint, 60s descanso", rest_seconds: 60, notes: "Máxima intensidad en sprints" },
+            { exercise_key: "burpees", name: "Burpees", sets: 4, reps: "10", rest_seconds: 45, notes: "Técnica completa" },
+            { exercise_key: "mountain_climbers", name: "Mountain climbers", sets: 4, reps: "45s", rest_seconds: 30, notes: "Ritmo rápido" },
+            { exercise_key: "rope_jump", name: "Saltar cuerda", sets: 5, reps: "1 min", rest_seconds: 30, notes: "Ritmo constante" },
+          ],
+        },
+        {
+          day_number: 3,
+          title: "Fuerza Metabólica - Inferior",
+          focus: "Piernas y core con poco descanso",
+          notes: "Ejercicios compuestos, mantener intensidad.",
+          exercises: [
+            { exercise_key: "squat", name: "Sentadilla", sets: 4, reps: "10-12", rest_seconds: 60, notes: "Superset con peso muerto rumano" },
+            { exercise_key: "romanian_deadlift", name: "Peso muerto rumano", sets: 4, reps: "10-12", rest_seconds: 60, notes: "Superset con sentadilla" },
+            { exercise_key: "leg_press", name: "Prensa", sets: 3, reps: "15-20", rest_seconds: 45, notes: "Alto volumen" },
+            { exercise_key: "leg_curl", name: "Curl femoral", sets: 3, reps: "15-20", rest_seconds: 45, notes: "Contracción lenta" },
+            { exercise_key: "plank", name: "Plancha", sets: 4, reps: "60s", rest_seconds: 30, notes: "Mantener forma" },
+          ],
+        },
+        {
+          day_number: 4,
+          title: "Cardio LISS + Core",
+          focus: "Quema de grasa en estado estable",
+          notes: "Cardio de baja intensidad y trabajo de core.",
+          exercises: [
+            { exercise_key: "walk", name: "Caminata", sets: 1, reps: "30-40 min", rest_seconds: 0, notes: "Ritmo constante, zona de quema de grasa" },
+            { exercise_key: "russian_twist", name: "Russian twist", sets: 4, reps: "20", rest_seconds: 30, notes: "Con peso ligero" },
+            { exercise_key: "dead_bug", name: "Dead bug", sets: 3, reps: "15 por lado", rest_seconds: 30, notes: "Control total" },
+            { exercise_key: "crunch", name: "Crunch", sets: 3, reps: "20", rest_seconds: 30, notes: "Contracción abdominal" },
           ],
         },
       ],
     },
   ];
 
-  const templateNames = templates.map((template) => template.name);
-  await sql`
-    DELETE FROM routines
-    WHERE is_template = TRUE
-      AND name = ANY(${templateNames})
-  `;
+  // Use a single transaction for all inserts
+  await sql.begin(async (tx) => {
+    const trx = tx as any;
 
-  for (const template of templates) {
+    for (const trainer of trainerRows) {
+      const trainerId = trainer.id as number;
 
-    const routineRows = await sql`
-      INSERT INTO routines (
-        trainer_id,
-        name,
-        objective,
-        level,
-        duration_weeks,
-        notes,
-        is_template,
-        active
-      )
-      VALUES (
-        ${trainerId},
-        ${template.name},
-        ${template.objective},
-        ${template.level},
-        ${template.duration_weeks},
-        ${template.notes},
-        TRUE,
-        TRUE
-      )
-      RETURNING id
-    `;
+      for (const template of templates) {
+        // Check if template already exists for this trainer
+        const existingRoutine = await trx`
+          SELECT id
+          FROM routines
+          WHERE trainer_id = ${trainerId}
+            AND name = ${template.name}
+            AND is_template = TRUE
+          LIMIT 1
+        `;
 
-    const routineId = routineRows[0].id as number;
+        if (existingRoutine.length > 0) {
+          continue;
+        }
 
-    for (const day of template.days) {
-      const dayRows = await sql`
-        INSERT INTO routine_days (
-          routine_id,
-          day_number,
-          title,
-          focus,
-          notes
-        )
-        VALUES (
-          ${routineId},
-          ${day.day_number},
-          ${day.title},
-          ${day.focus},
-          ${day.notes}
-        )
-        RETURNING id
-      `;
-
-      const routineDayId = dayRows[0].id as number;
-
-      for (let position = 0; position < day.exercises.length; position += 1) {
-        const exercise = day.exercises[position];
-
-        await sql`
-          INSERT INTO routine_exercises (
-            routine_day_id,
-            position,
-            exercise_key,
+        // Insert routine
+        const routineRows = await trx`
+          INSERT INTO routines (
+            trainer_id,
             name,
-            sets,
-            reps,
-            rest_seconds,
-            notes
+            objective,
+            level,
+            duration_weeks,
+            notes,
+            is_template,
+            active
           )
           VALUES (
-            ${routineDayId},
-            ${position + 1},
-            ${exercise.exercise_key},
-            ${exercise.name},
-            ${exercise.sets},
-            ${exercise.reps},
-            ${exercise.rest_seconds},
-            ${exercise.notes}
+            ${trainerId},
+            ${template.name},
+            ${template.objective},
+            ${template.level},
+            ${template.duration_weeks},
+            ${template.notes},
+            TRUE,
+            TRUE
           )
+          RETURNING id
         `;
+
+        const routineId = routineRows[0].id as number;
+
+        // Insert days and exercises
+        for (const day of template.days) {
+          const dayRows = await trx`
+            INSERT INTO routine_days (
+              routine_id,
+              day_number,
+              title,
+              focus,
+              notes
+            )
+            VALUES (
+              ${routineId},
+              ${day.day_number},
+              ${day.title},
+              ${day.focus},
+              ${day.notes}
+            )
+            RETURNING id
+          `;
+
+          const routineDayId = dayRows[0].id as number;
+
+          // Insert exercises one by one (small number, acceptable)
+          for (let position = 0; position < day.exercises.length; position += 1) {
+            const exercise = day.exercises[position];
+            await trx`
+              INSERT INTO routine_exercises (
+                routine_day_id,
+                position,
+                exercise_key,
+                name,
+                sets,
+                reps,
+                rest_seconds,
+                notes
+              )
+              VALUES (
+                ${routineDayId},
+                ${position + 1},
+                ${exercise.exercise_key},
+                ${exercise.name},
+                ${exercise.sets},
+                ${exercise.reps},
+                ${exercise.rest_seconds},
+                ${exercise.notes}
+              )
+            `;
+          }
+        }
       }
     }
-  }
 
-  await sql`
-    INSERT INTO routine_example_seed_state (version)
-    VALUES (${seedVersion})
-  `;
+    // Insert seed state within the same transaction
+    await trx`
+      INSERT INTO routine_example_seed_state (version)
+      VALUES (${seedVersion})
+    `;
+  });
 }
 
 export type RoutineToday = {
@@ -675,7 +840,7 @@ export async function getRoutineListForUser(user: RoutineUser) {
       r.trainer_id,
       r.client_id,
       c.full_name AS client_name,
-      COUNT(DISTINCT ra.id)::int AS assigned_clients_total,
+      (SELECT COUNT(*) FROM routine_assignments ra WHERE ra.routine_id = r.id AND ra.active = TRUE)::int AS assigned_clients_total,
       r.name,
       r.objective,
       r.level,
@@ -685,15 +850,13 @@ export async function getRoutineListForUser(user: RoutineUser) {
       r.start_date,
       r.active,
       r.created_at,
-      COUNT(DISTINCT rd.id)::int AS days_total,
-      COUNT(DISTINCT re.id)::int AS exercises_total
+      (SELECT COUNT(*) FROM routine_days rd WHERE rd.routine_id = r.id)::int AS days_total,
+      (SELECT COUNT(*) FROM routine_exercises re 
+        INNER JOIN routine_days rd ON re.routine_day_id = rd.id 
+        WHERE rd.routine_id = r.id)::int AS exercises_total
     FROM routines r
     LEFT JOIN clients c ON c.id = r.client_id
-    LEFT JOIN routine_days rd ON rd.routine_id = r.id
-    LEFT JOIN routine_exercises re ON re.routine_day_id = rd.id
-    LEFT JOIN routine_assignments ra ON ra.routine_id = r.id AND ra.active = TRUE
     ${userFilter}
-    GROUP BY r.id, c.full_name
     ORDER BY r.is_template DESC, r.created_at DESC, r.id DESC
   `;
 
