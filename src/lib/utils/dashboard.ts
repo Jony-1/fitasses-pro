@@ -1,4 +1,5 @@
 import { sql } from "../db/client";
+import { ensureRoutineSchema } from "./routines";
 
 export type DashboardRole = "admin" | "gym_manager" | "trainer";
 
@@ -669,6 +670,8 @@ async function getGymName(user: DashboardUser) {
 }
 
 export async function getDashboardData(user: DashboardUser): Promise<DashboardData> {
+    await ensureRoutineSchema();
+    
     const adminStatsPromise =
         user.role === "admin" || user.role === "gym_manager"
             ? getAdminStats(user)
