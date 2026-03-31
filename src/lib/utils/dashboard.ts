@@ -86,6 +86,12 @@ export type DashboardQuickAction = {
     icon: string;
 };
 
+export type DashboardTrainerClientCount = {
+    trainerId: number;
+    trainerName: string;
+    clientCount: number;
+};
+
 export type DashboardData = {
     role: DashboardRole;
     gymName: string | null;
@@ -98,6 +104,7 @@ export type DashboardData = {
     recentClients: DashboardRecentClient[];
     alerts: DashboardAlert[];
     quickActions: DashboardQuickAction[];
+    trainerClientCounts: DashboardTrainerClientCount[];
 };
 
 function formatTrendLabel(value: string) {
@@ -656,6 +663,41 @@ async function getAdminStats(user: DashboardUser) {
     };
 }
 
+async function getTrainerClientCounts(user: DashboardUser): Promise<DashboardTrainerClientCount[]> {
+    const rows = user.role === "gym_manager"
+        ? await sql`
+            SELECT 
+                u.id AS trainer_id,
+                u.name AS trainer_name,
+                COUNT(c.id)::int AS client_count
+            FROM users u
+            LEFT JOIN clients c ON c.trainer_id = u.id
+            WHERE u.role = 'trainer' 
+                AND u.gym_id = ${user.gymId}
+            GROUP BY u.id, u.name
+            ORDER BY client_count DESC, u.name ASC
+        `
+        : user.role === "admin"
+        ? await sql`
+            SELECT 
+                u.id AS trainer_id,
+                u.name AS trainer_name,
+                COUNT(c.id)::int AS client_count
+            FROM users u
+            LEFT JOIN clients c ON c.trainer_id = u.id
+            WHERE u.role = 'trainer'
+            GROUP BY u.id, u.name
+            ORDER BY client_count DESC, u.name ASC
+        `
+        : [];
+
+    return rows.map(row => ({
+        trainerId: row.trainer_id,
+        trainerName: row.trainer_name,
+        clientCount: row.client_count ?? 0,
+    }));
+}
+
 async function getGymName(user: DashboardUser) {
     if (user.role === "admin" || user.gymId === null) return null;
 
@@ -677,7 +719,7 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
             ? getAdminStats(user)
             : Promise.resolve({});
 
-    const [clientCounts, assessmentCounts, recentAssessments, recentClients, clientsWithoutRecentAssessment, trends, riskClients, attendanceSummary, recentNotifications, gymName, adminStats] =
+    const [clientCounts, assessmentCounts, recentAssessments, recentClients, clientsWithoutRecentAssessment, trends, riskClients, attendanceSummary, recentNotifications, gymName, adminStats, trainerClientCounts] =
         await Promise.all([
             getClientCounts(user),
             getAssessmentCounts(user),
@@ -690,6 +732,7 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
             getRecentNotifications(user),
             getGymName(user),
             adminStatsPromise,
+            getTrainerClientCounts(user),
         ]);
 
     const stats: DashboardStatValue = {
@@ -842,5 +885,6 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
         recentClients,
         alerts,
         quickActions,
+        trainerClientCounts,
     };
 }
