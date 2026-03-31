@@ -1,8 +1,9 @@
 ---
-import AppLayout from "../../../layouts/layout.astro";
+import AppLayout from "../../../layouts/Layout.astro";
 import AuthNav from "../../../components/ui/AuthNav.astro";
 
 const error = Astro.url.searchParams.get("error");
+const status = Astro.url.searchParams.get("status");
 
 const errorMessages: Record<string, string> = {
     missing_fields: "Completa todos los campos obligatorios.",
@@ -12,9 +13,13 @@ const errorMessages: Record<string, string> = {
     weak_password:
         "La contraseña debe tener al menos 4 caracteres, una mayúscula y un número.",
     email_exists: "Ese correo ya está registrado.",
+    managed_only: "Las cuentas de entrenador se crean desde la administración del gimnasio.",
 };
 
 const errorMessage = error ? errorMessages[error] : null;
+const infoMessage = status === "managed_only"
+    ? "Las cuentas de entrenador ya no se crean directamente desde este formulario."
+    : null;
 ---
 
 <AppLayout title="Registro de entrenador">
@@ -31,14 +36,22 @@ const errorMessage = error ? errorMessages[error] : null;
 
         <div class="mb-6 text-center">
             <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                Crear cuenta de entrenador
+                Acceso para entrenadores
             </h1>
             <p class="mt-2 text-slate-600 dark:text-slate-400">
-                Regístrate para administrar clientes, valoraciones y progreso dentro de tu gimnasio.
+                Las cuentas de entrenador se crean desde la administración del gimnasio para que queden asignadas al equipo correcto.
             </p>
         </div>
 
         <div class="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 sm:p-8">
+            {
+                infoMessage && (
+                    <div class="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
+                        {infoMessage}
+                    </div>
+                )
+            }
+
             {
                 errorMessage && (
                     <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
@@ -47,133 +60,31 @@ const errorMessage = error ? errorMessages[error] : null;
                 )
             }
 
-            <form
-                method="POST"
-                action="/api/auth/register-trainer"
-                class="space-y-5"
-            >
-                <div>
-                    <label
-                        for="name"
-                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200"
-                    >
-                        Nombre
-                    </label>
-                    <input
-                        id="name"
-                        name="name"
-                        type="text"
-                        required
-                        minlength="3"
-                        maxlength="120"
-                        autocomplete="name"
-                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                        placeholder="Tu nombre o nombre profesional"
-                    />
-                </div>
-
-                <div>
-                    <label
-                        for="email"
-                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200"
-                    >
-                        Correo electrónico
-                    </label>
-                    <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        required
-                        maxlength="160"
-                        autocomplete="email"
-                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                        placeholder="ejemplo@correo.com"
-                    />
-                </div>
-
-                <div>
-                    <label
-                        for="password"
-                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200"
-                    >
-                        Contraseña
-                    </label>
-                    <input
-                        id="password"
-                        name="password"
-                        type="password"
-                        required
-                        minlength="4"
-                        maxlength="72"
-                        autocomplete="new-password"
-                        pattern="^(?=.*[A-Z])(?=.*\\d).{4,72}$"
-                        title="Debe tener al menos 4 caracteres, una mayúscula y un número."
-                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                        placeholder="Crea una contraseña con mayúscula y número"
-                    />
-                </div>
-
-                <div>
-                    <label
-                        for="confirm_password"
-                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200"
-                    >
-                        Confirmar contraseña
-                    </label>
-                    <input
-                        id="confirm_password"
-                        name="confirm_password"
-                        type="password"
-                        required
-                        minlength="4"
-                        maxlength="72"
-                        autocomplete="new-password"
-                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none focus:border-emerald-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                        placeholder="Repite tu contraseña"
-                    />
-                </div>
-
-                <div
-                    class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-400"
-                >
-                    <p class="font-semibold text-slate-900 dark:text-slate-200">
-                        Requisitos de la contraseña
-                    </p>
-                    <ul class="mt-2 space-y-1">
-                        <li>• Mínimo 4 caracteres</li>
-                        <li>• Al menos una mayúscula</li>
-                        <li>• Al menos un número</li>
+            <div class="space-y-5">
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-400">
+                    <p class="font-semibold text-slate-900 dark:text-slate-200">Cómo obtener acceso</p>
+                    <ul class="mt-2 space-y-2">
+                        <li>• Un administrador puede crear tu cuenta desde el panel administrativo.</li>
+                        <li>• Un gestor de gimnasio puede darte acceso si perteneces a su sede.</li>
+                        <li>• Cuando tu cuenta esté lista, solo tendrás que iniciar sesión.</li>
                     </ul>
                 </div>
 
-                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <a
+                        href="/login"
+                        class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-400 sm:w-auto"
+                    >
+                        Iniciar sesión
+                    </a>
                     <a
                         href="/register"
                         class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto"
                     >
                         Volver
                     </a>
-
-                    <button
-                        type="submit"
-                        class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-400 sm:w-auto"
-                    >
-                        Crear cuenta
-                    </button>
                 </div>
-
-                <p
-                    class="text-center text-sm text-slate-600 dark:text-slate-400"
-                >
-                    ¿Ya tienes cuenta?
-                    <a
-                        href="/login"
-                        class="font-semibold text-emerald-600 hover:text-emerald-500 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
-                    >
-                        Inicia sesión
-                    </a>
-                </p>
-            </form>
+            </div>
         </div>
     </div>
 </AppLayout>

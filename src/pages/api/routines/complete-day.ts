@@ -24,7 +24,6 @@ export const POST: APIRoute = async (context) => {
   const dayRows = await sql`
     SELECT
       rd.id,
-      r.client_id,
       r.trainer_id
     FROM routine_days rd
     INNER JOIN routines r ON r.id = rd.routine_id
@@ -32,16 +31,20 @@ export const POST: APIRoute = async (context) => {
     LIMIT 1
   `;
 
-  const day = dayRows[0] as { id: number; client_id: number | null; trainer_id: number } | undefined;
+  const day = dayRows[0] as { id: number; trainer_id: number } | undefined;
 
-  if (!day || !day.client_id) {
-    return redirect("/clients?status=error&message=Rutina%20no%20asignada");
+  if (!day) {
+    return redirect("/clients?status=error&message=Rutina%20no%20encontrada");
+  }
+
+  const clientId = user.role === "client" ? await getAccessibleClientIdForUser(user) : Number(clientIdRaw);
+
+  if (!clientId || Number.isNaN(clientId)) {
+    return redirect("/clients?status=error&message=Cliente%20inválido");
   }
 
   if (user.role === "client") {
-    const clientId = await getAccessibleClientIdForUser(user);
-
-    if (!clientId || clientId !== day.client_id) {
+    if (clientId <= 0) {
       return redirect("/login?error=forbidden");
     }
   }
@@ -59,10 +62,21 @@ export const POST: APIRoute = async (context) => {
     }
   }
 
-  const clientId = clientIdRaw ? Number(clientIdRaw) : day.client_id;
+  const clientRows = await sql`
+    SELECT id, trainer_id
+    FROM clients
+    WHERE id = ${clientId}
+    LIMIT 1
+  ` as Array<{ id: number; trainer_id: number | null }>;
 
-  if (Number.isNaN(clientId) || clientId !== day.client_id) {
-    return redirect("/clients?status=error&message=Cliente%20inválido");
+  const client = clientRows[0];
+
+  if (!client) {
+    return redirect("/clients?status=error&message=Cliente%20no%20encontrado");
+  }
+
+  if (client.trainer_id && client.trainer_id !== day.trainer_id) {
+    return redirect("/login?error=forbidden");
   }
 
   await sql`

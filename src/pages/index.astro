@@ -2,8 +2,9 @@
 import "../styles/global.css";
 
 const user = Astro.locals.user;
+const showPublicLanding = Astro.url.searchParams.get("public") === "1";
 
-if (user) {
+if (user && !showPublicLanding) {
   return Astro.redirect(String(user.role) === "gym_manager" ? "/gym-manager" : "/dashboard");
 }
 

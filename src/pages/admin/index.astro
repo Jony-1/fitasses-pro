@@ -1,5 +1,5 @@
 ---
-import AppLayout from "../../layouts/layout.astro";
+import AppLayout from "../../layouts/Layout.astro";
 import { sql } from "../../lib/db/client";
 import SectionHeader from "../../components/ui/SectionHeader.astro";
 import StatCard from "../../components/ui/StatCard.astro";
@@ -42,11 +42,11 @@ const clientsTotal = clientsRows[0]?.total ?? 0;
         <SectionHeader
             eyebrow="Panel administrativo"
             title="Administración"
-            description="Desde aquí podrás gestionar trainers y revisar información general del sistema."
+            description="Desde aquí podrás gestionar entrenadores, gestores de gimnasio y revisar información general del sistema."
         />
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <StatCard label="Trainers registrados" value={trainersTotal} />
+            <StatCard label="Entrenadores registrados" value={trainersTotal} />
             <StatCard label="Usuarios cliente" value={clientUsersTotal} />
             <StatCard label="Clientes creados" value={clientsTotal} />
         </div>
@@ -54,8 +54,8 @@ const clientsTotal = clientsRows[0]?.total ?? 0;
         <div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
             <ActionCard
                 href="/admin/trainers"
-                title="Gestionar trainers"
-                description="Ver, crear y administrar cuentas de entrenadores."
+                title="Gestionar equipo"
+                description="Ver, crear y administrar cuentas de entrenadores y gestores."
             />
 
             <ActionCard

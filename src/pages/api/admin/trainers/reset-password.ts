@@ -2,11 +2,13 @@ import type { APIRoute } from "astro";
 import { requireAdminOrGymManager } from "../../../../lib/auth/guards";
 import { hashPassword } from "../../../../lib/auth/password";
 import { sql } from "../../../../lib/db/client";
+import { getTeamEditHref, getTeamListHref } from "../../../../lib/utils/team-routes";
 import { isStrongPassword } from "../../../../lib/utils/validation";
 
 export const POST: APIRoute = async (context) => {
     try {
         const user = requireAdminOrGymManager(context);
+        const teamListHref = getTeamListHref(user.role);
 
         const formData = await context.request.formData();
 
@@ -15,13 +17,13 @@ export const POST: APIRoute = async (context) => {
 
         if (!id || Number.isNaN(id) || !password) {
             return context.redirect(
-                `/admin/trainers/${id}/edit?status=error&message=Datos%20inválidos`,
+                `${getTeamEditHref(user.role, id)}?status=error&message=Datos%20inválidos`,
             );
         }
 
         if (!isStrongPassword(password)) {
             return context.redirect(
-                `/admin/trainers/${id}/edit?status=error&message=La%20contraseña%20debe%20tener%20al%20menos%204%20caracteres,%20una%20mayúscula%20y%20un%20número`,
+                `${getTeamEditHref(user.role, id)}?status=error&message=La%20contraseña%20debe%20tener%20al%20menos%204%20caracteres,%20una%20mayúscula%20y%20un%20número`,
             );
         }
 
@@ -31,7 +33,7 @@ export const POST: APIRoute = async (context) => {
                       SELECT id
                       FROM users
                       WHERE id = ${id}
-                        AND role = 'trainer'
+                        AND role IN ('trainer', 'gym_manager')
                       LIMIT 1
                   `
                 : await sql`
@@ -45,7 +47,7 @@ export const POST: APIRoute = async (context) => {
 
         if (trainerRows.length === 0) {
             return context.redirect(
-                `/admin/trainers?status=error&message=Trainer%20no%20encontrado`,
+                `${teamListHref}?status=error&message=Cuenta%20no%20encontrada`,
             );
         }
 
@@ -55,12 +57,12 @@ export const POST: APIRoute = async (context) => {
       UPDATE users
       SET password_hash = ${passwordHash}
       WHERE id = ${id}
-        AND role = 'trainer'
+        AND role IN ('trainer', 'gym_manager')
         ${user.role === "gym_manager" ? sql`AND gym_id = ${user.gymId}` : sql``}
     `;
 
         return context.redirect(
-            `/admin/trainers/${id}/edit?status=success&message=Contraseña%20restablecida%20correctamente`,
+            `${getTeamEditHref(user.role, id)}?status=success&message=Contraseña%20restablecida%20correctamente`,
         );
     } catch (error) {
         console.error("Reset trainer password error:", error);

@@ -1,0 +1,6 @@
+---
+const params = Astro.url.searchParams.toString();
+const suffix = params ? `?${params}` : "";
+
+return Astro.redirect(`/admin/trainers/new${suffix}`);
+---

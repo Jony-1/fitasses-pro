@@ -1,7 +1,9 @@
 ---
 import "../styles/global.css";
 import { sql } from "../lib/db/client";
-import { normalizePath, getHrefPath, isActive, computeNavItemsWithActive } from "../lib/utils/navigation";
+import PrimaryNav from "../components/ui/PrimaryNav.astro";
+import { getSessionUser } from "../lib/auth/session-user";
+import { buildNavItems, computeNavItemsWithActive } from "../lib/utils/navigation";
 
 interface Props {
   title?: string;
@@ -9,89 +11,33 @@ interface Props {
 
 const { title = "FitAssess Pro" } = Astro.props;
 const currentPath = Astro.url.pathname;
-type LayoutUser = {
-  id: number;
-  name: string;
-  email: string;
-  role: "admin" | "gym_manager" | "trainer" | "client";
-  gymId: number | null;
-} | null;
-
-const rawUser = Astro.locals.user as any;
-const user = rawUser
-  ? {
-      id: rawUser.id as number,
-      name: rawUser.name as string,
-      email: rawUser.email as string,
-      role: rawUser.role as "admin" | "gym_manager" | "trainer" | "client",
-      gymId: (rawUser.gymId ?? null) as number | null,
-    }
-  : null;
+const user = getSessionUser(Astro.locals.user);
 
 const isAdmin = user?.role === "admin";
 const isGymManager = user?.role === "gym_manager";
 const isTrainer = user?.role === "trainer";
 const isClient = user?.role === "client";
-const canManageClients = isTrainer || isAdmin || isGymManager;
-const canManageTrainers = isAdmin || isGymManager;
-const canManageRoutines = isTrainer || isAdmin || isGymManager;
-const dashboardHref = isGymManager ? "/gym-manager" : "/dashboard";
-const clientRecord = isClient && user ? await sql`
-  SELECT id
-  FROM clients
-  WHERE user_id = ${user.id}
-  LIMIT 1
-` : [];
+const clientRecord = isClient && user
+  ? await sql`
+      SELECT id
+      FROM clients
+      WHERE user_id = ${user.id}
+      LIMIT 1
+    `
+  : [];
 const clientId = isClient ? (clientRecord[0]?.id as number | undefined) ?? null : null;
 
 const panelTitle = isAdmin
   ? "Panel de administracion"
   : isGymManager
     ? "Panel del gimnasio"
-  : isTrainer
-    ? "Panel del entrenador"
-  : isClient
-      ? "Panel del cliente"
-      : "FitAssess Pro";
+    : isTrainer
+      ? "Panel del entrenador"
+      : isClient
+        ? "Panel del cliente"
+        : "FitAssess Pro";
 
-
-
-
-
-const navItems = [
-  { label: "Panel", href: dashboardHref, icon: "📊", visible: !!user && !isClient },
-  { label: "Mi cuenta", href: "/client-home", icon: "🏠", visible: isClient },
-  { label: "Mi rutina", href: clientId ? `/clients/${clientId}/routine` : "/client-home", icon: "🗓️", visible: isClient && !!clientId },
-  { label: "Ejercicios", href: "/client-exercises", icon: "🎴", visible: isClient },
-  { label: "Mi progreso", href: clientId ? `/clients/${clientId}/progress` : "/client-home", icon: "📈", visible: isClient && !!clientId },
-  { label: "Valoraciones", href: clientId ? `/clients/${clientId}/assessments` : "/client-home", icon: "🧾", visible: isClient && !!clientId },
-  { label: "Clientes", href: "/clients", icon: "👥", visible: canManageClients },
-  { label: "Ejercicios", href: "/exercises", icon: "🎴", visible: canManageRoutines },
-  {
-    label: "Nuevo cliente",
-    href: "/clients/new",
-    icon: "➕",
-    visible: canManageClients,
-  },
-  {
-    label: "Rutinas",
-    href: "/routines",
-    icon: "🗓️",
-    visible: canManageRoutines,
-  },
-  {
-    label: "Entrenadores",
-    href: "/admin/trainers",
-    icon: "🏋️",
-    visible: canManageTrainers,
-  },
-  { label: "Gimnasios", href: "/admin/gyms", icon: "🏢", visible: isAdmin },
-  { label: "Administración", href: "/admin", icon: "🏴‍☠️", visible: isAdmin },
-].filter((item) => item.visible);
-
-const navItemsWithActive = computeNavItemsWithActive(navItems, currentPath);
-
-
+const navItemsWithActive = computeNavItemsWithActive(buildNavItems(user, clientId), currentPath);
 ---
 
 <!doctype html>
@@ -103,15 +49,9 @@ const navItemsWithActive = computeNavItemsWithActive(navItems, currentPath);
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="icon" href="/favicon.png" type="image/png" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <script is:inline>
       const savedTheme = localStorage.getItem("theme");
-
-      // Dark mode por defecto para todos los nuevos usuarios
       if (savedTheme === "light") {
         document.documentElement.classList.remove("dark");
       } else {
@@ -119,161 +59,73 @@ const navItemsWithActive = computeNavItemsWithActive(navItems, currentPath);
       }
     </script>
   </head>
-
-  <body
-    class="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100"
-  >
+  <body class="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
     <div class="min-h-screen md:flex">
-      <aside
-        class="hidden w-72 shrink-0 border-r border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 md:sticky md:top-0 md:flex md:h-screen md:flex-col"
-      >
+      <aside class="hidden w-72 shrink-0 border-r border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 md:sticky md:top-0 md:flex md:h-screen md:flex-col">
         <div class="border-b border-slate-200 px-6 py-5 dark:border-slate-800">
-          <div class="flex items-center gap-3">
-            <div
-              class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400 font-extrabold text-slate-900 shadow-sm"
-            >
-              F
-            </div>
-
+          <a href="/?public=1" class="flex items-center gap-3 rounded-2xl transition hover:opacity-90">
+            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400 font-extrabold text-slate-900 shadow-sm">F</div>
             <div>
-              <p class="text-sm text-slate-500 dark:text-slate-400">
-                FitAssess Pro
-              </p>
-              <h1
-                class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100"
-              >
-                {panelTitle}
-              </h1>
+              <p class="text-sm text-slate-500 dark:text-slate-400">FitAssess Pro</p>
+              <h1 class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100">{panelTitle}</h1>
             </div>
-          </div>
+          </a>
         </div>
 
-        <nav aria-label="Navegación principal" class="flex-1 space-y-2 p-4">
-          {
-            navItemsWithActive.map((item) => (
-              <a
-                href={item.href}
-                aria-current={item.active ? "page" : undefined}
-                class:list={[
-                  "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
-                  item.active
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
-                ]}
-              >
-                <span class="text-base">{item.icon}</span>
-                <span>{item.label}</span>
-              </a>
-            ))
-          }
-        </nav>
+        <PrimaryNav items={navItemsWithActive} variant="desktop" />
 
         <div class="border-t border-slate-200 p-4 dark:border-slate-800">
           <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60">
-            <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              FitAssess Pro
-            </p>
+            <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">FitAssess Pro</p>
             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {
-                isAdmin
-                  ? "Gestión administrativa de entrenadores y plataforma."
-                  : isGymManager
-                    ? "Gestión de entrenadores y gimnasio asignado."
+              {isAdmin
+                ? "Gestión administrativa de entrenadores y plataforma."
+                : isGymManager
+                  ? "Gestión del equipo y del gimnasio asignado."
                   : isClient
                     ? "Consulta de progreso, valoraciones y seguimiento."
-                    : "Gestión de clientes, valoraciones y seguimiento."
-              }
+                    : "Gestión de clientes, valoraciones y seguimiento."}
             </p>
+            <a href="/?public=1" class="mt-3 inline-flex items-center text-xs font-semibold text-emerald-600 transition hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300">Ver pagina principal</a>
           </div>
         </div>
       </aside>
 
       <div class="flex min-h-screen flex-1 flex-col">
-        <header
-          class="border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90"
-        >
+        <header class="border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
           <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-6">
-            <div class="flex items-center gap-3 md:hidden">
-              <div
-                class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 font-extrabold text-slate-900"
-              >
-                F
-              </div>
-
+            <a href="/?public=1" class="flex items-center gap-3 rounded-2xl transition hover:opacity-90 md:hidden">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 font-extrabold text-slate-900">F</div>
               <div>
-                <p class="text-xs text-slate-500 dark:text-slate-400">
-                  FitAssess Pro
-                </p>
-                <h1
-                  class="text-base font-extrabold text-slate-900 dark:text-slate-100"
-                >
-                  {panelTitle}
-                </h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400">FitAssess Pro</p>
+                <h1 class="text-base font-extrabold text-slate-900 dark:text-slate-100">{panelTitle}</h1>
               </div>
-            </div>
+            </a>
 
             <div class="hidden md:block">
-              <p class="text-sm text-slate-500 dark:text-slate-400">
-                FitAssess Pro
-              </p>
-              <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">
-                {title}
-              </h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400">FitAssess Pro</p>
+              <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h2>
             </div>
 
             <div class="flex flex-wrap items-center justify-end gap-3">
-              <button
-                type="button"
-                id="theme-toggle"
-                class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
+              <a href="/?public=1" class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300 dark:hover:bg-emerald-950/40">Ver pagina principal</a>
+              <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
                 <span class="dark:hidden">🌙</span>
                 <span class="hidden dark:inline">☀️</span>
               </button>
-
-              {
-                user && (
-                  <div class="flex flex-wrap items-center justify-end gap-3">
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                      {user.name}
-                    </span>
-
-                    <form action="/api/auth/logout" method="POST">
-                      <button
-                        type="submit"
-                        class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                      >
-                        Cerrar sesión
-                      </button>
-                    </form>
-                  </div>
-                )
-              }
+              {user && (
+                <div class="flex flex-wrap items-center justify-end gap-3">
+                  <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">{user.name}</span>
+                  <form action="/api/auth/logout" method="POST">
+                    <button type="submit" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Cerrar sesión</button>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
 
-          <div
-            class="border-t border-slate-200 px-4 py-3 dark:border-slate-800 md:hidden"
-          >
-            <nav aria-label="Navegación móvil" class="flex gap-2 overflow-x-auto pb-1">
-              {
-                navItemsWithActive.map((item) => (
-                  <a
-                    href={item.href}
-                    aria-current={item.active ? "page" : undefined}
-                    class:list={[
-                      "whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition",
-                      item.active
-                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                        : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
-                    ]}
-                  >
-                    <span class="mr-1">{item.icon}</span>
-                    {item.label}
-                  </a>
-                ))
-              }
-            </nav>
+          <div class="border-t border-slate-200 px-4 py-3 dark:border-slate-800 md:hidden">
+            <PrimaryNav items={navItemsWithActive} variant="mobile" />
           </div>
         </header>
 
@@ -283,18 +135,18 @@ const navItemsWithActive = computeNavItemsWithActive(navItems, currentPath);
       </div>
     </div>
 
-    <footer
-      class="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
-    >
+    <footer class="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
       <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-sm text-slate-500 dark:text-slate-400 sm:px-6 md:flex-row">
         <span>© {new Date().getFullYear()} FitAssess Pro</span>
-        <span>Desarrollado por Jonathan Sierra</span>
+        <div class="flex items-center gap-4">
+          <a href="/?public=1" class="font-medium text-emerald-600 transition hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300">Pagina principal</a>
+          <span>Desarrollado por Jonathan Sierra</span>
+        </div>
       </div>
     </footer>
 
     <script is:inline>
       const themeToggle = document.getElementById("theme-toggle");
-
       themeToggle?.addEventListener("click", () => {
         const isDark = document.documentElement.classList.toggle("dark");
         localStorage.setItem("theme", isDark ? "dark" : "light");

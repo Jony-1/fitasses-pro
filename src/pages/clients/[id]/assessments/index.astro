@@ -1,27 +1,29 @@
 ---
-import AppLayout from "../../../../layouts/layout.astro";
+import AppLayout from "../../../../layouts/Layout.astro";
 import { sql } from "../../../../lib/db/client";
 import { formatDateOnly } from "../../../../lib/utils/date";
 import ClientPageHeader from "../../../../components/clients/ClientPageHeader.astro";
+import ClientHeaderActions from "../../../../components/clients/ClientHeaderActions.astro";
+import ClientDeleteAction from "../../../../components/clients/ClientDeleteAction.astro";
+import { getClientByIdForUser } from "../../../../lib/utils/client-profile";
+import { canManageAssessments, canManageClients } from "../../../../lib/auth/roles";
+import { getClientTabs } from "../../../../lib/utils/client-navigation";
 
 const { id } = Astro.params;
+
+const user = Astro.locals.user;
+
+if (!user) {
+    return Astro.redirect("/login?error=unauthorized");
+}
 
 if (!id || Number.isNaN(Number(id))) {
     return Astro.redirect("/clients");
 }
 
-const clientRows = await sql`
-  SELECT id, full_name
-  FROM clients
-  WHERE id = ${Number(id)}
-  LIMIT 1
-`;
-
-const user = Astro.locals.user;
-const canManageAssessments = user?.role === "trainer" || user?.role === "admin" || user?.role === "gym_manager";
-const canManageClient = user?.role === "trainer" || user?.role === "admin" || user?.role === "gym_manager";
-
-const client = clientRows[0];
+const client = await getClientByIdForUser(Number(id), user);
+const canManageClient = canManageClients(user.role);
+const canManageClientAssessments = canManageAssessments(user.role);
 
 if (!client) {
     return new Response("Cliente no encontrado", { status: 404 });
@@ -95,35 +97,9 @@ function formatDelta(value: number | null, suffix = "") {
             title="Historial de valoraciones"
             description={`Cliente: ${client.full_name}`}
             accent="blue"
-            tabs={[
-                { href: `/clients/${client.id}/routine`, label: "Mi rutina" },
-                { href: `/clients/${client.id}/progress`, label: "Mi progreso" },
-                { href: `/clients/${client.id}/assessments`, label: "Valoraciones", active: true },
-            ]}
+            tabs={getClientTabs(client.id, "assessments")}
         >
-            {canManageClient && (
-                <a slot="actions" href={`/clients/${client.id}/edit`} class="inline-flex w-full items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30 sm:w-auto">
-                    Editar cliente
-                </a>
-            )}
-
-            {canManageClient && (
-                <button slot="actions" type="button" id="delete-client" class="inline-flex w-full items-center justify-center rounded-xl border border-red-300/60 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-950 transition hover:bg-red-500/20 sm:w-auto">
-                    Eliminar cliente
-                </button>
-            )}
-
-            <a slot="actions" href={`/clients/${client.id}`} class="inline-flex w-full items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30 sm:w-auto">
-                Volver al cliente
-            </a>
-
-            {
-                canManageAssessments && (
-                    <a slot="actions" href={`/clients/${client.id}/assessments/valoration_new`} class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 sm:w-auto">
-                        + Nueva valoración
-                    </a>
-                )
-            }
+            <ClientHeaderActions slot="actions" clientId={client.id} canManageClient={canManageClient} canManageAssessments={canManageClientAssessments} activeView="assessments" />
         </ClientPageHeader>
 
         {latestAssessment && (
@@ -139,8 +115,8 @@ function formatDelta(value: number | null, suffix = "") {
                         <a href={`/clients/${client.id}/progress`} class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
                             Ver progreso
                         </a>
-                        {canManageAssessments && (
-                            <a href={`/clients/${client.id}/assessments/valoration_new`} class="inline-flex items-center justify-center rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/30">
+                        {canManageClientAssessments && (
+                            <a href={`/clients/${client.id}/assessments/valoracion_new`} class="inline-flex items-center justify-center rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/30">
                                 Nueva valoración
                             </a>
                         )}
@@ -178,8 +154,8 @@ function formatDelta(value: number | null, suffix = "") {
                         seguimiento.
                     </p>
 
-                    {canManageAssessments && (
-                        <a href={`/clients/${client.id}/assessments/valoration_new`} class="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 sm:w-auto">
+                    {canManageClientAssessments && (
+                        <a href={`/clients/${client.id}/assessments/valoracion_new`} class="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 sm:w-auto">
                             Crear primera valoración
                         </a>
                     )}
@@ -218,9 +194,9 @@ function formatDelta(value: number | null, suffix = "") {
                                     </div>
                                 </div>
 
-                                {canManageAssessments && (
+                                {canManageClientAssessments && (
                                     <div class="flex flex-wrap gap-3">
-                                        <a href={`/clients/${client.id}/assessments/valoration_edit?assessmentId=${assessment.id}`} class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+                                        <a href={`/clients/${client.id}/assessments/valoracion_edit?assessmentId=${assessment.id}`} class="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
                                             Editar
                                         </a>
 
@@ -444,57 +420,4 @@ function formatDelta(value: number | null, suffix = "") {
     </div>
 </AppLayout>
 
-{canManageClient && (
-    <div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-        <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-950 p-6 shadow-2xl">
-            <h3 class="text-xl font-bold text-slate-100">Eliminar cliente</h3>
-            <p class="mt-2 text-sm text-slate-400">Esta acción eliminará al cliente y no se puede deshacer.</p>
-
-            <div class="mt-6 flex justify-end gap-3">
-                <button id="cancel-delete" type="button" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-900">Cancelar</button>
-                <button id="confirm-delete" type="button" data-client-id={client.id} class="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-600">Eliminar cliente</button>
-            </div>
-        </div>
-    </div>
-)}
-
-<script>
-    const deleteBtn = document.getElementById("delete-client") as HTMLButtonElement | null;
-    const modal = document.getElementById("delete-modal") as HTMLDivElement | null;
-    const cancelBtn = document.getElementById("cancel-delete") as HTMLButtonElement | null;
-    const confirmBtn = document.getElementById("confirm-delete") as HTMLButtonElement | null;
-
-    if (deleteBtn && modal && cancelBtn && confirmBtn) {
-        const closeModal = () => {
-            modal.classList.add("hidden");
-            modal.classList.remove("flex");
-        };
-
-        deleteBtn.addEventListener("click", () => {
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-        });
-
-        cancelBtn.addEventListener("click", closeModal);
-        modal.addEventListener("click", (event) => {
-            if (event.target === modal) closeModal();
-        });
-
-        confirmBtn.addEventListener("click", async () => {
-            const button = confirmBtn;
-            const clientId = confirmBtn.dataset.clientId;
-            if (!clientId) return;
-
-            try {
-                button.textContent = "Eliminando...";
-                button.disabled = true;
-
-                await fetch(`/api/clients/${clientId}`, { method: "DELETE", headers: { Accept: "application/json" } });
-                window.location.href = "/clients";
-            } catch {
-                button.textContent = "Eliminar cliente";
-                button.disabled = false;
-            }
-        });
-    }
-</script>
+{canManageClient && <ClientDeleteAction clientId={client.id} />}

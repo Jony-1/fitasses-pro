@@ -1,4 +1,5 @@
 import { sql } from "../db/client";
+import { asSqlExecutor } from "../db/sql-executor";
 
 export type RoutineUserRole = "admin" | "gym_manager" | "trainer" | "client";
 
@@ -67,6 +68,20 @@ export type RoutineDay = {
 };
 
 export type RoutineAttendanceTimeSlot = "morning" | "midday" | "night" | "other";
+
+export type RoutineCalendarEntry = {
+  id: number;
+  client_id: number;
+  weekday: number;
+  routine_id: number;
+  routine_name: string;
+  routine_objective: string | null;
+  routine_level: string | null;
+  days_total: number;
+  exercises_total: number;
+  active: boolean;
+  notes: string | null;
+};
 
 let ensureRoutineSchemaPromise: Promise<void> | null = null;
 
@@ -332,6 +347,23 @@ export async function ensureRoutineSchema() {
   await sql`CREATE INDEX IF NOT EXISTS routine_assignments_client_active_idx ON routine_assignments (client_id, active, created_at DESC)`;
   await sql`ALTER TABLE routine_assignments ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL DEFAULT 'always'`;
   await sql`ALTER TABLE routine_assignments ADD COLUMN IF NOT EXISTS template_visible BOOLEAN NOT NULL DEFAULT TRUE`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS routine_weekly_schedule (
+      id SERIAL PRIMARY KEY,
+      client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+      weekday SMALLINT NOT NULL CHECK (weekday BETWEEN 1 AND 7),
+      routine_id INTEGER NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+      notes TEXT,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE (client_id, weekday)
+    )
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS routine_weekly_schedule_client_idx ON routine_weekly_schedule (client_id, weekday, active)`;
+  await sql`CREATE INDEX IF NOT EXISTS routine_weekly_schedule_routine_idx ON routine_weekly_schedule (routine_id, active)`;
 
   await migrateLegacyRoutineAssignments();
 
@@ -689,7 +721,7 @@ async function ensureExampleRoutineTemplates() {
 
   // Use a single transaction for all inserts
   await sql.begin(async (tx) => {
-    const trx = tx as any;
+    const trx = asSqlExecutor(tx);
 
     for (const trainer of trainerRows) {
       const trainerId = trainer.id as number;
@@ -802,6 +834,12 @@ export type RoutineToday = {
   label: string;
 };
 
+function getIsoWeekday(date: Date) {
+  const day = date.getDay();
+
+  return day === 0 ? 7 : day;
+}
+
 export function getRoutineToday(routine: Pick<RoutineDetails, "days" | "start_date">): RoutineToday {
   if (!routine.days.length) {
     return { day: null, dayIndex: null, label: "Sin días" };
@@ -865,6 +903,155 @@ export async function getRoutineListForUser(user: RoutineUser) {
   `;
 
   return rows as unknown as RoutineListItem[];
+}
+
+export async function getRoutineCalendarForClient(clientId: number) {
+  const rows = await sql`
+    SELECT
+      s.id,
+      s.client_id,
+      s.weekday,
+      s.routine_id,
+      r.name AS routine_name,
+      r.objective AS routine_objective,
+      r.level AS routine_level,
+      (
+        SELECT COUNT(*)::int
+        FROM routine_days rd
+        WHERE rd.routine_id = r.id
+      ) AS days_total,
+      (
+        SELECT COUNT(*)::int
+        FROM routine_exercises re
+        INNER JOIN routine_days rd ON rd.id = re.routine_day_id
+        WHERE rd.routine_id = r.id
+      ) AS exercises_total,
+      s.active,
+      s.notes
+    FROM routine_weekly_schedule s
+    INNER JOIN routines r ON r.id = s.routine_id
+    WHERE s.client_id = ${clientId}
+      AND s.active = TRUE
+      AND r.active = TRUE
+    ORDER BY s.weekday ASC, s.id DESC
+  `;
+
+  return rows as unknown as RoutineCalendarEntry[];
+}
+
+export async function getScheduledRoutineForClient(clientId: number, date = new Date()) {
+  const weekday = getIsoWeekday(date);
+  const scheduleRows = await sql`
+    SELECT routine_id
+    FROM routine_weekly_schedule
+    WHERE client_id = ${clientId}
+      AND weekday = ${weekday}
+      AND active = TRUE
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 1
+  ` as Array<{ routine_id: number }>;
+
+  const scheduledRoutineId = scheduleRows[0]?.routine_id;
+
+  if (!scheduledRoutineId) {
+    return null;
+  }
+
+  const base = await fetchRoutineBaseById(scheduledRoutineId);
+
+  if (!base || !base.active) {
+    return null;
+  }
+
+  base.client_id = clientId;
+
+  const dayRows = await sql`
+    SELECT
+      rd.id AS day_id,
+      rd.day_number,
+      rd.title AS day_title,
+      rd.focus AS day_focus,
+      rd.notes AS day_notes,
+      rc.completed_at,
+      ra.status AS attendance_status,
+      ra.time_slot AS attendance_time_slot,
+      ra.checked_at AS attendance_checked_at,
+      re.id AS exercise_id,
+      re.position,
+      re.exercise_key,
+      re.image_url,
+      re.name AS exercise_name,
+      re.sets,
+      re.reps,
+      re.rest_seconds,
+      re.notes AS exercise_notes
+    FROM routine_days rd
+    LEFT JOIN routine_exercises re ON re.routine_day_id = rd.id
+    LEFT JOIN routine_day_completions rc ON rc.routine_day_id = rd.id
+      AND rc.client_id = ${clientId}
+    LEFT JOIN routine_day_attendances ra ON ra.routine_day_id = rd.id
+      AND ra.client_id = ${clientId}
+    WHERE rd.routine_id = ${scheduledRoutineId}
+    ORDER BY rd.day_number ASC, re.position ASC, re.id ASC
+  `;
+
+  const dayMap = new Map<number, RoutineDay>();
+
+  for (const row of dayRows as unknown as Array<{
+    day_id: number;
+    day_number: number;
+    day_title: string;
+    day_focus: string | null;
+    day_notes: string | null;
+    completed_at: string | Date | null;
+    attendance_status: "going" | "not_going" | null;
+    attendance_time_slot: "morning" | "midday" | "night" | "other" | null;
+    attendance_checked_at: string | Date | null;
+    exercise_id: number | null;
+    position: number | null;
+    exercise_key: string | null;
+    image_url: string | null;
+    exercise_name: string | null;
+    sets: number | null;
+    reps: string | null;
+    rest_seconds: number | null;
+    exercise_notes: string | null;
+  }>) {
+    if (!dayMap.has(row.day_id)) {
+      dayMap.set(row.day_id, {
+        id: row.day_id,
+        day_number: row.day_number,
+        title: row.day_title,
+        focus: row.day_focus,
+        notes: row.day_notes,
+        completed_at: row.completed_at,
+        attendance_status: row.attendance_status,
+        attendance_time_slot: row.attendance_time_slot,
+        attendance_checked_at: row.attendance_checked_at,
+        exercises: [],
+      });
+    }
+
+    if (row.exercise_id) {
+      dayMap.get(row.day_id)?.exercises.push({
+        id: row.exercise_id,
+        exercise_key: row.exercise_key,
+        imageUrl: row.image_url,
+        position: row.position ?? 0,
+        name: row.exercise_name ?? "",
+        sets: row.sets,
+        reps: row.reps,
+        rest_seconds: row.rest_seconds,
+        notes: row.exercise_notes,
+      });
+    }
+  }
+
+  return {
+    ...base,
+    start_date: date.toISOString().slice(0, 10),
+    days: Array.from(dayMap.values()),
+  } satisfies RoutineDetails;
 }
 
 async function fetchRoutineBase(routineId: number, user: RoutineUser) {
@@ -1069,6 +1256,12 @@ export async function getRoutineDetailsForUser(
 }
 
 export async function getActiveRoutineForClient(clientId: number) {
+  const scheduledRoutine = await getScheduledRoutineForClient(clientId);
+
+  if (scheduledRoutine) {
+    return scheduledRoutine;
+  }
+
   const assignmentRows = await sql`
     SELECT
       a.id,

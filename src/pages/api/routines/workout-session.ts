@@ -62,7 +62,6 @@ export const POST: APIRoute = async (context) => {
       SELECT
         rd.id,
         rd.routine_id,
-        r.client_id,
         r.trainer_id
       FROM routine_days rd
       INNER JOIN routines r ON r.id = rd.routine_id
@@ -70,15 +69,15 @@ export const POST: APIRoute = async (context) => {
       LIMIT 1
     `;
 
-    const day = dayRows[0] as { id: number; routine_id: number; client_id: number | null; trainer_id: number } | undefined;
+    const day = dayRows[0] as { id: number; routine_id: number; trainer_id: number } | undefined;
 
-    if (!day || !day.client_id) {
-      return json({ error: "La rutina no está asignada" }, 404);
+    if (!day) {
+      return json({ error: "La rutina no existe" }, 404);
     }
 
     const accessibleClientId = user.role === "client" ? await getAccessibleClientIdForUser(user) : clientId;
 
-    if (!accessibleClientId || accessibleClientId !== day.client_id) {
+    if (!accessibleClientId || Number.isNaN(accessibleClientId)) {
       return json({ error: "Cliente inválido" }, 403);
     }
 
@@ -93,6 +92,23 @@ export const POST: APIRoute = async (context) => {
       if (!trainerRows.length) {
         return json({ error: "No tienes acceso a esta rutina" }, 403);
       }
+    }
+
+    const clientRows = await sql`
+      SELECT id, trainer_id
+      FROM clients
+      WHERE id = ${accessibleClientId}
+      LIMIT 1
+    ` as Array<{ id: number; trainer_id: number | null }>;
+
+    const client = clientRows[0];
+
+    if (!client) {
+      return json({ error: "Cliente inválido" }, 404);
+    }
+
+    if (client.trainer_id && client.trainer_id !== day.trainer_id) {
+      return json({ error: "No tienes acceso a esta rutina" }, 403);
     }
 
     const exerciseRows = await sql`
@@ -151,7 +167,7 @@ export const POST: APIRoute = async (context) => {
       )
       VALUES (
         ${routineDayId},
-        ${day.client_id},
+        ${client.id},
         ${startedAt || null},
         ${finishedAt || null},
         ${notes || null}

@@ -1,5 +1,5 @@
 ---
-import AppLayout from "../../layouts/layout.astro";
+import AppLayout from "../../layouts/Layout.astro";
 import SectionHeader from "../../components/ui/SectionHeader.astro";
 import ExercisePlaceholder from "../../components/exercises/ExercisePlaceholder.astro";
 import {
@@ -18,7 +18,7 @@ if (!user) {
 const ownerClient = user.role === "client" ? await getClientByUserId(user.id) : null;
 const ownerTrainerId = user.role === "trainer" ? user.id : ownerClient?.trainer_id ?? null;
 const canEditExercise = user.role !== "client";
-const canSyncExerciseCatalog = user.role === "trainer" || user.role === "admin";
+const canSyncExerciseCatalog = user.role === "trainer" || user.role === "admin" || user.role === "gym_manager";
 const normalize = (value: string) => value.trim().toLowerCase();
 const search = normalize(Astro.url.searchParams.get("q") ?? "");
 const category = Astro.url.searchParams.get("category") ?? "Todos";
@@ -92,14 +92,16 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
       title="Biblioteca de ejercicios"
       description="Crea, edita y usa ejercicios en un solo lugar."
     >
-      <button
-        slot="actions"
-        type="button"
-        data-open-modal="create"
-        class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300 sm:w-auto"
-      >
-        + Nuevo ejercicio
-      </button>
+      {canEditExercise && (
+        <button
+          slot="actions"
+          type="button"
+          data-open-modal="create"
+          class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-900 hover:bg-emerald-300 sm:w-auto"
+        >
+          + Nuevo ejercicio
+        </button>
+      )}
 
       {canSyncExerciseCatalog && (
         <form slot="actions" method="POST" action="/api/exercises/sync">

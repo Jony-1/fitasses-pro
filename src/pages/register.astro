@@ -1,5 +1,5 @@
 ---
-import AppLayout from "../layouts/layout.astro";
+import AppLayout from "../layouts/Layout.astro";
 import SectionHeader from "../components/ui/SectionHeader.astro";
 import ActionCard from "../components/ui/ActionCard.astro";
 import AuthNav from "../components/ui/AuthNav.astro";
@@ -16,7 +16,7 @@ import AuthNav from "../components/ui/AuthNav.astro";
 
         <SectionHeader
             title="Crear cuenta"
-            description="Elige el tipo de cuenta con el que deseas registrarte: cliente, entrenador o gestor de gimnasio."
+            description="Elige el tipo de cuenta con el que deseas registrarte. Las cuentas de entrenador se activan desde la administración del gimnasio."
         />
 
         <div class="mt-10 grid gap-6 md:grid-cols-3">
@@ -29,7 +29,7 @@ import AuthNav from "../components/ui/AuthNav.astro";
             <ActionCard
                 href="/clients/register/trainer"
                 title="Entrenador"
-                description="Administra clientes, valoraciones y seguimiento de tus atletas."
+                description="Acceso gestionado por un administrador o gestor de gimnasio."
             />
 
             <ActionCard

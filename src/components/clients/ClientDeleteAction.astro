@@ -1,0 +1,60 @@
+---
+interface Props {
+  clientId: number;
+}
+
+const { clientId } = Astro.props as Props;
+---
+
+<div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+  <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-950 p-6 shadow-2xl">
+    <h3 class="text-xl font-bold text-slate-100">Eliminar cliente</h3>
+    <p class="mt-2 text-sm text-slate-400">Esta acción eliminará al cliente y no se puede deshacer.</p>
+
+    <div class="mt-6 flex justify-end gap-3">
+      <button id="cancel-delete" type="button" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-900">Cancelar</button>
+      <button id="confirm-delete" type="button" data-client-id={clientId} class="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-600">Eliminar cliente</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const deleteBtn = document.getElementById("delete-client") as HTMLButtonElement | null;
+  const modal = document.getElementById("delete-modal") as HTMLDivElement | null;
+  const cancelBtn = document.getElementById("cancel-delete") as HTMLButtonElement | null;
+  const confirmBtn = document.getElementById("confirm-delete") as HTMLButtonElement | null;
+
+  if (deleteBtn && modal && cancelBtn && confirmBtn) {
+    const closeModal = () => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    };
+
+    deleteBtn.addEventListener("click", () => {
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    });
+
+    cancelBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeModal();
+    });
+
+    confirmBtn.addEventListener("click", async () => {
+      const button = confirmBtn;
+      const targetClientId = confirmBtn.dataset.clientId;
+      if (!targetClientId) return;
+
+      try {
+        button.textContent = "Eliminando...";
+        button.disabled = true;
+
+        await fetch(`/api/clients/${targetClientId}`, { method: "DELETE", headers: { Accept: "application/json" } });
+        window.location.href = "/clients";
+      } catch {
+        button.textContent = "Eliminar cliente";
+        button.disabled = false;
+      }
+    });
+  }
+</script>

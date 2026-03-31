@@ -1,0 +1,57 @@
+---
+import DashboardStatsGrid from "./DashboardStatsGrid.astro";
+import DashboardRiskClients from "./DashboardRiskClients.astro";
+import DashboardRecentAssessments from "./DashboardRecentAssessments.astro";
+import DashboardRecentClients from "./DashboardRecentClients.astro";
+import DashboardAttendanceSummary from "./DashboardAttendanceSummary.astro";
+import DashboardRecentNotifications from "./DashboardRecentNotifications.astro";
+import DashboardQuickActions from "./DashboardQuickActions.astro";
+import DashboardTrainerChart from "./DashboardTrainerChart.astro";
+import DashboardAlerts from "./DashboardAlerts.astro";
+import DashboardTrends from "./DashboardTrends.astro";
+
+interface Props {
+  dashboard: any;
+  showTrainerChart?: boolean;
+  showAlerts?: boolean;
+  showTrends?: boolean;
+}
+
+const {
+  dashboard,
+  showTrainerChart = false,
+  showAlerts = false,
+  showTrends = false,
+} = Astro.props as Props;
+---
+
+<div class="space-y-6">
+  <DashboardStatsGrid stats={dashboard.stats} role={dashboard.role} />
+
+  {showTrainerChart && <DashboardTrainerChart items={dashboard.trainerClientCounts} />}
+
+  {showAlerts ? (
+    <div class="grid gap-6 xl:grid-cols-2">
+      <DashboardAlerts alerts={dashboard.alerts} />
+      <DashboardRecentNotifications items={dashboard.recentNotifications} />
+    </div>
+  ) : (
+    <div class="grid gap-6 xl:grid-cols-2">
+      <DashboardAttendanceSummary items={dashboard.attendanceSummary} />
+      <DashboardRecentNotifications items={dashboard.recentNotifications} />
+    </div>
+  )}
+
+  <DashboardRiskClients items={dashboard.riskClients} />
+
+  <div class="grid gap-6 xl:grid-cols-2">
+    <DashboardRecentAssessments items={dashboard.recentAssessments} />
+    <DashboardRecentClients items={dashboard.recentClients} />
+  </div>
+
+  <DashboardQuickActions items={dashboard.quickActions} />
+
+  {showTrends && <DashboardTrends trends={dashboard.trends} />}
+
+  {!showAlerts && <DashboardAttendanceSummary items={dashboard.attendanceSummary} />}
+</div>

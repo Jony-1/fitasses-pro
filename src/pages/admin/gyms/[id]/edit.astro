@@ -1,8 +1,9 @@
 ---
-import AppLayout from "../../../../layouts/layout.astro";
+import AppLayout from "../../../../layouts/Layout.astro";
 import { sql } from "../../../../lib/db/client";
+import { getSessionUser } from "../../../../lib/auth/session-user";
 
-const user = Astro.locals.user as any;
+const user = getSessionUser(Astro.locals.user);
 const { id } = Astro.params;
 
 if (!user) {
@@ -88,8 +89,8 @@ const clientCountRows = await sql`
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                 <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100">Resumen</h2>
                 <div class="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-400">
-                    <p>Trainers: <strong>{trainerCountRows[0]?.total ?? 0}</strong></p>
-                    <p>Gym managers: <strong>{managerCountRows[0]?.total ?? 0}</strong></p>
+                    <p>Entrenadores: <strong>{trainerCountRows[0]?.total ?? 0}</strong></p>
+                    <p>Gestores: <strong>{managerCountRows[0]?.total ?? 0}</strong></p>
                     <p>Clientes: <strong>{clientCountRows[0]?.total ?? 0}</strong></p>
                 </div>
 

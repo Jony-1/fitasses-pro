@@ -1,28 +1,13 @@
 ---
-import AppLayout from "../layouts/layout.astro";
+import AppLayout from "../layouts/Layout.astro";
 import SectionHeader from "../components/ui/SectionHeader.astro";
-import DashboardStatsGrid from "../components/dashboard/DashboardStatsGrid.astro";
-import DashboardRecentAssessments from "../components/dashboard/DashboardRecentAssessments.astro";
-import DashboardRecentClients from "../components/dashboard/DashboardRecentClients.astro";
-import DashboardAlerts from "../components/dashboard/DashboardAlerts.astro";
-import DashboardAttendanceSummary from "../components/dashboard/DashboardAttendanceSummary.astro";
-import DashboardRecentNotifications from "../components/dashboard/DashboardRecentNotifications.astro";
-import DashboardQuickActions from "../components/dashboard/DashboardQuickActions.astro";
-import DashboardTrends from "../components/dashboard/DashboardTrends.astro";
-import DashboardRiskClients from "../components/dashboard/DashboardRiskClients.astro";
+import DashboardOverview from "../components/dashboard/DashboardOverview.astro";
 import { getDashboardData } from "../lib/utils/dashboard";
 import { sql } from "../lib/db/client";
+import { getSessionUser } from "../lib/auth/session-user";
+import { getTeamListHref, getTeamNewHref } from "../lib/utils/team-routes";
 
-const rawUser = Astro.locals.user as any;
-const user = rawUser
-  ? {
-      id: rawUser.id as number,
-      name: rawUser.name as string,
-      email: rawUser.email as string,
-      role: rawUser.role as "admin" | "gym_manager" | "trainer" | "client",
-      gymId: (rawUser.gymId ?? null) as number | null,
-    }
-  : null;
+const user = getSessionUser(Astro.locals.user);
 
 if (!user) {
   return Astro.redirect("/login");
@@ -38,8 +23,6 @@ const linkedClientRows = user.role === "client"
   : [];
 
 const linkedClientId = linkedClientRows[0]?.id as number | undefined;
-
-const showClientLanding = user.role === "client" && !linkedClientId;
 
 if (user.role === "gym_manager") {
   return Astro.redirect("/gym-manager");
@@ -77,37 +60,6 @@ const recentClients = dashboard.recentClients.length;
 ---
 
 <AppLayout title="FitAssess Pro | Panel principal">
-  {showClientLanding ? (
-    <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-      <SectionHeader
-        eyebrow="Cuenta de cliente"
-        title={`Hola, ${user.name}`}
-        description="Todavía no tienes un perfil de cliente vinculado."
-      />
-
-      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/95 sm:p-8">
-        <p class="text-sm text-slate-600 dark:text-slate-400">
-          Tu cuenta está creada, pero todavía no se vinculó un perfil de cliente.
-        </p>
-
-        <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <a
-            href="/clients/register/client"
-            class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 sm:w-auto"
-          >
-            Completar registro
-          </a>
-
-          <a
-            href="/login"
-            class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto"
-          >
-            Volver a iniciar sesión
-          </a>
-        </div>
-      </div>
-    </div>
-  ) : (
     <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
     <SectionHeader
         eyebrow={
@@ -149,7 +101,7 @@ const recentClients = dashboard.recentClients.length;
       {isGymManager && (
         <a
           slot="actions"
-          href="/admin/trainers/new"
+          href={getTeamNewHref(user.role)}
           class="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 sm:w-auto"
         >
           Nuevo entrenador
@@ -159,7 +111,7 @@ const recentClients = dashboard.recentClients.length;
       {isAdmin && (
         <a
           slot="actions"
-          href="/admin/trainers"
+          href={getTeamListHref(user.role)}
           class="inline-flex w-full items-center justify-center rounded-xl border border-emerald-300 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30 sm:w-auto"
         >
           Gestionar entrenadores
@@ -205,34 +157,7 @@ const recentClients = dashboard.recentClients.length;
     </div>
 
     <div class="mt-6">
-      <DashboardStatsGrid stats={dashboard.stats} role={dashboard.role} />
-    </div>
-
-    <div class="mt-6">
-      <DashboardRiskClients items={dashboard.riskClients} />
-    </div>
-
-    <div class="mt-6">
-      <DashboardQuickActions items={dashboard.quickActions} />
-    </div>
-
-    <div class="mt-6 grid gap-6 xl:grid-cols-2">
-      <DashboardAlerts alerts={dashboard.alerts} />
-      <DashboardRecentNotifications items={dashboard.recentNotifications} />
-    </div>
-
-    <div class="mt-6">
-      <DashboardTrends trends={dashboard.trends} />
-    </div>
-
-    <div class="mt-6 grid gap-6 xl:grid-cols-2">
-      <DashboardRecentAssessments items={dashboard.recentAssessments} />
-      <DashboardRecentClients items={dashboard.recentClients} />
-    </div>
-
-    <div class="mt-6">
-      <DashboardAttendanceSummary items={dashboard.attendanceSummary} />
+      <DashboardOverview dashboard={dashboard} showAlerts showTrends />
     </div>
     </div>
-  )}
 </AppLayout>

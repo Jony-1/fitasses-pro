@@ -20,10 +20,16 @@ interface Props {
 const { totalAssessments, latestAssessment, weightChange, bodyFatChange, muscleChange } = Astro.props as Props;
 ---
 
-<section class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
-  <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Resumen de progreso</h2>
+<section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950/80">
+  <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">Progreso visible</p>
+      <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">Resumen de progreso</h2>
+    </div>
+    <p class="text-sm text-slate-600 dark:text-slate-400">Comparación rápida frente a la valoración anterior.</p>
+  </div>
 
-  <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
     <StatCard label="Total valoraciones" value={totalAssessments} />
 
     <StatCard

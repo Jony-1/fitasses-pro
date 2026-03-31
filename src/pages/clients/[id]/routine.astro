@@ -1,21 +1,41 @@
 ---
-import AppLayout from "../../../layouts/layout.astro";
+import AppLayout from "../../../layouts/Layout.astro";
 import EmptyState from "../../../components/ui/EmptyState.astro";
 import ClientPageHeader from "../../../components/clients/ClientPageHeader.astro";
+import ClientHeaderActions from "../../../components/clients/ClientHeaderActions.astro";
+import ClientDeleteAction from "../../../components/clients/ClientDeleteAction.astro";
 import ExerciseCard from "../../../components/exercises/ExerciseCard.astro";
 import { sql } from "../../../lib/db/client";
 import { getExerciseLibraryItem } from "../../../lib/utils/exercise-library";
-import { ensureRoutineSchema, getActiveRoutineForClient } from "../../../lib/utils/routines";
+import {
+    ensureRoutineSchema,
+    getActiveRoutineForClient,
+    getRoutineCalendarForClient,
+    getRoutineToday,
+} from "../../../lib/utils/routines";
 import { getClientByIdForUser } from "../../../lib/utils/client-profile";
-
-type ClientSummary = {
-    id: number;
-    full_name: string;
-};
+import { canManageAssessments, canManageClients } from "../../../lib/auth/roles";
+import { getClientTabs } from "../../../lib/utils/client-navigation";
 
 type AttendanceTimeSlot = "morning" | "midday" | "night" | "other";
-
 type AssignmentScope = "today" | "week" | "always";
+
+type WeeklyRoutineOption = {
+    id: number;
+    name: string;
+    objective: string | null;
+    level: string | null;
+};
+
+const WEEKDAY_LABELS = [
+    "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes",
+    "Sábado",
+    "Domingo",
+];
 
 function getAttendanceTimeSlotLabel(timeSlot: AttendanceTimeSlot | null) {
     switch (timeSlot) {
@@ -30,26 +50,6 @@ function getAttendanceTimeSlotLabel(timeSlot: AttendanceTimeSlot | null) {
         default:
             return "Sin horario";
     }
-}
-
-function getTodayRoutine(routine: { days: any[]; start_date: string | Date | null }) {
-    if (!routine.days.length) {
-        return { day: null };
-    }
-
-    if (!routine.start_date) {
-        return { day: routine.days[0] ?? null };
-    }
-
-    const start = new Date(routine.start_date);
-    const now = new Date();
-    const startLocal = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-    const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const diffDays = Math.floor((nowLocal.getTime() - startLocal.getTime()) / (1000 * 60 * 60 * 24));
-    const index = ((diffDays % routine.days.length) + routine.days.length) % routine.days.length;
-
-    return { day: routine.days[index] ?? null };
 }
 
 const { id } = Astro.params;
@@ -69,16 +69,19 @@ if (!id || Number.isNaN(Number(id))) {
 
 const clientId = Number(id);
 await ensureRoutineSchema();
-const [client, activeRoutine] = await Promise.all([
+
+const [client, activeRoutine, weeklyCalendar] = await Promise.all([
     getClientByIdForUser(clientId, user),
     getActiveRoutineForClient(clientId),
+    getRoutineCalendarForClient(clientId),
 ]);
 
 if (!client) {
     return new Response("Cliente no encontrado", { status: 404 });
 }
 
-const todayDay: any = activeRoutine ? getTodayRoutine(activeRoutine).day : null;
+const todayInfo = activeRoutine ? getRoutineToday(activeRoutine) : { day: null, dayIndex: null, label: "Sin rutina" };
+const todayDay: any = todayInfo.day;
 const todayExercises: any[] = todayDay?.exercises ?? [];
 const routineDays: any[] = activeRoutine?.days ?? [];
 const todayDayId = todayDay?.id ?? null;
@@ -93,20 +96,36 @@ const currentAssignment = activeRoutine
           AND active = TRUE
         ORDER BY created_at DESC, id DESC
         LIMIT 1
-      ` as Array<{ time_slot: "morning" | "midday" | "night" | "other" | null; scope: AssignmentScope | null }>
+      ` as Array<{ time_slot: AttendanceTimeSlot | null; scope: AssignmentScope | null }>
     : [];
 const preferredTimeSlot = currentAssignment[0]?.time_slot ?? null;
 const preferredScope = currentAssignment[0]?.scope ?? "always";
 const isClientView = user.role === "client";
-const canManageClient = user.role === "trainer" || user.role === "admin" || user.role === "gym_manager";
-const canManageAssessments = user.role === "trainer" || user.role === "admin" || user.role === "gym_manager";
+const hasAssignedTrainer = typeof client.trainer_id === "number" && client.trainer_id > 0;
+const canManageClient = canManageClients(user.role);
+const canManageClientAssessments = canManageAssessments(user.role);
+const canManageCalendar = canManageClient || (isClientView && !hasAssignedTrainer);
 const canViewExercises = true;
 const trainingHref = `/clients/${client.id}/routine/train`;
 const status = Astro.url.searchParams.get("status");
 const message = Astro.url.searchParams.get("message") ?? "";
-const successMessage = status === "success"
-    ? message || "Sesión guardada correctamente."
-    : "";
+const successMessage = status === "success" ? message || "Cambios guardados correctamente." : "";
+const weeklyEntries = WEEKDAY_LABELS.map((label, index) => ({
+    label,
+    weekday: index + 1,
+    entry: weeklyCalendar.find((item: { weekday: number }) => item.weekday === index + 1) ?? null,
+}));
+const availableWeeklyRoutines: WeeklyRoutineOption[] = canManageCalendar && user.role !== "client"
+    ? await sql`
+        SELECT r.id, r.name, r.objective, r.level
+        FROM routines r
+        LEFT JOIN users owner ON owner.id = r.trainer_id
+        WHERE r.is_template = TRUE
+          AND r.active = TRUE
+          ${user.role === "trainer" ? sql`AND r.trainer_id = ${user.id}` : user.role === "gym_manager" ? sql`AND owner.gym_id = ${user.gymId}` : sql``}
+        ORDER BY r.name ASC, r.id DESC
+      ` as WeeklyRoutineOption[]
+    : [];
 
 function getExerciseDetailsHref(exercise: any) {
     const libraryItem = getExerciseLibraryItem(exercise.exercise_key ?? exercise.name);
@@ -119,88 +138,102 @@ function getExerciseDetailsHref(exercise: any) {
     <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         {successMessage && (
             <div class="mb-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/20">
-                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-300">Sesión completada</p>
-                        <h2 class="mt-2 text-xl font-bold text-emerald-950 dark:text-emerald-100">{successMessage}</h2>
-                        <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-200">Tu sesión ya quedó registrada. El siguiente paso recomendado es revisar el progreso del cliente.</p>
-                    </div>
-
-                    <div class="flex flex-col gap-3 sm:flex-row">
-                        <a href={`/clients/${client.id}/progress`} class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
-                            Ver mi progreso
-                        </a>
-                        <a href={trainingHref} class="inline-flex items-center justify-center rounded-xl border border-emerald-300 px-4 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-800 dark:text-emerald-200 dark:hover:bg-emerald-950/30">
-                            Repetir entrenamiento
-                        </a>
-                    </div>
-                </div>
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-300">Actualización guardada</p>
+                <h2 class="mt-2 text-xl font-bold text-emerald-950 dark:text-emerald-100">{successMessage}</h2>
             </div>
         )}
 
         <ClientPageHeader
             title={client.full_name}
-            description="Vista limpia de tu rutina: solo lo que tienes que hacer hoy."
+            description="Rutina simple para el cliente y calendario semanal claro para quien la gestiona."
             accent="emerald"
-            tabs={[
-                { href: `/clients/${client.id}/routine`, label: "Mi rutina", active: true },
-                { href: `/clients/${client.id}/progress`, label: "Mi progreso" },
-                { href: `/clients/${client.id}/assessments`, label: "Valoraciones" },
-            ]}
+            tabs={getClientTabs(client.id, "routine")}
         >
-            {canManageClient && (
-                <a
-                    slot="actions"
-                    href={`/clients/${client.id}/edit`}
-                    class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30"
-                >
-                    Editar cliente
-                </a>
-            )}
-
-            {canManageClient && (
-                <button
-                    slot="actions"
-                    type="button"
-                    id="delete-client"
-                    class="inline-flex items-center justify-center rounded-xl border border-red-300/60 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-950 transition hover:bg-red-500/20"
-                >
-                    Eliminar cliente
-                </button>
-            )}
-
-            <a
-                slot="actions"
-                href={`/clients/${client.id}/progress`}
-                class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30"
-            >
-                Mi progreso
-            </a>
-
-            <a
-                slot="actions"
-                href={`/clients/${client.id}/assessments`}
-                class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-900"
-            >
-                Valoraciones
-            </a>
-
-            {canManageAssessments && (
-                <a
-                    slot="actions"
-                    href={`/clients/${client.id}/assessments/valoration_new`}
-                    class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 sm:w-auto"
-                >
-                    + Nueva valoración
-                </a>
-            )}
+            <ClientHeaderActions slot="actions" clientId={client.id} canManageClient={canManageClient} canManageAssessments={canManageClientAssessments} activeView="routine" />
         </ClientPageHeader>
 
+        <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+            <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Calendario semanal</p>
+                    <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">Plan semanal del cliente</h2>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                        {hasAssignedTrainer
+                            ? "El entrenador decide qué rutina toca cada día. El cliente solo ve lo que corresponde hoy."
+                            : "Como no hay entrenador asignado, este cliente puede organizar su propia semana cuando existan rutinas disponibles."}
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:max-w-sm md:justify-end">
+                    <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{weeklyCalendar.length} días configurados</span>
+                    {activeRoutine && <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">Hoy: {activeRoutine.name}</span>}
+                </div>
+            </div>
+
+            {canManageCalendar && availableWeeklyRoutines.length > 0 ? (
+                <form method="POST" action="/api/routines/weekly-schedule" class="mt-5 space-y-4">
+                    <input type="hidden" name="client_id" value={client.id} />
+
+                    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {weeklyEntries.map(({ label, weekday, entry }) => (
+                            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Día {weekday}</p>
+                                        <h3 class="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{label}</h3>
+                                    </div>
+                                    {entry && <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">Activo</span>}
+                                </div>
+
+                                <label class="mt-4 block space-y-2">
+                                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Rutina asignada</span>
+                                    <select name={`weekday_${weekday}`} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                                        <option value="">Descanso / sin rutina</option>
+                                        {availableWeeklyRoutines.map((routine) => (
+                                            <option value={routine.id} selected={entry?.routine_id === routine.id}>
+                                                {routine.name}{routine.level ? ` · ${routine.level}` : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+
+                                <label class="mt-3 block space-y-2">
+                                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Nota del día</span>
+                                    <input name={`notes_${weekday}`} value={entry?.notes ?? ""} placeholder="Brazo suave, movilidad, descarga..." class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
+                                </label>
+
+                                {entry && (
+                                    <div class="mt-3 rounded-2xl bg-white p-3 text-sm dark:bg-slate-900">
+                                        <p class="font-semibold text-slate-900 dark:text-slate-100">{entry.routine_name}</p>
+                                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{entry.days_total} días · {entry.exercises_total} ejercicios</p>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-900 hover:bg-emerald-300 sm:w-auto">
+                        Guardar calendario semanal
+                    </button>
+                </form>
+            ) : (
+                <div class="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {weeklyEntries.map(({ label, entry }) => (
+                        <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{entry?.routine_name ?? "Descanso"}</p>
+                            <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{entry?.notes ?? entry?.routine_objective ?? "Sin rutina asignada para este día."}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </section>
+
         {!activeRoutine ? (
-            <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div class="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <EmptyState
-                    title="Sin rutina asignada"
-                    description="Cuando tu entrenador cargue una rutina, la verás aquí de forma clara y directa."
+                    title="Sin rutina para hoy"
+                    description="Configura el calendario semanal o deja una rutina activa para que el cliente vea la sesión del día aquí."
                 />
 
                 {canManageClient && (
@@ -211,34 +244,34 @@ function getExerciseDetailsHref(exercise: any) {
                 )}
             </div>
         ) : (
-            <section class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+            <section class="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
                 <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div>
-                        <p class="text-sm font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Rutina activa</p>
+                        <p class="text-sm font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Rutina de hoy</p>
                         <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">{activeRoutine.name}</h2>
                         <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
                             {activeRoutine.objective ?? "Hoy toca cumplir tu sesión."}
                         </p>
                     </div>
 
-                    <div class="flex flex-wrap gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    <div class="flex flex-wrap gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 md:max-w-sm md:justify-end">
                         <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{routineDays.length} días</span>
                         <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{completedRoutineDays} completados</span>
-                        <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{activeRoutine.start_date ? new Date(activeRoutine.start_date).toLocaleDateString("es-ES") : "Sin inicio"}</span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{todayInfo.label}</span>
                     </div>
                 </div>
 
-                {canManageClient && (
+                {canManageClient && currentAssignment.length > 0 && (
                     <form method="POST" action="/api/routines/unassign" class="mt-4">
                         <input type="hidden" name="routine_id" value={activeRoutine.id} />
                         <input type="hidden" name="client_id" value={client.id} />
-                        <button type="submit" class="inline-flex items-center justify-center rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30">
-                            Quitar rutina del usuario
+                        <button type="submit" class="inline-flex w-full items-center justify-center rounded-xl border border-red-300 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30 sm:w-auto">
+                            Quitar rutina activa del usuario
                         </button>
                     </form>
                 )}
 
-                {isClientView && activeRoutine && (
+                {isClientView && activeRoutine && currentAssignment.length > 0 && (
                     <div class="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60">
                         <div class="flex items-center justify-between gap-3">
                             <div>
@@ -273,7 +306,7 @@ function getExerciseDetailsHref(exercise: any) {
                                 </select>
                             </label>
 
-                            <button type="submit" class="self-end rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                            <button type="submit" class="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 sm:w-auto sm:self-end">
                                 Guardar horario
                             </button>
                         </form>
@@ -289,7 +322,7 @@ function getExerciseDetailsHref(exercise: any) {
                                 <p class="mt-1 text-sm text-emerald-800/80 dark:text-emerald-200/80">{todayDay.focus ?? "Sesión del día"}</p>
                             </div>
 
-                            <a href={trainingHref} class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                            <a href={trainingHref} class="inline-flex w-full items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 sm:w-auto">
                                 Entrenar hoy
                             </a>
                         </div>
@@ -335,7 +368,7 @@ function getExerciseDetailsHref(exercise: any) {
                     </div>
                 ) : (
                     <div class="mt-5">
-                        <EmptyState title="Sin día activo" description="Tu rutina existe, pero todavía no hay un día actual definido." />
+                        <EmptyState title="Sin día activo" description="Hay calendario semanal, pero hoy no tiene una rutina asignada." />
                     </div>
                 )}
 
@@ -401,60 +434,6 @@ function getExerciseDetailsHref(exercise: any) {
             </section>
         )}
 
-        {canManageClient && (
-            <div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-                <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
-                    <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">Eliminar cliente</h3>
-                    <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Esta acción elimina al cliente y su acceso. No se puede deshacer.</p>
-                    <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-                        <button id="cancel-delete" type="button" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Cancelar</button>
-                        <button id="confirm-delete" type="button" data-client-id={client.id} class="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-600">Eliminar cliente</button>
-                    </div>
-                </div>
-            </div>
-        )}
+        {canManageClient && <ClientDeleteAction clientId={client.id} />}
     </div>
 </AppLayout>
-
-{canManageClient && (
-    <script>
-        const deleteBtn = document.getElementById("delete-client") as HTMLButtonElement | null;
-        const modal = document.getElementById("delete-modal") as HTMLDivElement | null;
-        const cancelBtn = document.getElementById("cancel-delete") as HTMLButtonElement | null;
-        const confirmBtn = document.getElementById("confirm-delete") as HTMLButtonElement | null;
-
-        if (deleteBtn && modal && cancelBtn && confirmBtn) {
-            const closeModal = () => {
-                modal.classList.add("hidden");
-                modal.classList.remove("flex");
-            };
-
-            deleteBtn.addEventListener("click", () => {
-                modal.classList.remove("hidden");
-                modal.classList.add("flex");
-            });
-
-            cancelBtn.addEventListener("click", closeModal);
-            modal.addEventListener("click", (event) => {
-                if (event.target === modal) closeModal();
-            });
-
-            confirmBtn.addEventListener("click", async () => {
-                const button = confirmBtn;
-                const clientId = confirmBtn.dataset.clientId;
-                if (!clientId) return;
-
-                try {
-                    button.textContent = "Eliminando...";
-                    button.disabled = true;
-
-                    await fetch(`/api/clients/${clientId}`, { method: "DELETE", headers: { Accept: "application/json" } });
-                    window.location.href = "/clients";
-                } catch {
-                    button.textContent = "Eliminar cliente";
-                    button.disabled = false;
-                }
-            });
-        }
-    </script>
-)}

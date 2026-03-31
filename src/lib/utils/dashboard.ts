@@ -1,5 +1,6 @@
 import { sql } from "../db/client";
 import { ensureRoutineSchema } from "./routines";
+import { getTeamListHref, getTeamNewHref } from "./team-routes";
 
 export type DashboardRole = "admin" | "gym_manager" | "trainer";
 
@@ -769,7 +770,7 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
             tone: "success",
             title: "Vista administrativa activa",
             description: "Puedes revisar el crecimiento del sistema y la carga de entrenadores.",
-            href: "/admin/trainers",
+            href: getTeamListHref(user.role),
         });
     }
 
@@ -785,7 +786,7 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
                   {
                       title: "Gestionar entrenadores",
                       description: "Ver y administrar cuentas de entrenadores.",
-                      href: "/admin/trainers",
+                      href: getTeamListHref(user.role),
                       icon: "👨‍🏫",
                   },
                   {
@@ -803,7 +804,7 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
                   {
                       title: "Crear entrenador",
                       description: "Registrar una nueva cuenta de entrenador.",
-                      href: "/admin/trainers/new",
+                      href: getTeamNewHref(user.role),
                       icon: "➕",
                   },
                   {
@@ -818,13 +819,13 @@ export async function getDashboardData(user: DashboardUser): Promise<DashboardDa
                     {
                         title: "Mis entrenadores",
                         description: "Revisar y administrar tu equipo.",
-                        href: "/admin/trainers",
+                        href: getTeamListHref(user.role),
                         icon: "🏋️",
                     },
                     {
                         title: "Nuevo entrenador",
                         description: "Crear un entrenador para tu gimnasio.",
-                        href: "/admin/trainers/new",
+                        href: getTeamNewHref(user.role),
                         icon: "➕",
                     },
                     {

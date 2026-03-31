@@ -1,8 +1,8 @@
 ---
-import AppLayout from "../../layouts/layout.astro";
-import { sql } from "../../lib/db/client";
-import SectionHeader from "../../components/ui/SectionHeader.astro";
-import EmptyState from "../../components/ui/EmptyState.astro";
+import AppLayout from "../../../layouts/Layout.astro";
+import { sql } from "../../../lib/db/client";
+import SectionHeader from "../../../components/ui/SectionHeader.astro";
+import EmptyState from "../../../components/ui/EmptyState.astro";
 
 const user = Astro.locals.user as AppUser;
 
@@ -39,10 +39,10 @@ const message = Astro.url.searchParams.get("message");
         <SectionHeader
             eyebrow="Administración"
             title="Gimnasios"
-            description="Gestiona los gimnasios y revisa cuántos trainers, managers y clientes pertenecen a cada uno."
+            description="Gestiona los gimnasios y revisa cuántos entrenadores, gestores y clientes pertenecen a cada uno."
         >
             <a slot="actions" href="/admin/trainers/new" class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 sm:w-auto">
-                + Nuevo trainer
+                + Nuevo integrante
             </a>
         </SectionHeader>
 
@@ -66,7 +66,7 @@ const message = Astro.url.searchParams.get("message");
 
             <div class="lg:col-span-2">
         {gyms.length === 0 ? (
-            <EmptyState title="No hay gimnasios aún" description="Crea el primero para comenzar a organizar trainers y managers." />
+            <EmptyState title="No hay gimnasios aún" description="Crea el primero para comenzar a organizar entrenadores y gestores." />
         ) : (
             <div class="space-y-4">
                 {gyms.map((gym) => (
@@ -75,11 +75,11 @@ const message = Astro.url.searchParams.get("message");
                             <div>
                                 <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100">{gym.name}</h3>
                                 <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Código: <strong>{gym.invite_code ?? "sin código"}</strong></p>
-                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Trainers: <strong>{gym.trainers_total}</strong> · Managers: <strong>{gym.managers_total}</strong> · Clientes: <strong>{gym.clients_total}</strong></p>
+                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Entrenadores: <strong>{gym.trainers_total}</strong> · Gestores: <strong>{gym.managers_total}</strong> · Clientes: <strong>{gym.clients_total}</strong></p>
                             </div>
                             <div class="flex flex-wrap gap-3">
                                 <a href={`/admin/gyms/${gym.id}/edit`} class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700 sm:w-auto">Editar</a>
-                                <a href={`/admin/trainers/new?gym_id=${gym.id}`} class="inline-flex w-full items-center justify-center rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30 sm:w-auto">Agregar trainer</a>
+                                <a href={`/admin/trainers/new?gym_id=${gym.id}`} class="inline-flex w-full items-center justify-center rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30 sm:w-auto">Agregar integrante</a>
                             </div>
                         </div>
                     </article>

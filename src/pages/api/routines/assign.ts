@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
+import { asSqlExecutor } from "../../../lib/db/sql-executor";
 import { ensureRoutineSchema } from "../../../lib/utils/routines";
 
 export const POST: APIRoute = async (context) => {
@@ -57,7 +58,7 @@ export const POST: APIRoute = async (context) => {
   }
 
   await sql.begin(async (tx) => {
-    const trx = tx as any;
+    const trx = asSqlExecutor(tx);
 
     for (const clientId of allowedClientIds) {
       await trx`

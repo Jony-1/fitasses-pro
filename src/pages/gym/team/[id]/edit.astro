@@ -1,0 +1,12 @@
+---
+const { id } = Astro.params;
+
+if (!id || Number.isNaN(Number(id))) {
+  return Astro.redirect("/gym/team?status=error&message=Cuenta%20inválida");
+}
+
+const params = Astro.url.searchParams.toString();
+const suffix = params ? `?${params}` : "";
+
+return Astro.redirect(`/admin/trainers/${id}/edit${suffix}`);
+---

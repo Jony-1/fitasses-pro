@@ -2,11 +2,13 @@ import type { APIRoute } from "astro";
 import { requireAdminOrGymManager } from "../../../../lib/auth/guards";
 import { hashPassword } from "../../../../lib/auth/password";
 import { sql } from "../../../../lib/db/client";
+import { getTeamListHref } from "../../../../lib/utils/team-routes";
 import { isStrongPassword } from "../../../../lib/utils/validation";
 
 export const POST: APIRoute = async (context) => {
     try {
         const user = requireAdminOrGymManager(context);
+        const teamListHref = getTeamListHref(user.role);
 
         const formData = await context.request.formData();
 
@@ -21,13 +23,13 @@ export const POST: APIRoute = async (context) => {
 
         if (!name || !email || !password) {
             return context.redirect(
-                "/admin/trainers?status=error&message=Todos%20los%20campos%20son%20obligatorios",
+                `${teamListHref}?status=error&message=Todos%20los%20campos%20son%20obligatorios`,
             );
         }
 
         if (!isStrongPassword(password)) {
             return context.redirect(
-                "/admin/trainers?status=error&message=La%20contraseña%20debe%20tener%20al%20menos%204%20caracteres,%20una%20mayúscula%20y%20un%20número",
+                `${teamListHref}?status=error&message=La%20contraseña%20debe%20tener%20al%20menos%204%20caracteres,%20una%20mayúscula%20y%20un%20número`,
             );
         }
 
@@ -40,7 +42,7 @@ export const POST: APIRoute = async (context) => {
 
         if (existingUser.length > 0) {
             return context.redirect(
-                "/admin/trainers?status=error&message=Ya%20existe%20un%20usuario%20con%20ese%20correo",
+                `${teamListHref}?status=error&message=Ya%20existe%20un%20usuario%20con%20ese%20correo`,
             );
         }
 
@@ -48,7 +50,7 @@ export const POST: APIRoute = async (context) => {
 
         if (!gymId || Number.isNaN(gymId)) {
             return context.redirect(
-                "/admin/trainers?status=error&message=Selecciona%20un%20gimnasio%20válido",
+                `${teamListHref}?status=error&message=Selecciona%20un%20gimnasio%20válido`,
             );
         }
 
@@ -62,7 +64,7 @@ export const POST: APIRoute = async (context) => {
 
             if (gymRows.length === 0) {
                 return context.redirect(
-                    "/admin/trainers?status=error&message=Gimnasio%20no%20encontrado",
+                    `${teamListHref}?status=error&message=Gimnasio%20no%20encontrado`,
                 );
             }
         }
@@ -75,13 +77,13 @@ export const POST: APIRoute = async (context) => {
     `;
 
         return context.redirect(
-            `/admin/trainers?status=success&message=${encodeURIComponent(`Usuario creado correctamente: ${name} (${email}).`)}`,
+            `${teamListHref}?status=success&message=${encodeURIComponent(`Usuario creado correctamente: ${name} (${email}).`)}`,
         );
     } catch (error) {
         console.error("Create trainer error:", error);
 
         return context.redirect(
-            "/admin/trainers?status=error&message=No%20se%20pudo%20crear%20el%20trainer",
+            "/admin/trainers?status=error&message=No%20se%20pudo%20crear%20la%20cuenta",
         );
     }
 };

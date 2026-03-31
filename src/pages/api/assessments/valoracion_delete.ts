@@ -1,10 +1,11 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
 import { requireTrainer } from "../../../lib/auth/guards";
+import { getClientByIdForUser } from "../../../lib/utils/client-profile";
 
 export const POST: APIRoute = async (context) => {
     try {
-        requireTrainer(context);
+        const user = requireTrainer(context);
 
         const formData = await context.request.formData();
         const assessmentId = Number(formData.get("assessment_id"));
@@ -15,6 +16,17 @@ export const POST: APIRoute = async (context) => {
                 status: 303,
                 headers: {
                     Location: `/clients/${clientId}/assessments?error=invalid_request`,
+                },
+            });
+        }
+
+        const client = await getClientByIdForUser(clientId, user);
+
+        if (!client) {
+            return new Response(null, {
+                status: 303,
+                headers: {
+                    Location: `/clients/${clientId}/assessments?error=forbidden`,
                 },
             });
         }

@@ -1,0 +1,67 @@
+---
+interface Props {
+  clientId: number;
+  canManageClient: boolean;
+  canManageAssessments: boolean;
+  activeView: "routine" | "progress" | "assessments";
+}
+
+const { clientId, canManageClient, canManageAssessments, activeView } = Astro.props as Props;
+---
+
+<>
+  {canManageClient && (
+    <a
+      href={`/clients/${clientId}/edit`}
+      class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30"
+    >
+      Editar cliente
+    </a>
+  )}
+
+  {canManageClient && (
+    <button
+      type="button"
+      id="delete-client"
+      class="inline-flex items-center justify-center rounded-xl border border-red-300/60 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-950 transition hover:bg-red-500/20"
+    >
+      Eliminar cliente
+    </button>
+  )}
+
+  {activeView !== "routine" && (
+    <a
+      href={`/clients/${clientId}/routine`}
+      class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30"
+    >
+      Mi rutina
+    </a>
+  )}
+
+  {activeView !== "progress" && (
+    <a
+      href={`/clients/${clientId}/progress`}
+      class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30"
+    >
+      Mi progreso
+    </a>
+  )}
+
+  {activeView !== "assessments" && (
+    <a
+      href={`/clients/${clientId}/assessments`}
+      class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-900"
+    >
+      Valoraciones
+    </a>
+  )}
+
+  {canManageAssessments && (
+    <a
+      href={`/clients/${clientId}/assessments/valoracion_new`}
+      class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 sm:w-auto"
+    >
+      + Nueva valoración
+    </a>
+  )}
+</>

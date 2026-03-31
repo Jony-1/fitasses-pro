@@ -1,11 +1,15 @@
 ---
-import AppLayout from "../../../layouts/layout.astro";
+import AppLayout from "../../../layouts/Layout.astro";
 import ClientProgressSummary from "../../../components/clients/ClientProgressSummary.astro";
 import ClientProgressCharts from "../../../components/clients/ClientProgressCharts.astro";
 import ClientSummaryCard from "../../../components/clients/ClientSummaryCard.astro";
 import ClientPageHeader from "../../../components/clients/ClientPageHeader.astro";
+import ClientHeaderActions from "../../../components/clients/ClientHeaderActions.astro";
+import ClientDeleteAction from "../../../components/clients/ClientDeleteAction.astro";
 import { getClientByIdForUser, getProgressHistory } from "../../../lib/utils/client-profile";
 import { getClientProgressSummary } from "../../../lib/utils/client-progress";
+import { canManageAssessments, canManageClients } from "../../../lib/auth/roles";
+import { getClientTabs } from "../../../lib/utils/client-navigation";
 
 type ClientDetails = {
     id: number;
@@ -26,11 +30,12 @@ type AssessmentSummary = {
 
 const { id } = Astro.params;
 const user = Astro.locals.user;
-const canManageClient = user?.role === "trainer" || user?.role === "admin" || user?.role === "gym_manager";
 
 if (!user) {
     return Astro.redirect("/login");
 }
+
+const canManageClient = canManageClients(user.role);
 
 if (!["trainer", "admin", "client", "gym_manager"].includes(String(user.role))) {
     return Astro.redirect("/login?error=forbidden");
@@ -62,7 +67,7 @@ const {
 } = progressSummary;
 
 const summaryLatestAssessment = latestAssessment as AssessmentSummary | null;
-const canManageAssessments = user?.role === "trainer" || user?.role === "admin" || user?.role === "gym_manager";
+const canManageClientAssessments = canManageAssessments(user.role);
 const positiveChanges = [
     weightChange !== null && weightChange < 0 ? "Peso a la baja" : null,
     bodyFatChange !== null && bodyFatChange < 0 ? "Grasa corporal a la baja" : null,
@@ -76,41 +81,9 @@ const positiveChanges = [
             title={client.full_name}
             description={`Cliente #${client.id}`}
             accent="sky"
-            tabs={[
-                { href: `/clients/${client.id}/routine`, label: "Mi rutina" },
-                { href: `/clients/${client.id}/progress`, label: "Mi progreso", active: true },
-                { href: `/clients/${client.id}/assessments`, label: "Valoraciones" },
-            ]}
+            tabs={getClientTabs(client.id, "progress")}
         >
-            {canManageClient && (
-                <a slot="actions" href={`/clients/${client.id}/edit`} class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30">
-                    Editar cliente
-                </a>
-            )}
-
-            {canManageClient && (
-                <button slot="actions" type="button" id="delete-client" class="inline-flex items-center justify-center rounded-xl border border-red-300/60 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-950 transition hover:bg-red-500/20">
-                    Eliminar cliente
-                </button>
-            )}
-
-            <a slot="actions" href={`/clients/${client.id}/routine`} class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30">
-                Mi rutina
-            </a>
-
-            <a slot="actions" href={`/clients/${client.id}/assessments`} class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-900">
-                Valoraciones
-            </a>
-
-            {canManageAssessments && (
-                <a
-                    slot="actions"
-                    href={`/clients/${client.id}/assessments/valoration_new`}
-                    class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-600 sm:w-auto"
-                >
-                    + Nueva valoración
-                </a>
-            )}
+            <ClientHeaderActions slot="actions" clientId={client.id} canManageClient={canManageClient} canManageAssessments={canManageClientAssessments} activeView="progress" />
         </ClientPageHeader>
 
         <div class="mb-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
@@ -140,8 +113,8 @@ const positiveChanges = [
                     <a href={`/clients/${client.id}/routine`} class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
                         Ver rutina de hoy
                     </a>
-                    {canManageAssessments && (
-                        <a href={`/clients/${client.id}/assessments/valoration_new`} class="inline-flex items-center justify-center rounded-xl border border-emerald-300 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30">
+                    {canManageClientAssessments && (
+                        <a href={`/clients/${client.id}/assessments/valoracion_new`} class="inline-flex items-center justify-center rounded-xl border border-emerald-300 px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30">
                             Registrar valoración
                         </a>
                     )}
@@ -150,7 +123,7 @@ const positiveChanges = [
         </div>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <ClientSummaryCard client={client as any} />
+            <ClientSummaryCard client={client} />
 
             <div class="lg:col-span-2 space-y-6">
                 <ClientProgressSummary
@@ -165,59 +138,6 @@ const positiveChanges = [
             </div>
         </div>
 
-        {canManageClient && (
-            <div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-                <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-950 p-6 shadow-2xl">
-                    <h3 class="text-xl font-bold text-slate-100">Eliminar cliente</h3>
-                    <p class="mt-2 text-sm text-slate-400">Esta acción eliminará al cliente y no se puede deshacer.</p>
-
-                    <div class="mt-6 flex justify-end gap-3">
-                        <button id="cancel-delete" type="button" class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-200 hover:bg-slate-900">Cancelar</button>
-                        <button id="confirm-delete" type="button" data-client-id={client.id} class="rounded-xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-600">Eliminar cliente</button>
-                    </div>
-                </div>
-            </div>
-        )}
+        {canManageClient && <ClientDeleteAction clientId={client.id} />}
     </div>
 </AppLayout>
-
-<script>
-    const deleteBtn = document.getElementById("delete-client") as HTMLButtonElement | null;
-    const modal = document.getElementById("delete-modal") as HTMLDivElement | null;
-    const cancelBtn = document.getElementById("cancel-delete") as HTMLButtonElement | null;
-    const confirmBtn = document.getElementById("confirm-delete") as HTMLButtonElement | null;
-
-    if (deleteBtn && modal && cancelBtn && confirmBtn) {
-        const closeModal = () => {
-            modal.classList.add("hidden");
-            modal.classList.remove("flex");
-        };
-
-        deleteBtn.addEventListener("click", () => {
-            modal.classList.remove("hidden");
-            modal.classList.add("flex");
-        });
-
-        cancelBtn.addEventListener("click", closeModal);
-        modal.addEventListener("click", (event) => {
-            if (event.target === modal) closeModal();
-        });
-
-        confirmBtn.addEventListener("click", async () => {
-            const button = confirmBtn as HTMLButtonElement;
-            const clientId = confirmBtn.dataset.clientId;
-            if (!clientId) return;
-
-            try {
-                button.textContent = "Eliminando...";
-                button.disabled = true;
-
-                await fetch(`/api/clients/${clientId}`, { method: "DELETE", headers: { Accept: "application/json" } });
-                window.location.href = "/clients";
-            } catch {
-                button.textContent = "Eliminar cliente";
-                button.disabled = false;
-            }
-        });
-    }
-</script>
