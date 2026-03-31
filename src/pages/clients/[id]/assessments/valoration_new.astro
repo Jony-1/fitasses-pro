@@ -2,6 +2,7 @@
 import AppLayout from "../../../../layouts/layout.astro";
 import AssessmentForm from "../../../../components/assessments/AssessmentForm.astro";
 import { sql } from "../../../../lib/db/client";
+import { getClientByIdForUser } from "../../../../lib/utils/client-profile";
 
 const { id } = Astro.params;
 
@@ -92,8 +93,13 @@ if (!user) {
   return Astro.redirect("/login");
 }
 
-if (user.role !== "trainer" && user.role !== "admin" ) {
+if (user.role !== "trainer" && user.role !== "admin" && user.role !== "gym_manager") {
   return Astro.redirect("/login?error=forbidden");
+}
+
+const hasAccess = await getClientByIdForUser(Number(id), user);
+if (!hasAccess) {
+  return Astro.redirect(`/clients/${id}/assessments?error=forbidden`);
 }
 ---
 

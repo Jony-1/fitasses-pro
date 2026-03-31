@@ -9,7 +9,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect("/login");
   }
 
-  if (user.role !== "trainer" && user.role !== "admin") {
+  if (user.role !== "trainer" && user.role !== "admin" && user.role !== "gym_manager") {
     return redirect("/login?error=forbidden");
   }
 
@@ -23,17 +23,26 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   }
 
   const routineRows = await sql`
-    SELECT id, trainer_id, is_template
-    FROM routines
-    WHERE id = ${routineId}
+    SELECT r.id, r.trainer_id, r.is_template, u.gym_id
+    FROM routines r
+    LEFT JOIN users u ON u.id = r.trainer_id
+    WHERE r.id = ${routineId}
     LIMIT 1
-  ` as Array<{ id: number; trainer_id: number; is_template: boolean }>;
+  ` as Array<{ id: number; trainer_id: number; is_template: boolean; gym_id: number | null }>;
 
-  if (routineRows.length === 0 || (user.role === "trainer" && routineRows[0].trainer_id !== user.id)) {
+  if (routineRows.length === 0) {
     return redirect("/routines?status=error&message=Rutina%20no%20encontrada");
   }
 
   const routine = routineRows[0];
+
+  if (user.role === "trainer" && routine.trainer_id !== user.id) {
+    return redirect("/routines?status=error&message=Rutina%20no%20encontrada");
+  }
+
+  if (user.role === "gym_manager" && (!user.gymId || routine.gym_id !== user.gymId)) {
+    return redirect("/routines?status=error&message=Rutina%20no%20encontrada");
+  }
 
   const assignedClientRows = routine.is_template
     ? await sql`

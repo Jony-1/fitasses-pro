@@ -40,6 +40,15 @@ export const GET: APIRoute = async (context) => {
                 WHERE id = ${id}
                 LIMIT 1
               `
+            : user.role === "gym_manager"
+            ? await sql`
+                SELECT c.id, c.full_name, c.birth_date, c.height_m, c.notes, c.gender, c.user_id, c.created_at
+                FROM clients c
+                INNER JOIN users u ON u.id = c.trainer_id
+                WHERE c.id = ${id}
+                  AND u.gym_id = ${user.gymId}
+                LIMIT 1
+              `
             : await sql`
                 SELECT id, full_name, birth_date, height_m, notes, gender, user_id, created_at
                 FROM clients
@@ -129,6 +138,21 @@ export const PUT: APIRoute = async (context) => {
                 WHERE id = ${id}
                 RETURNING id, full_name, birth_date, height_m, notes, gender, created_at
               `
+            : user.role === "gym_manager"
+            ? await sql`
+                UPDATE clients c
+                SET
+                  full_name = ${full_name},
+                  birth_date = ${birth_date || null},
+                  height_m = ${height_m},
+                  notes = ${notes || null},
+                  gender = ${gender || null}
+                FROM users u
+                WHERE c.id = ${id}
+                  AND u.id = c.trainer_id
+                  AND u.gym_id = ${user.gymId}
+                RETURNING c.id, c.full_name, c.birth_date, c.height_m, c.notes, c.gender, c.created_at
+              `
             : await sql`
                 UPDATE clients
                 SET
@@ -184,6 +208,15 @@ export const DELETE: APIRoute = async (context) => {
                 DELETE FROM clients
                 WHERE id = ${id}
                 RETURNING id
+              `
+            : user.role === "gym_manager"
+            ? await sql`
+                DELETE FROM clients c
+                USING users u
+                WHERE c.id = ${id}
+                  AND u.id = c.trainer_id
+                  AND u.gym_id = ${user.gymId}
+                RETURNING c.id
               `
             : await sql`
                 DELETE FROM clients

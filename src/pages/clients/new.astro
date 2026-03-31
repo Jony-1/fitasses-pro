@@ -9,7 +9,7 @@ if (!user) {
   return Astro.redirect("/login");
 }
 
-if (user.role !== "trainer" && user.role !== "admin") {
+if (user.role !== "trainer" && user.role !== "admin" && user.role !== "gym_manager") {
   return Astro.redirect("/login?error=forbidden");
 }
 
@@ -21,6 +21,18 @@ const trainers =
             SELECT id, name, email
             FROM users
             WHERE role = 'trainer'
+            ORDER BY name ASC, id ASC
+          `,
+        ),
+      ) as { id: number; name: string; email: string }[])
+    : user.role === "gym_manager"
+    ? (JSON.parse(
+        JSON.stringify(
+          await sql`
+            SELECT id, name, email
+            FROM users
+            WHERE role = 'trainer'
+              AND gym_id = ${user.gymId}
             ORDER BY name ASC, id ASC
           `,
         ),

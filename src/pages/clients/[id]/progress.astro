@@ -26,13 +26,13 @@ type AssessmentSummary = {
 
 const { id } = Astro.params;
 const user = Astro.locals.user;
-const canManageClient = user?.role === "trainer" || user?.role === "admin";
+const canManageClient = user?.role === "trainer" || user?.role === "admin" || user?.role === "gym_manager";
 
 if (!user) {
     return Astro.redirect("/login");
 }
 
-if (!["trainer", "admin", "client"].includes(String(user.role))) {
+if (!["trainer", "admin", "client", "gym_manager"].includes(String(user.role))) {
     return Astro.redirect("/login?error=forbidden");
 }
 
@@ -62,7 +62,7 @@ const {
 } = progressSummary;
 
 const summaryLatestAssessment = latestAssessment as AssessmentSummary | null;
-const canManageAssessments = user?.role === "trainer" || user?.role === "admin";
+const canManageAssessments = user?.role === "trainer" || user?.role === "admin" || user?.role === "gym_manager";
 const positiveChanges = [
     weightChange !== null && weightChange < 0 ? "Peso a la baja" : null,
     bodyFatChange !== null && bodyFatChange < 0 ? "Grasa corporal a la baja" : null,

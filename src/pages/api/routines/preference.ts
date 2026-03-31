@@ -30,7 +30,7 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
     WHERE a.routine_id = ${routineId}
       AND a.client_id = ${clientId}
       AND a.active = TRUE
-      ${user.role === "trainer" ? sql`AND r.trainer_id = ${user.id}` : sql``}
+       ${user.role === "trainer" ? sql`AND r.trainer_id = ${user.id}` : user.role === "gym_manager" ? sql`AND r.trainer_id IN (SELECT id FROM users WHERE gym_id = ${user.gymId})` : sql``}
       ${user.role === "client" ? sql`AND EXISTS (SELECT 1 FROM clients c WHERE c.id = a.client_id AND c.user_id = ${user.id})` : sql``}
     LIMIT 1
   ` as Array<{ id: number }>;

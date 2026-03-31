@@ -5,6 +5,7 @@ export type AppUserRole = "admin" | "gym_manager" | "trainer" | "client";
 export type AppUser = {
   id: number;
   role: AppUserRole;
+  gymId?: number | null;
 };
 
 export type Client = {
@@ -112,6 +113,29 @@ export async function getClientsForUser(
     return result as ClientListItem[];
   }
 
+  if (user.role === "gym_manager" && user.gymId) {
+    const result = await sql`
+      SELECT
+        c.id,
+        c.full_name,
+        c.birth_date,
+        c.height_m,
+        c.gender,
+        c.active,
+        c.created_at,
+        c.updated_at,
+        c.trainer_id,
+        u.name AS trainer_name,
+        u.email AS trainer_email
+      FROM clients c
+      INNER JOIN users u ON u.id = c.trainer_id
+      WHERE u.gym_id = ${user.gymId}
+      ORDER BY c.created_at DESC, c.id DESC
+    `;
+
+    return result as ClientListItem[];
+  }
+
   if (user.role === "trainer") {
     const result = await sql`
       SELECT
@@ -155,6 +179,30 @@ export async function getClientByIdForUser(clientId: number, user: AppUser) {
         updated_at
       FROM clients
       WHERE id = ${clientId}
+      LIMIT 1
+    `;
+
+    return result[0] ?? null;
+  }
+
+  if (user.role === "gym_manager" && user.gymId) {
+    const result = await sql`
+      SELECT
+        c.id,
+        c.trainer_id,
+        c.full_name,
+        c.birth_date,
+        c.height_m,
+        c.notes,
+        c.gender,
+        c.active,
+        c.user_id,
+        c.created_at,
+        c.updated_at
+      FROM clients c
+      INNER JOIN users u ON u.id = c.trainer_id
+      WHERE c.id = ${clientId}
+        AND u.gym_id = ${user.gymId}
       LIMIT 1
     `;
 

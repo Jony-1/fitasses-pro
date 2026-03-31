@@ -10,7 +10,7 @@ export const POST: APIRoute = async (context) => {
         return redirect("/login");
     }
 
-    if (user.role !== "trainer" && user.role !== "admin") {
+    if (user.role !== "trainer" && user.role !== "admin" && user.role !== "gym_manager") {
         return redirect("/login?error=forbidden");
     }
 
@@ -49,6 +49,19 @@ export const POST: APIRoute = async (context) => {
 
         if (Number.isNaN(trainerId)) {
             return redirect("/clients/new?error=invalid_trainer");
+        }
+
+        // Validate trainer belongs to gym_manager's gym
+        if (user.role === "gym_manager") {
+            const trainerRows = await sql`
+                SELECT id, gym_id
+                FROM users
+                WHERE id = ${trainerId}
+                  AND role = 'trainer'
+            `;
+            if (trainerRows.length === 0 || trainerRows[0].gym_id !== user.gymId) {
+                return redirect("/clients/new?error=invalid_trainer");
+            }
         }
     }
 

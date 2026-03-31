@@ -12,6 +12,14 @@ export const GET: APIRoute = async (context) => {
           FROM clients
           ORDER BY id DESC
         `
+      : user.role === "gym_manager"
+      ? await sql`
+          SELECT c.id, c.full_name, c.birth_date, c.height_m, c.gender, c.user_id
+          FROM clients c
+          INNER JOIN users u ON u.id = c.trainer_id
+          WHERE u.gym_id = ${user.gymId}
+          ORDER BY c.id DESC
+        `
       : await sql`
           SELECT id, full_name, birth_date, height_m, gender, user_id
           FROM clients

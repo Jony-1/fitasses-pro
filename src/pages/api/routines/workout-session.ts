@@ -85,6 +85,15 @@ export const POST: APIRoute = async (context) => {
     if (user.role === "trainer" && day.trainer_id !== user.id) {
       return json({ error: "No tienes acceso a esta rutina" }, 403);
     }
+    
+    if (user.role === "gym_manager") {
+      const trainerRows = await sql`
+        SELECT id FROM users WHERE id = ${day.trainer_id} AND gym_id = ${user.gymId}
+      `;
+      if (!trainerRows.length) {
+        return json({ error: "No tienes acceso a esta rutina" }, 403);
+      }
+    }
 
     const exerciseRows = await sql`
       SELECT id

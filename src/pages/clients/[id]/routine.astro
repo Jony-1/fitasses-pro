@@ -59,7 +59,7 @@ if (!user) {
     return Astro.redirect("/login");
 }
 
-if (!["trainer", "admin", "client"].includes(String(user.role))) {
+if (!["trainer", "admin", "client", "gym_manager"].includes(String(user.role))) {
     return Astro.redirect("/login?error=forbidden");
 }
 
@@ -98,8 +98,8 @@ const currentAssignment = activeRoutine
 const preferredTimeSlot = currentAssignment[0]?.time_slot ?? null;
 const preferredScope = currentAssignment[0]?.scope ?? "always";
 const isClientView = user.role === "client";
-const canManageClient = user.role === "trainer" || user.role === "admin";
-const canManageAssessments = user.role === "trainer" || user.role === "admin";
+const canManageClient = user.role === "trainer" || user.role === "admin" || user.role === "gym_manager";
+const canManageAssessments = user.role === "trainer" || user.role === "admin" || user.role === "gym_manager";
 const canViewExercises = true;
 const trainingHref = `/clients/${client.id}/routine/train`;
 const status = Astro.url.searchParams.get("status");

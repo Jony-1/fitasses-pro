@@ -1,6 +1,7 @@
 ---
 import AppLayout from "../../../layouts/layout.astro";
 import { sql } from "../../../lib/db/client";
+import { getClientByIdForUser } from "../../../lib/utils/client-profile";
 import { dateOnlyInputValue } from "../../../lib/utils/date";
 import { calculateAge } from "../../../lib/utils/age";
 
@@ -8,6 +9,21 @@ const { id } = Astro.params;
 
 if (!id || Number.isNaN(Number(id))) {
     return Astro.redirect("/clients");
+}
+
+const user = Astro.locals.user;
+
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+if (user.role !== "trainer" && user.role !== "admin" && user.role !== "gym_manager") {
+    return Astro.redirect("/login?error=forbidden");
+}
+
+const hasAccess = await getClientByIdForUser(Number(id), user);
+if (!hasAccess) {
+    return Astro.redirect("/clients?error=forbidden");
 }
 
 const result = await sql`
@@ -35,15 +51,6 @@ if (!client) {
 
 const age = calculateAge(client.birth_date);
 const birthDateValue = dateOnlyInputValue(client.birth_date);
-const user = Astro.locals.user;
-
-if (!user) {
-    return Astro.redirect("/login");
-}
-
-if (user.role !== "trainer" && user.role !== "admin") {
-    return Astro.redirect("/login?error=forbidden");
-}
 
 const accessStatus = Astro.url.searchParams.get("access_status");
 const accessMessage = Astro.url.searchParams.get("access_message");

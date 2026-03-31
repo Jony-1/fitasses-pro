@@ -5,6 +5,7 @@ export type RoutineUserRole = "admin" | "gym_manager" | "trainer" | "client";
 export type RoutineUser = {
   id: number;
   role: RoutineUserRole;
+  gymId?: number | null;
 };
 
 export type RoutineListItem = {
@@ -411,7 +412,7 @@ async function ensureExampleRoutineTemplates() {
   const trainerRows = await sql`
     SELECT id
     FROM users
-    WHERE role IN ('trainer', 'admin')
+    WHERE role IN ('trainer', 'admin', 'gym_manager')
     ORDER BY id ASC
   `;
 
@@ -830,9 +831,11 @@ export async function getRoutineListForUser(user: RoutineUser) {
   const userFilter =
     user.role === "admin"
       ? sql``
-      : user.role === "trainer"
-        ? sql`WHERE r.trainer_id = ${user.id}`
-        : sql`WHERE 1 = 0`;
+      : user.role === "gym_manager" && user.gymId
+        ? sql`WHERE u.gym_id = ${user.gymId}`
+        : user.role === "trainer"
+          ? sql`WHERE r.trainer_id = ${user.id}`
+          : sql`WHERE 1 = 0`;
 
   const rows = await sql`
     SELECT
@@ -856,6 +859,7 @@ export async function getRoutineListForUser(user: RoutineUser) {
         WHERE rd.routine_id = r.id)::int AS exercises_total
     FROM routines r
     LEFT JOIN clients c ON c.id = r.client_id
+    LEFT JOIN users u ON u.id = r.trainer_id
     ${userFilter}
     ORDER BY r.is_template DESC, r.created_at DESC, r.id DESC
   `;
@@ -867,9 +871,11 @@ async function fetchRoutineBase(routineId: number, user: RoutineUser) {
   const accessFilter =
     user.role === "admin"
       ? sql``
-      : user.role === "trainer"
-        ? sql`AND r.trainer_id = ${user.id}`
-        : sql`AND 1 = 0`;
+      : user.role === "gym_manager" && user.gymId
+        ? sql`AND u.gym_id = ${user.gymId}`
+        : user.role === "trainer"
+          ? sql`AND r.trainer_id = ${user.id}`
+          : sql`AND 1 = 0`;
 
   const rows = await sql`
     SELECT
@@ -890,6 +896,7 @@ async function fetchRoutineBase(routineId: number, user: RoutineUser) {
     FROM routines r
     LEFT JOIN clients c ON c.id = r.client_id
     LEFT JOIN users cu ON cu.id = c.user_id
+    LEFT JOIN users u ON u.id = r.trainer_id
     WHERE r.id = ${routineId}
     ${accessFilter}
     LIMIT 1
@@ -918,6 +925,7 @@ async function fetchRoutineBaseById(routineId: number) {
     FROM routines r
     LEFT JOIN clients c ON c.id = r.client_id
     LEFT JOIN users cu ON cu.id = c.user_id
+    LEFT JOIN users u ON u.id = r.trainer_id
     WHERE r.id = ${routineId}
     LIMIT 1
   `;
@@ -929,9 +937,11 @@ export async function getRoutineAssignmentsForRoutine(routineId: number, user: R
   const accessFilter =
     user.role === "admin"
       ? sql``
-      : user.role === "trainer"
-        ? sql`AND r.trainer_id = ${user.id}`
-        : sql`AND 1 = 0`;
+      : user.role === "gym_manager" && user.gymId
+        ? sql`AND u.gym_id = ${user.gymId}`
+        : user.role === "trainer"
+          ? sql`AND r.trainer_id = ${user.id}`
+          : sql`AND 1 = 0`;
 
   const rows = await sql`
     SELECT
@@ -946,6 +956,7 @@ export async function getRoutineAssignmentsForRoutine(routineId: number, user: R
       a.created_at
     FROM routine_assignments a
     INNER JOIN routines r ON r.id = a.routine_id
+    LEFT JOIN users u ON u.id = r.trainer_id
     LEFT JOIN clients c ON c.id = a.client_id
     WHERE a.routine_id = ${routineId}
     ${accessFilter}

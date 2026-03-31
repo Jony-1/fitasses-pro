@@ -11,7 +11,7 @@ if (!user) {
     return Astro.redirect("/login?error=unauthorized");
 }
 
-const canManageAssessments = user.role === "trainer" || user.role === "admin";
+const canManageAssessments = user.role === "trainer" || user.role === "admin" || user.role === "gym_manager";
 
 if (!canManageAssessments) {
     return Astro.redirect("/dashboard?error=forbidden");

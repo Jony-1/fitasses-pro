@@ -49,6 +49,15 @@ export const POST: APIRoute = async (context) => {
   if (user.role === "trainer" && day.trainer_id !== user.id) {
     return redirect("/login?error=forbidden");
   }
+  
+  if (user.role === "gym_manager") {
+    const trainerRows = await sql`
+      SELECT id FROM users WHERE id = ${day.trainer_id} AND gym_id = ${user.gymId}
+    `;
+    if (!trainerRows.length) {
+      return redirect("/login?error=forbidden");
+    }
+  }
 
   const clientId = clientIdRaw ? Number(clientIdRaw) : day.client_id;
 

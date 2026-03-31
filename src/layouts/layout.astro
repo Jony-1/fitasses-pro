@@ -32,9 +32,9 @@ const isAdmin = user?.role === "admin";
 const isGymManager = user?.role === "gym_manager";
 const isTrainer = user?.role === "trainer";
 const isClient = user?.role === "client";
-const canManageClients = isTrainer || isAdmin;
+const canManageClients = isTrainer || isAdmin || isGymManager;
 const canManageTrainers = isAdmin || isGymManager;
-const canManageRoutines = isTrainer || isAdmin;
+const canManageRoutines = isTrainer || isAdmin || isGymManager;
 const dashboardHref = isGymManager ? "/gym-manager" : "/dashboard";
 const clientRecord = isClient && user ? await sql`
   SELECT id

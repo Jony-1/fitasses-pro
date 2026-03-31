@@ -42,13 +42,20 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         }
 
         const gymRows = await sql`
-            SELECT id
+            SELECT id, invite_code
             FROM gyms
             WHERE lower(invite_code) = lower(${gymCode})
             LIMIT 1
         `;
 
         if (gymRows.length === 0) {
+            console.error(`Gym not found with code: ${gymCode}`);
+            return redirect("/clients/register/gym-manager?error=gym_not_found");
+        }
+
+        const gym = gymRows[0];
+        if (!gym || !gym.id) {
+            console.error(`Gym record invalid: ${JSON.stringify(gym)}`);
             return redirect("/clients/register/gym-manager?error=gym_not_found");
         }
 
@@ -67,9 +74,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
         const insertedUsers = await sql`
             INSERT INTO users (name, email, password_hash, role, gym_id)
-            VALUES (${name}, ${email}, ${passwordHash}, 'gym_manager', ${gymRows[0].id})
+            VALUES (${name}, ${email}, ${passwordHash}, 'gym_manager', ${gym.id})
             RETURNING id
         `;
+
+        if (insertedUsers.length === 0) {
+            console.error("User insertion failed, no ID returned");
+            return redirect("/clients/register/gym-manager?error=server_error");
+        }
 
         const user = insertedUsers[0];
         const session = await createSession(user.id);

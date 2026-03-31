@@ -10,7 +10,7 @@ export const POST: APIRoute = async (context) => {
     return redirect("/login");
   }
 
-  if (user.role !== "trainer" && user.role !== "admin") {
+  if (user.role !== "trainer" && user.role !== "admin" && user.role !== "gym_manager") {
     return redirect("/login?error=forbidden");
   }
 
@@ -33,7 +33,7 @@ export const POST: APIRoute = async (context) => {
     SELECT id, trainer_id, name, objective, level, duration_weeks, notes, active, is_template
     FROM routines
     WHERE id = ${routineId}
-      ${user.role === "trainer" ? sql`AND trainer_id = ${user.id}` : sql``}
+      ${user.role === "trainer" ? sql`AND trainer_id = ${user.id}` : user.role === "gym_manager" ? sql`AND trainer_id IN (SELECT id FROM users WHERE gym_id = ${user.gymId})` : sql``}
     LIMIT 1
   `;
 
@@ -47,7 +47,7 @@ export const POST: APIRoute = async (context) => {
     SELECT id, full_name, trainer_id
     FROM clients
     WHERE id = ANY(${resolvedClientIds})
-      ${user.role === "trainer" ? sql`AND trainer_id = ${user.id}` : sql``}
+      ${user.role === "trainer" ? sql`AND trainer_id = ${user.id}` : user.role === "gym_manager" ? sql`AND trainer_id IN (SELECT id FROM users WHERE gym_id = ${user.gymId})` : sql``}
   ` as Array<{ id: number; full_name: string; trainer_id: number | null }>;
 
   const allowedClientIds = new Set(clientRows.map((row) => row.id));

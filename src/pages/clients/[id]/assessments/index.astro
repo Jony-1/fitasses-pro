@@ -18,8 +18,8 @@ const clientRows = await sql`
 `;
 
 const user = Astro.locals.user;
-const canManageAssessments = user?.role === "trainer" || user?.role === "admin";
-const canManageClient = user?.role === "trainer" || user?.role === "admin";
+const canManageAssessments = user?.role === "trainer" || user?.role === "admin" || user?.role === "gym_manager";
+const canManageClient = user?.role === "trainer" || user?.role === "admin" || user?.role === "gym_manager";
 
 const client = clientRows[0];
 
