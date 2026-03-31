@@ -1,6 +1,7 @@
 ---
 import AppLayout from "../../../layouts/layout.astro";
 import { sql } from "../../../lib/db/client";
+import { ensureGymSchema } from "../../../lib/db/ensure-gym-schema";
 
 const rawUser = Astro.locals.user as any;
 const user = rawUser
@@ -20,6 +21,8 @@ if (!user) {
 if (!["admin", "gym_manager"].includes(String(user.role))) {
     return Astro.redirect("/dashboard?error=forbidden");
 }
+
+await ensureGymSchema();
 
 const gyms =
     user.role === "admin"

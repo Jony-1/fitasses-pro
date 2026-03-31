@@ -1,6 +1,7 @@
 ---
 import AppLayout from "../../../layouts/layout.astro";
 import { sql } from "../../../lib/db/client";
+import { ensureGymSchema } from "../../../lib/db/ensure-gym-schema";
 import { formatDateOnly } from "../../../lib/utils/date";
 import SectionHeader from "../../../components/ui/SectionHeader.astro";
 import EmptyState from "../../../components/ui/EmptyState.astro";
@@ -25,6 +26,8 @@ if (user.role !== "admin" && user.role !== "gym_manager") {
 
 const status = Astro.url.searchParams.get("status");
 const message = Astro.url.searchParams.get("message");
+
+await ensureGymSchema();
 
 const trainers =
     user.role === "admin"

@@ -10,6 +10,7 @@ import DashboardRecentNotifications from "../components/dashboard/DashboardRecen
 import DashboardQuickActions from "../components/dashboard/DashboardQuickActions.astro";
 import { getDashboardData } from "../lib/utils/dashboard";
 import { sql } from "../lib/db/client";
+import { ensureGymSchema } from "../lib/db/ensure-gym-schema";
 
 const rawUser = Astro.locals.user as any;
 const user = rawUser
@@ -38,6 +39,7 @@ const dashboardUser: any = {
 };
 
 const dashboard: any = await getDashboardData(dashboardUser);
+await ensureGymSchema();
 
 const gymRows = await sql`
     SELECT id, name, created_at

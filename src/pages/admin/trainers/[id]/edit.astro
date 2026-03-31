@@ -1,6 +1,7 @@
 ---
 import AppLayout from "../../../../layouts/layout.astro";
 import { sql } from "../../../../lib/db/client";
+import { ensureGymSchema } from "../../../../lib/db/ensure-gym-schema";
 
 const user = Astro.locals.user as {
     id: number;
@@ -44,7 +45,9 @@ const trainerRows =
                 AND role = 'trainer'
                 AND gym_id = ${user.gymId}
               LIMIT 1
-          `;
+`;
+
+await ensureGymSchema();
 
 const gyms =
     user.role === "admin"
