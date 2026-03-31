@@ -54,7 +54,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         }
 
         const gym = gymRows[0];
-        if (!gym || !gym.id) {
+        if (!gym || typeof gym.id !== 'number' || gym.id <= 0) {
             console.error(`Gym record invalid: ${JSON.stringify(gym)}`);
             return redirect("/clients/register/gym-manager?error=gym_not_found");
         }
@@ -90,6 +90,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         return redirect("/gym-manager");
     } catch (error) {
         console.error("Gym manager registration error:", error);
+        console.error("Error details:", {
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            name: error instanceof Error ? error.name : undefined
+        });
         return redirect("/clients/register/gym-manager?error=server_error");
     }
 };

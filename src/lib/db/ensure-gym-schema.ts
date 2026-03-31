@@ -3,11 +3,23 @@ import { sql } from "./client";
 let ensureGymSchemaPromise: Promise<void> | null = null;
 
 async function ensureTableAndColumn() {
-    await sql`
+     await sql`
         CREATE TABLE IF NOT EXISTS gyms (
             id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             invite_code TEXT UNIQUE,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    `;
+
+    await sql`
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL CHECK (role IN ('admin', 'gym_manager', 'trainer', 'client')),
+            gym_id INTEGER REFERENCES gyms(id) ON DELETE SET NULL,
             created_at TIMESTAMP DEFAULT NOW()
         )
     `;
@@ -63,13 +75,19 @@ async function ensureTableAndColumn() {
         )
     `;
 
-    await sql`
+     await sql`
         UPDATE gyms
         SET invite_code = COALESCE(
             invite_code,
             lower(substring(md5(random()::text || clock_timestamp()::text) from 1 for 8))
         )
         WHERE invite_code IS NULL
+    `;
+
+     await sql`
+        UPDATE gyms
+        SET invite_code = lower(substring(md5(random()::text || clock_timestamp()::text) from 1 for 8))
+        WHERE invite_code = ''
     `;
 
     await sql`
@@ -79,7 +97,7 @@ async function ensureTableAndColumn() {
           AND gym_id IS NULL
     `;
 
-    await sql`
+     await sql`
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -91,6 +109,19 @@ async function ensureTableAndColumn() {
     `;
 
     await sql`CREATE INDEX IF NOT EXISTS password_reset_tokens_user_id_idx ON password_reset_tokens (user_id, created_at DESC)`;
+
+    await sql`
+        CREATE TABLE IF NOT EXISTS sessions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT NOT NULL UNIQUE,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+    `;
+
+    await sql`CREATE INDEX IF NOT EXISTS sessions_token_idx ON sessions (token)`;
+    await sql`CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions (user_id)`;
 }
 
 export function ensureGymSchema() {

@@ -8,7 +8,7 @@ export const POST: APIRoute = async ({ locals, redirect }) => {
     return redirect("/login");
   }
 
-  if (user.role !== "admin" && user.role !== "trainer") {
+  if (user.role !== "admin" && user.role !== "trainer" && user.role !== "gym_manager") {
     return redirect("/login?error=forbidden");
   }
 

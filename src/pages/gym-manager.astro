@@ -9,6 +9,7 @@ import DashboardAttendanceSummary from "../components/dashboard/DashboardAttenda
 import DashboardRecentNotifications from "../components/dashboard/DashboardRecentNotifications.astro";
 import DashboardQuickActions from "../components/dashboard/DashboardQuickActions.astro";
 import DashboardTrainerChart from "../components/dashboard/DashboardTrainerChart.astro";
+import EmptyState from "../components/ui/EmptyState.astro";
 import { getDashboardData } from "../lib/utils/dashboard";
 import { sql } from "../lib/db/client";
 import { ensureGymSchema } from "../lib/db/ensure-gym-schema";
@@ -32,6 +33,10 @@ if (String(user.role) !== "gym_manager") {
     return Astro.redirect("/dashboard");
 }
 
+if (!user.gymId) {
+    return Astro.redirect("/login?error=forbidden");
+}
+
 const dashboardUser: any = {
     id: user.id,
     name: user.name,
@@ -39,8 +44,8 @@ const dashboardUser: any = {
     gymId: user.gymId,
 };
 
-const dashboard: any = await getDashboardData(dashboardUser);
 await ensureGymSchema();
+const dashboard: any = await getDashboardData(dashboardUser);
 
 const gymRows = await sql`
     SELECT id, name, created_at
@@ -93,7 +98,12 @@ const trainerRows = await sql`
 
                 <div class="mt-5 space-y-3">
                     {trainerRows.length === 0 ? (
-                        <p class="text-sm text-slate-500 dark:text-slate-400">Aún no tienes trainers asignados.</p>
+                        <EmptyState
+                            title="Aún no tienes trainers"
+                            description="Crea el primer entrenador para empezar a gestionar el equipo del gimnasio."
+                            actionHref="/admin/trainers/new"
+                            actionLabel="Crear trainer"
+                        />
                     ) : (
                         trainerRows.map((trainer) => (
                             <a href="/admin/trainers" class="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800">
