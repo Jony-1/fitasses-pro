@@ -13,28 +13,24 @@ const { title = "FitAssess Pro" } = Astro.props;
 const currentPath = Astro.url.pathname;
 const user = getSessionUser(Astro.locals.user);
 
-const isAdmin = user?.role === "admin";
+const isAdmin      = user?.role === "admin";
 const isGymManager = user?.role === "gym_manager";
-const isTrainer = user?.role === "trainer";
-const isClient = user?.role === "client";
+const isTrainer    = user?.role === "trainer";
+const isClient     = user?.role === "client";
+
 const clientRecord = isClient && user
-  ? await sql`
-      SELECT id
-      FROM clients
-      WHERE user_id = ${user.id}
-      LIMIT 1
-    `
+  ? await sql`SELECT id FROM clients WHERE user_id = ${user.id} LIMIT 1`
   : [];
 const clientId = isClient ? (clientRecord[0]?.id as number | undefined) ?? null : null;
 
-const panelTitle = isAdmin
-  ? "Panel de administracion"
+const panelLabel = isAdmin
+  ? "Administrador"
   : isGymManager
-    ? "Panel del gimnasio"
+    ? "Gimnasio"
     : isTrainer
-      ? "Panel del entrenador"
+      ? "Entrenador"
       : isClient
-        ? "Panel del cliente"
+        ? "Cliente"
         : "FitAssess Pro";
 
 const navItemsWithActive = computeNavItemsWithActive(buildNavItems(user, clientId), currentPath);
@@ -45,109 +41,121 @@ const navItemsWithActive = computeNavItemsWithActive(buildNavItems(user, clientI
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{title}</title>
+    <title>{title} — FitAssess Pro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <script is:inline>
-      const savedTheme = localStorage.getItem("theme");
-      if (savedTheme === "light") {
-        document.documentElement.classList.remove("dark");
-      } else {
-        document.documentElement.classList.add("dark");
-      }
+      (function() {
+        const t = localStorage.getItem("theme");
+        if (t === "light") document.documentElement.classList.remove("dark");
+        else document.documentElement.classList.add("dark");
+      })();
     </script>
   </head>
-  <body class="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+  <body class="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 dark:bg-[#070c18] dark:text-slate-100">
     <div class="min-h-screen md:flex">
-      <aside class="hidden w-72 shrink-0 border-r border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 md:sticky md:top-0 md:flex md:h-screen md:flex-col">
-        <div class="border-b border-slate-200 px-6 py-5 dark:border-slate-800">
-          <a href="/?public=1" class="flex items-center gap-3 rounded-2xl transition hover:opacity-90">
-            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400 font-extrabold text-slate-900 shadow-sm">F</div>
+
+      <!-- ── Sidebar desktop ───────────────────────────────── -->
+      <aside class="hidden w-64 shrink-0 border-r border-slate-200/80 bg-white dark:border-white/[0.06] dark:bg-[#0d1424] md:sticky md:top-0 md:flex md:h-screen md:flex-col">
+
+        <!-- Logo -->
+        <div class="px-5 py-5">
+          <a href="/?public=1" class="group flex items-center gap-3 rounded-2xl p-1 transition hover:opacity-90">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg shadow-emerald-500/25 font-black text-slate-900 text-sm tracking-tight">FA</div>
             <div>
-              <p class="text-sm text-slate-500 dark:text-slate-400">FitAssess Pro</p>
-              <h1 class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100">{panelTitle}</h1>
+              <p class="text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">FitAssess Pro</p>
+              <p class="text-sm font-bold text-slate-900 dark:text-slate-100">{panelLabel}</p>
             </div>
           </a>
         </div>
 
-        <PrimaryNav items={navItemsWithActive} variant="desktop" />
+        <!-- Divider -->
+        <div class="mx-5 h-px bg-slate-100 dark:bg-white/[0.05]"></div>
 
-        <div class="border-t border-slate-200 p-4 dark:border-slate-800">
-          <div class="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60">
-            <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">FitAssess Pro</p>
-            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {isAdmin
-                ? "Gestión administrativa de entrenadores y plataforma."
-                : isGymManager
-                  ? "Gestión del equipo y del gimnasio asignado."
-                  : isClient
-                    ? "Consulta de progreso, valoraciones y seguimiento."
-                    : "Gestión de clientes, valoraciones y seguimiento."}
-            </p>
-            <a href="/?public=1" class="mt-3 inline-flex items-center text-xs font-semibold text-emerald-600 transition hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300">Ver pagina principal</a>
-          </div>
+        <!-- Nav -->
+        <div class="flex-1 overflow-y-auto py-3">
+          <PrimaryNav items={navItemsWithActive} variant="desktop" />
+        </div>
+
+        <!-- Bottom info -->
+        <div class="border-t border-slate-100 dark:border-white/[0.05] p-4">
+          {user ? (
+            <div class="rounded-xl bg-slate-50 px-3 py-3 dark:bg-white/[0.04]">
+              <p class="truncate text-xs font-semibold text-slate-700 dark:text-slate-200">{user.name}</p>
+              <p class="mt-0.5 truncate text-[11px] text-slate-400 dark:text-slate-500">{user.email ?? panelLabel}</p>
+              <form action="/api/auth/logout" method="POST" class="mt-3">
+                <button type="submit" class="w-full rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-slate-200">
+                  Cerrar sesión
+                </button>
+              </form>
+            </div>
+          ) : (
+            <p class="text-xs text-slate-400 dark:text-slate-600">© {new Date().getFullYear()} FitAssess Pro</p>
+          )}
         </div>
       </aside>
 
+      <!-- ── Main area ──────────────────────────────────────── -->
       <div class="flex min-h-screen flex-1 flex-col">
-        <header class="border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
-          <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-4 md:px-6">
-            <a href="/?public=1" class="flex items-center gap-3 rounded-2xl transition hover:opacity-90 md:hidden">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400 font-extrabold text-slate-900">F</div>
-              <div>
-                <p class="text-xs text-slate-500 dark:text-slate-400">FitAssess Pro</p>
-                <h1 class="text-base font-extrabold text-slate-900 dark:text-slate-100">{panelTitle}</h1>
-              </div>
+
+        <!-- Header -->
+        <header class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-white/[0.06] dark:bg-[#070c18]/85">
+          <div class="flex items-center justify-between gap-4 px-4 py-3 md:px-6">
+
+            <!-- Mobile logo -->
+            <a href="/?public=1" class="flex items-center gap-2.5 md:hidden">
+              <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 font-black text-slate-900 text-xs shadow-md shadow-emerald-500/20">FA</div>
+              <p class="text-sm font-bold text-slate-900 dark:text-slate-100">{panelLabel}</p>
             </a>
 
+            <!-- Desktop page title -->
             <div class="hidden md:block">
-              <p class="text-sm text-slate-500 dark:text-slate-400">FitAssess Pro</p>
-              <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">{title}</h2>
+              <h2 class="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h2>
             </div>
 
-            <div class="flex flex-wrap items-center justify-end gap-3">
-              <a href="/?public=1" class="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300 dark:hover:bg-emerald-950/40">Ver pagina principal</a>
-              <button type="button" id="theme-toggle" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+            <!-- Actions -->
+            <div class="flex items-center gap-2">
+              <!-- Theme toggle -->
+              <button type="button" id="theme-toggle"
+                class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10">
                 <span class="dark:hidden">🌙</span>
                 <span class="hidden dark:inline">☀️</span>
               </button>
+
+              <!-- User badge (desktop) -->
               {user && (
-                <div class="flex flex-wrap items-center justify-end gap-3">
-                  <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200">{user.name}</span>
-                  <form action="/api/auth/logout" method="POST">
-                    <button type="submit" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Cerrar sesión</button>
-                  </form>
-                </div>
+                <span class="hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 sm:inline-flex">
+                  {user.name}
+                </span>
               )}
             </div>
           </div>
 
-          <div class="border-t border-slate-200 px-4 py-3 dark:border-slate-800 md:hidden">
+          <!-- Mobile nav -->
+          <div class="border-t border-slate-100 px-4 py-2 dark:border-white/[0.04] md:hidden">
             <PrimaryNav items={navItemsWithActive} variant="mobile" />
           </div>
         </header>
 
+        <!-- Content -->
         <main class="min-w-0 flex-1 p-4 md:p-6">
           <slot />
         </main>
+
+        <!-- Footer -->
+        <footer class="border-t border-slate-100 px-4 py-4 dark:border-white/[0.05]">
+          <div class="mx-auto flex max-w-7xl items-center justify-between gap-2 text-xs text-slate-400 dark:text-slate-600">
+            <span>© {new Date().getFullYear()} FitAssess Pro</span>
+            <span>Desarrollado por Jonathan Sierra</span>
+          </div>
+        </footer>
       </div>
     </div>
 
-    <footer class="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-      <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 py-4 text-sm text-slate-500 dark:text-slate-400 sm:px-6 md:flex-row">
-        <span>© {new Date().getFullYear()} FitAssess Pro</span>
-        <div class="flex items-center gap-4">
-          <a href="/?public=1" class="font-medium text-emerald-600 transition hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300">Pagina principal</a>
-          <span>Desarrollado por Jonathan Sierra</span>
-        </div>
-      </div>
-    </footer>
-
     <script is:inline>
-      const themeToggle = document.getElementById("theme-toggle");
-      themeToggle?.addEventListener("click", () => {
+      document.getElementById("theme-toggle")?.addEventListener("click", () => {
         const isDark = document.documentElement.classList.toggle("dark");
         localStorage.setItem("theme", isDark ? "dark" : "light");
       });

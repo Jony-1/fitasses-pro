@@ -1,40 +1,138 @@
 ---
 import AppLayout from "../layouts/layout.astro";
-import SectionHeader from "../components/ui/SectionHeader.astro";
+import { sql } from "../lib/db/client";
+import {
+  ensureRoutineSchema,
+  getActiveRoutineForClient,
+  getRoutineToday,
+  getAccessibleClientIdForUser,
+} from "../lib/utils/routines";
 
 const user = Astro.locals.user;
 
-if (!user) {
-    return Astro.redirect("/login");
+if (!user) return Astro.redirect("/login");
+if (user.role !== "client") return Astro.redirect("/dashboard");
+
+await ensureRoutineSchema();
+
+const clientId = await getAccessibleClientIdForUser(user);
+
+type ClientRow = { id: number; full_name: string; trainer_id: number | null };
+
+let client: ClientRow | null = null;
+let activeRoutine = null;
+let todayDay: any = null;
+let exerciseCount = 0;
+
+if (clientId) {
+  const [clientRows, routine] = await Promise.all([
+    sql`SELECT id, full_name, trainer_id FROM clients WHERE id = ${clientId} LIMIT 1`,
+    getActiveRoutineForClient(clientId),
+  ]);
+  client = (clientRows[0] as ClientRow) ?? null;
+  activeRoutine = routine;
+  if (activeRoutine) {
+    const info = getRoutineToday(activeRoutine);
+    todayDay = info.day;
+    exerciseCount = todayDay?.exercises?.length ?? 0;
+  }
 }
 
-if (user.role !== "client") {
-    return Astro.redirect("/dashboard");
-}
+const trainingHref = client ? `/clients/${client.id}/routine/train` : "#";
+const routineHref  = client ? `/clients/${client.id}/routine` : "#";
+const progressHref = client ? `/clients/${client.id}/progress` : "#";
+const assessmentsHref = client ? `/clients/${client.id}/assessments` : "#";
+
+const todayInfo = activeRoutine ? getRoutineToday(activeRoutine) : { label: "Sin rutina" };
 ---
 
-<AppLayout title="Mi cuenta">
-    <div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-        <SectionHeader
-            eyebrow="Cuenta de cliente"
-            title={`Hola, ${user.name}`}
-            description="Tu cuenta está lista. Completa tu perfil o entra a tu rutina y progreso cuando esté vinculado."
-        />
+<AppLayout title={`Hola, ${user.name}`}>
+  <div class="mx-auto max-w-lg px-4 py-8 sm:px-6">
 
-        <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/95 sm:p-8">
-            <p class="text-sm text-slate-600 dark:text-slate-400">
-                Aún no detectamos tu perfil de cliente vinculado.
-            </p>
-
-            <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <a href="/clients/register/client" class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 sm:w-auto">
-                    Completar registro
-                </a>
-
-                <a href="/?public=1" class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto">
-                    Ver página principal
-                </a>
-            </div>
-        </div>
+    <div class="mb-6">
+      <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Bienvenido de nuevo</p>
+      <h1 class="mt-1 text-3xl font-black text-slate-900 dark:text-slate-100">{user.name}</h1>
     </div>
+
+    {!client ? (
+      <div class="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <p class="text-4xl">👋</p>
+        <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">Tu cuenta aún no está vinculada a un perfil de cliente.</p>
+        <a href="/clients/register/client"
+          class="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600">
+          Completar registro
+        </a>
+      </div>
+    ) : activeRoutine && todayDay ? (
+      <div class="rounded-3xl bg-slate-950 p-6 text-white shadow-xl">
+        <p class="text-xs font-semibold uppercase tracking-widest text-emerald-400">{todayInfo.label}</p>
+        <h2 class="mt-2 text-2xl font-black leading-tight">{todayDay.title}</h2>
+        {todayDay.focus && <p class="mt-1 text-sm text-slate-400">{todayDay.focus}</p>}
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">{exerciseCount} ejercicios</span>
+          <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">{activeRoutine.days.length} días en la rutina</span>
+        </div>
+
+        {exerciseCount > 0 && (
+          <div class="mt-4 flex flex-wrap gap-1.5">
+            {todayDay.exercises.slice(0, 4).map((ex: any) => (
+              <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs text-slate-300">{ex.name}</span>
+            ))}
+            {exerciseCount > 4 && (
+              <span class="rounded-full bg-white/10 px-2.5 py-1 text-xs text-slate-400">+{exerciseCount - 4} más</span>
+            )}
+          </div>
+        )}
+
+        <a href={trainingHref}
+          class="mt-6 block w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 py-4 text-center text-base font-black text-slate-950 shadow-lg shadow-emerald-500/30 transition active:scale-[0.98]">
+          Empezar entrenamiento
+        </a>
+
+        <a href={routineHref}
+          class="mt-3 block w-full rounded-2xl bg-white/10 py-3 text-center text-sm font-semibold text-slate-300 transition hover:bg-white/20">
+          Ver mi rutina completa
+        </a>
+      </div>
+    ) : activeRoutine ? (
+      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Tu rutina</p>
+        <h2 class="mt-2 text-xl font-bold text-slate-900 dark:text-slate-100">{activeRoutine.name}</h2>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Hoy no hay día activo en tu rutina.</p>
+        <a href={routineHref}
+          class="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600">
+          Ver mi rutina
+        </a>
+      </div>
+    ) : (
+      <div class="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <p class="text-3xl">🏋️</p>
+        <h2 class="mt-4 text-lg font-bold text-slate-900 dark:text-slate-100">Sin rutina asignada</h2>
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          Tu entrenador aún no te ha asignado una rutina. Cuando lo haga, aparecerá aquí.
+        </p>
+        <a href={routineHref}
+          class="mt-5 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          Ver mi perfil de rutina
+        </a>
+      </div>
+    )}
+
+    {client && (
+      <div class="mt-4 grid grid-cols-2 gap-3">
+        <a href={progressHref}
+          class="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800">
+          <span class="text-2xl">📈</span>
+          <span class="mt-2 text-xs font-semibold text-slate-700 dark:text-slate-200">Mi progreso</span>
+        </a>
+        <a href={assessmentsHref}
+          class="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800">
+          <span class="text-2xl">📋</span>
+          <span class="mt-2 text-xs font-semibold text-slate-700 dark:text-slate-200">Valoraciones</span>
+        </a>
+      </div>
+    )}
+
+  </div>
 </AppLayout>

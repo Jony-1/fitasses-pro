@@ -1,6 +1,5 @@
 ---
-import AppLayout from "../layouts/layout.astro";
-import AuthNav from "../components/ui/AuthNav.astro";
+import "../styles/global.css";
 
 const user = Astro.locals.user;
 
@@ -15,127 +14,167 @@ const successMessage = status === "success"
     : "";
 
 let errorMessage = "";
-
-if (error === "missing_fields") {
-    errorMessage = "Debes ingresar correo y contraseña.";
-} else if (error === "invalid_credentials") {
-    errorMessage = "Correo o contraseña incorrectos.";
-} else if (error === "server_error") {
-    errorMessage = "Ocurrió un error interno al iniciar sesión.";
-} else if (error === "unauthorized") {
-    errorMessage = "Debes iniciar sesión para continuar.";
-} else if (error === "forbidden") {
-    errorMessage = "No tienes permisos para acceder a esa sección.";
-}
+if (error === "missing_fields")        errorMessage = "Debes ingresar correo y contraseña.";
+else if (error === "invalid_credentials") errorMessage = "Correo o contraseña incorrectos.";
+else if (error === "server_error")     errorMessage = "Ocurrió un error interno al iniciar sesión.";
+else if (error === "unauthorized")     errorMessage = "Debes iniciar sesión para continuar.";
+else if (error === "forbidden")        errorMessage = "No tienes permisos para acceder a esa sección.";
 ---
 
-<AppLayout title="Iniciar sesión | FitAssess Pro">
-    <div class="mx-auto max-w-md px-4 py-8 sm:py-10">
-        <AuthNav
-            items={[
-                { href: "/login", label: "Iniciar sesión", active: true },
-                { href: "/register", label: "Registro" },
-            ]}
-        />
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iniciar sesión — FitAssess Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <script is:inline>
+      const t = localStorage.getItem("theme");
+      if (t === "light") document.documentElement.classList.remove("dark");
+      else document.documentElement.classList.add("dark");
+    </script>
+  </head>
+  <body class="min-h-screen bg-[#070c18] font-[Manrope,sans-serif] text-slate-100 antialiased">
 
-        <div class="mb-6 text-center">
-            <h1
-                class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white"
-            >
-                Iniciar sesión
-            </h1>
-            <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                Entra al FitAssess Pro con el rol que quieras presentar y recorre el flujo completo del producto.
-            </p>
-        </div>
-
-        {
-            errorMessage && (
-                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-                    {errorMessage}
-                </div>
-            )
-        }
-
-        {successMessage && (
-            <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
-                {successMessage}
-            </div>
-        )}
-
-        <div class="rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:p-8">
-            <div class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
-                <p class="font-semibold">Ruta recomendada</p>
-                <p class="mt-1">Empieza con una cuenta de entrenador para mostrar panel, clientes, rutina, entrenamiento guiado y progreso. Si ya tienes usuarios creados, usa cualquiera segun el rol que quieras ensenar.</p>
-                <a href="/" class="mt-3 inline-flex text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
-                    Volver al inicio
-                </a>
-            </div>
-
-            <div class="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400">
-                <p class="font-semibold text-slate-900 dark:text-slate-200">Acceso según tu rol</p>
-                <p class="mt-1">Cliente: progreso y valoraciones. Entrenador: clientes y seguimiento. Gestor de gimnasio: panel del gimnasio. Administrador: vista global de la plataforma.</p>
-            </div>
-
-            <form action="/api/auth/login" method="POST" class="space-y-5">
-                <div>
-                    <label
-                        for="email"
-                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
-                    >
-                        Correo electrónico
-                    </label>
-                    <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        required
-                        autocomplete="email"
-                        class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
-                        placeholder="ejemplo@correo.com"
-                    />
-                </div>
-
-                <div>
-                    <label
-                        for="password"
-                        class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
-                    >
-                        Contraseña
-                    </label>
-                    <input
-                        id="password"
-                        name="password"
-                        type="password"
-                        required
-                        autocomplete="current-password"
-                        class="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:border-emerald-500 dark:focus:ring-emerald-900/40"
-                        placeholder="Ingresa tu contraseña"
-                    />
-                </div>
-
-                <div class="flex items-center justify-end">
-                    <a href="/forgot-password" class="text-sm font-semibold text-emerald-500 hover:text-emerald-400 hover:underline">
-                        ¿Olvidaste tu contraseña?
-                    </a>
-                </div>
-
-                <button
-                    type="submit"
-                    class="inline-flex w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-600"
-                >
-                    Entrar
-                </button>
-            </form>
-            <p class="mt-4 text-center text-sm text-slate-400">
-                ¿No tienes cuenta?
-                <a
-                    href="/register"
-                    class="font-semibold text-emerald-400 hover:text-emerald-300 hover:underline"
-                >
-                    Regístrate aquí
-                </a>
-            </p>
-        </div>
+    <!-- Background glow -->
+    <div class="pointer-events-none fixed inset-0 overflow-hidden">
+      <div class="absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-emerald-500/[0.07] blur-[120px]"></div>
+      <div class="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-violet-600/[0.06] blur-[100px]"></div>
     </div>
-</AppLayout>
+
+    <div class="relative flex min-h-screen">
+
+      <!-- ── Left panel (branding) ─────────────────────────────── -->
+      <div class="hidden w-[480px] shrink-0 flex-col justify-between border-r border-white/[0.06] bg-[#0d1424] p-10 lg:flex">
+        <!-- Logo -->
+        <a href="/" class="inline-flex items-center gap-3 group">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 font-black text-slate-900 text-sm shadow-lg shadow-emerald-500/30">FA</div>
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">FitAssess Pro</p>
+            <p class="text-sm font-bold text-slate-200">Performance Dashboard</p>
+          </div>
+        </a>
+
+        <!-- Pilares -->
+        <div class="space-y-5">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-emerald-500">Plataforma fitness</p>
+            <h2 class="mt-3 text-3xl font-black tracking-tight text-white leading-snug">
+              Entrena, evalúa<br />y demuestra progreso.
+            </h2>
+            <p class="mt-3 text-sm text-slate-400 leading-relaxed">
+              Rutinas guiadas, valoraciones y seguimiento en un solo flujo conectado para entrenadores y clientes.
+            </p>
+          </div>
+
+          <div class="space-y-3">
+            {[
+              { icon: "⚡", label: "Rutina del día con cronómetro y guía" },
+              { icon: "📊", label: "Valoraciones físicas con historial" },
+              { icon: "🏆", label: "Progreso visible y logros por sesión" },
+            ].map(item => (
+              <div class="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
+                <span class="text-base">{item.icon}</span>
+                <span class="text-sm text-slate-300">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- Footer del panel -->
+        <p class="text-xs text-slate-600">© {new Date().getFullYear()} FitAssess Pro · Desarrollado por Jonathan Sierra</p>
+      </div>
+
+      <!-- ── Right panel (form) ────────────────────────────────── -->
+      <div class="flex flex-1 flex-col items-center justify-center px-5 py-12 sm:px-8">
+
+        <!-- Mobile logo -->
+        <a href="/" class="mb-8 inline-flex items-center gap-2.5 lg:hidden">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 font-black text-slate-900 text-xs shadow-md shadow-emerald-500/25">FA</div>
+          <span class="text-sm font-bold text-white">FitAssess Pro</span>
+        </a>
+
+        <div class="w-full max-w-sm">
+          <div class="mb-7">
+            <h1 class="text-2xl font-black tracking-tight text-white">Bienvenido de nuevo</h1>
+            <p class="mt-1.5 text-sm text-slate-400">Ingresa tus datos para continuar</p>
+          </div>
+
+          <!-- Tip de acceso -->
+          <div class="mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-3">
+            <p class="text-xs font-semibold text-emerald-400">Ruta recomendada</p>
+            <p class="mt-1 text-xs text-slate-400 leading-relaxed">Entra como <strong class="text-slate-300">entrenador</strong> para ver el flujo completo: clientes, rutinas y entrenamiento guiado.</p>
+          </div>
+
+          <!-- Alerts -->
+          {errorMessage && (
+            <div class="mb-4 rounded-xl border border-red-500/30 bg-red-500/[0.08] px-4 py-3 text-sm text-red-300">
+              {errorMessage}
+            </div>
+          )}
+          {successMessage && (
+            <div class="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/[0.08] px-4 py-3 text-sm text-emerald-300">
+              {successMessage}
+            </div>
+          )}
+
+          <!-- Form -->
+          <form action="/api/auth/login" method="POST" class="space-y-4">
+            <div>
+              <label for="email" class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Correo electrónico
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autocomplete="email"
+                placeholder="tu@correo.com"
+                class="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 transition focus:border-emerald-500/60 focus:bg-white/[0.06] focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+
+            <div>
+              <div class="mb-1.5 flex items-center justify-between">
+                <label for="password" class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Contraseña
+                </label>
+                <a href="/forgot-password" class="text-xs font-semibold text-emerald-500 hover:text-emerald-400">
+                  ¿Olvidaste tu clave?
+                </a>
+              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autocomplete="current-password"
+                placeholder="••••••••"
+                class="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 transition focus:border-emerald-500/60 focus:bg-white/[0.06] focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+
+            <button
+              type="submit"
+              class="mt-2 w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 active:scale-[0.98]"
+            >
+              Entrar
+            </button>
+          </form>
+
+          <p class="mt-6 text-center text-sm text-slate-500">
+            ¿No tienes cuenta?{" "}
+            <a href="/register" class="font-semibold text-emerald-400 hover:text-emerald-300">
+              Regístrate aquí
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>

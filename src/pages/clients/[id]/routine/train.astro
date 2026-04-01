@@ -4,6 +4,8 @@ import EmptyState from "../../../../components/ui/EmptyState.astro";
 import { sql } from "../../../../lib/db/client";
 import { ensureRoutineSchema, getActiveRoutineForClient, getRoutineToday } from "../../../../lib/utils/routines";
 import { getClientByIdForUser } from "../../../../lib/utils/client-profile";
+import { getExerciseLibraryItem } from "../../../../lib/utils/exercise-library";
+import ExerciseMotionAvatar from "../../../../components/exercises/ExerciseMotionAvatar.astro";
 
 type SessionHistoryItem = {
   id: number;
@@ -53,9 +55,7 @@ const sessionHistoryRows = activeRoutine?.id
       LEFT JOIN routine_workout_entries e ON e.session_id = s.id
       WHERE s.client_id = ${client.id}
         AND s.routine_day_id IN (
-          SELECT rd.id
-          FROM routine_days rd
-          WHERE rd.routine_id = ${activeRoutine.id}
+          SELECT rd.id FROM routine_days rd WHERE rd.routine_id = ${activeRoutine.id}
         )
       GROUP BY s.id
       ORDER BY s.started_at DESC, s.id DESC
@@ -73,11 +73,7 @@ const recentExerciseRows = activeRoutine?.id
         last_entry.series_done
       FROM routine_exercises re
       LEFT JOIN LATERAL (
-        SELECT
-          e.weight_kg,
-          e.reps_done,
-          e.rest_seconds,
-          e.sets_done AS series_done
+        SELECT e.weight_kg, e.reps_done, e.rest_seconds, e.sets_done AS series_done
         FROM routine_workout_entries e
         INNER JOIN routine_workout_sessions s ON s.id = e.session_id
         WHERE e.routine_exercise_id = re.id
@@ -85,9 +81,7 @@ const recentExerciseRows = activeRoutine?.id
         LIMIT 1
       ) AS last_entry ON TRUE
       WHERE re.routine_day_id IN (
-        SELECT rd.id
-        FROM routine_days rd
-        WHERE rd.routine_id = ${activeRoutine.id}
+        SELECT rd.id FROM routine_days rd WHERE rd.routine_id = ${activeRoutine.id}
       )
     `
   : [];
@@ -99,137 +93,136 @@ const routineDayCount = activeRoutine?.days.length ?? 0;
 const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
 ---
 
-<AppLayout title={`Entrenar - ${client.full_name}`}>
-  <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <a href={`/clients/${client.id}/routine`} class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-        Volver al resumen
-      </a>
-      <span class="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300 sm:inline-flex">Modo entrenamiento</span>
+<AppLayout title={`Entrenar — ${client.full_name}`}>
+  {!activeRoutine || !todayDay ? (
+    <div class="mx-auto max-w-lg px-4 py-12">
+      <EmptyState title="Sin sesión para entrenar" description="Todavía no hay una rutina activa o no tiene un día disponible para hoy." />
     </div>
+  ) : (
+    <div id="workout-app" class="relative bg-slate-950 text-white">
 
-    {!activeRoutine || !todayDay ? (
-      <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <EmptyState title="Sin sesión para entrenar" description="Todavía no hay una rutina activa o no tiene un día disponible para hoy." />
-      </div>
-    ) : (
-      <div class="space-y-6">
-        <section id="training-intro" class="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-emerald-50 p-5 shadow-sm dark:border-slate-800 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/20 sm:p-6">
-          <div class="mx-auto max-w-3xl text-center">
-            <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">Entrenamiento de hoy</p>
-            <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100">{todayDay.title}</h2>
-            <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">{todayDay.focus ?? "Rutina del día"}</p>
+      <!-- Hidden form data (always in DOM) -->
+      <input type="hidden" id="hid-routine-day-id" name="routine_day_id" value={todayDay.id} />
+      <input type="hidden" id="hid-client-id" name="client_id" value={client.id} />
+      <input type="hidden" id="hid-started-at" name="started_at" value={sessionStartedAt} />
 
-            <div class="mt-4 flex flex-wrap justify-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{routineDayCount} días</span>
-              <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{exerciseCount} ejercicios</span>
-              <span class="rounded-full bg-slate-100 px-3 py-1 dark:bg-slate-800">{todayInfo.label}</span>
+      <!-- ══════════════════════════════════════════════════ -->
+      <!-- PHASE 0 — INTRO                                   -->
+      <!-- ══════════════════════════════════════════════════ -->
+      <div id="phase-intro" class="flex min-h-[calc(100svh-4rem)] flex-col px-5 py-6 mx-auto max-w-lg">
+
+        <!-- Back -->
+        <a href={`/clients/${client.id}/routine`}
+           class="inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/20 transition">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+          </svg>
+          Volver
+        </a>
+
+        <!-- Hero -->
+        <div class="mt-8 flex-1">
+          <span class="inline-flex items-center rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-emerald-400">
+            {todayInfo.label}
+          </span>
+          <h1 class="mt-3 text-4xl font-black leading-tight text-white">{todayDay.title}</h1>
+          {todayDay.focus && <p class="mt-2 text-slate-400">{todayDay.focus}</p>}
+
+          <!-- Stats -->
+          <div class="mt-6 grid grid-cols-3 gap-3">
+            <div class="rounded-2xl bg-white/5 p-4 text-center">
+              <p class="text-3xl font-black text-emerald-400">{exerciseCount}</p>
+              <p class="mt-1 text-xs font-medium text-slate-400">ejercicios</p>
             </div>
+            <div class="rounded-2xl bg-white/5 p-4 text-center">
+              <p class="text-3xl font-black text-white">{routineDayCount}</p>
+              <p class="mt-1 text-xs font-medium text-slate-400">días totales</p>
+            </div>
+            <div class="rounded-2xl bg-white/5 p-4 text-center">
+              <p class="text-3xl font-black text-white">{sessionHistory.length}</p>
+              <p class="mt-1 text-xs font-medium text-slate-400">sesiones</p>
+            </div>
+          </div>
 
-            <div class="mt-5 rounded-3xl border border-slate-200 bg-white/90 p-4 text-left shadow-sm dark:border-slate-800 dark:bg-slate-950/50 sm:p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Rutina de hoy</p>
-              <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                {todayDay.exercises.slice(0, 4).map((exercise: any, index: number) => (
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900">
-                    <p class="text-sm font-semibold text-slate-900 dark:text-slate-100">{index + 1}. {exercise.name}</p>
-                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{exercise.sets ?? "libre"} series · {exercise.reps ?? "libre"} reps · {exercise.rest_seconds ? `${exercise.rest_seconds}s descanso` : "sin descanso"}</p>
+          <!-- Exercise list -->
+          <div class="mt-6">
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Ejercicios de hoy</p>
+            <div class="mt-3 space-y-2">
+              {todayDay.exercises.map((exercise: any, i: number) => (
+                <div class="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3">
+                  <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-sm font-black text-emerald-400">{i + 1}</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="truncate text-sm font-bold text-white">{exercise.name}</p>
+                    <p class="text-xs text-slate-500">{exercise.sets ?? "?"} series · {exercise.reps ?? "?"} reps{exercise.rest_seconds ? ` · ${exercise.rest_seconds}s` : ""}</p>
                   </div>
-                ))}
-                {todayDay.exercises.length > 4 && <p class="text-xs text-slate-500 dark:text-slate-400">+ {todayDay.exercises.length - 4} ejercicios más en la sesión guiada</p>}
-              </div>
-
-              {todayDay.notes && <p class="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-900 dark:text-slate-300">{todayDay.notes}</p>}
-            </div>
-
-            <div class="mt-5 rounded-full border border-slate-200 bg-white/90 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-950/50">
-              <div class="flex items-center justify-between px-2 pb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                <span>Progreso de la sesión</span>
-                <span id="session-progress-label">0%</span>
-              </div>
-              <div class="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div id="session-progress-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300" style="width: 0%"></div>
-              </div>
-            </div>
-
-            <div class="mt-6 flex justify-center">
-              <button id="start-training" type="button" class="inline-flex min-w-[18rem] items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 px-8 py-4 text-base font-bold text-slate-950 shadow-lg shadow-emerald-500/20 transition hover:brightness-105 dark:text-slate-950">
-                Empezar entrenamiento
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <form id="training-form" class="hidden mx-auto w-full max-w-4xl space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-          <input type="hidden" name="routine_day_id" value={todayDay.id} />
-          <input type="hidden" name="client_id" value={client.id} />
-          <input type="hidden" name="started_at" value={sessionStartedAt} />
-
-          <div class="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <div class="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40 sm:p-5">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Sesión en curso</p>
-                  <h3 id="training-title" class="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">{todayDay.title}</h3>
-                  <p id="session-state-line" class="mt-1 text-sm text-slate-600 dark:text-slate-400">Listo para empezar</p>
                 </div>
-                <span id="training-progress-pill" class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">1 / {exerciseCount}</span>
-              </div>
-
-              <div class="mt-4 rounded-full bg-slate-100 p-1 dark:bg-slate-800">
-                <div id="exercise-progress-bar" class="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-300" style="width: 0%"></div>
-              </div>
-
-              <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                <div class="rounded-2xl bg-white p-3 dark:bg-slate-900">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ejercicio actual</p>
-                  <p id="current-exercise-label" class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">--</p>
-                </div>
-                <div class="rounded-2xl bg-white p-3 dark:bg-slate-900">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Estado</p>
-                  <p id="session-state" class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">Listo para empezar</p>
-                </div>
-                <div class="rounded-2xl bg-white p-3 dark:bg-slate-900">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Descanso plan</p>
-                  <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">{todayDay.exercises[0]?.rest_seconds ? `${todayDay.exercises[0].rest_seconds}s` : "libre"}</p>
-                </div>
-              </div>
-
-              <div class="mt-4 rounded-2xl bg-white p-4 dark:bg-slate-900">
-                <p class="text-sm text-slate-600 dark:text-slate-400">El plan asignado aparece en la tarjeta activa. Cuando pulses <span class="font-semibold text-slate-900 dark:text-slate-100">Ya cumplí</span>, el descanso comenzará abajo y pasarás al siguiente ejercicio.</p>
-              </div>
-            </div>
-
-            <div id="next-up-panel" class="rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40 sm:p-5">
-              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Siguientes</p>
-              <div id="next-up-list" class="mt-3 space-y-3"></div>
+              ))}
             </div>
           </div>
 
-          <div class="mx-auto flex w-full max-w-md flex-col items-center rounded-[2rem] border border-emerald-200 bg-white p-6 text-center shadow-lg shadow-emerald-500/10 dark:border-emerald-900/40 dark:bg-slate-950/40">
-            <div class="flex h-36 w-36 items-center justify-center rounded-full border-[10px] border-emerald-200 bg-gradient-to-br from-emerald-500 to-teal-400 text-5xl font-black tracking-tight text-slate-950 shadow-inner dark:border-emerald-900/50">
-              <span id="rest-timer" class="leading-none">00:00</span>
+          {todayDay.notes && (
+            <div class="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+              <p class="text-xs font-semibold text-amber-400">Nota del entrenador</p>
+              <p class="mt-1 text-sm text-amber-200/80">{todayDay.notes}</p>
             </div>
-            <p class="mt-4 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400">Cronómetro entre series</p>
-            <p id="timer-helper" class="mt-2 text-sm text-slate-600 dark:text-slate-400">Se activará al marcar un ejercicio como cumplido.</p>
-            <div class="mt-4 flex items-center justify-center gap-2">
-              <button type="button" data-adjust-rest="-15" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-                -15s
-              </button>
-              <button type="button" data-adjust-rest="15" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-                +15s
-              </button>
+          )}
+
+          {sessionHistory.length > 0 && (
+            <div class="mt-5">
+              <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Última sesión</p>
+              <div class="mt-2 flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
+                <p class="text-sm text-slate-300">
+                  {new Date(String(sessionHistory[0].started_at ?? "")).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                </p>
+                <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
+                  {sessionHistory[0].completed_total}/{sessionHistory[0].exercises_total} ej.
+                </span>
+              </div>
             </div>
+          )}
+        </div>
+
+        <!-- Start CTA -->
+        <div class="mt-8 pb-2">
+          <button id="start-training" type="button"
+            class="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 py-5 text-lg font-black text-slate-950 shadow-2xl shadow-emerald-500/30 transition active:scale-[0.98]">
+            Empezar entrenamiento
+          </button>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════ -->
+      <!-- PHASE 1 — ACTIVE TRAINING                         -->
+      <!-- ══════════════════════════════════════════════════ -->
+      <div id="phase-training" class="hidden flex-col min-h-[calc(100svh-4rem)] mx-auto max-w-lg">
+
+        <!-- Top bar -->
+        <div class="flex items-center gap-3 px-5 pt-5 pb-4">
+          <button type="button" id="btn-back-intro"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <!-- Progress segments -->
+          <div class="flex flex-1 gap-1">
+            {todayDay.exercises.map((_: any, i: number) => (
+              <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15" data-progress-seg={i}>
+                <div class="h-full w-0 rounded-full bg-emerald-400 transition-all duration-500"></div>
+              </div>
+            ))}
           </div>
+          <span id="exercise-counter" class="shrink-0 text-sm font-bold text-slate-400">1/{exerciseCount}</span>
+        </div>
 
-          <div id="exercise-steps" class="space-y-4">
-            {todayDay.exercises.map((exercise: any, index: number) => (
-              (() => {
-                const lastEntry = recentExerciseMap[exercise.id];
-                const lastWeight = lastEntry?.weight_kg ?? "";
-                const lastReps = lastEntry?.reps_done ?? "";
-                const lastRest = lastEntry?.rest_seconds ?? exercise.rest_seconds ?? "";
-
-                return (
+        <!-- Exercise cards -->
+        <div id="exercise-stage" class="flex-1 overflow-y-auto px-5 pb-8">
+          {todayDay.exercises.map((exercise: any, index: number) => {
+            const lastEntry = recentExerciseMap[exercise.id];
+            const lastWeight = lastEntry?.weight_kg ?? "";
+            const lastReps = lastEntry?.reps_done ?? "";
+            const lib = getExerciseLibraryItem(exercise.exercise_key ?? exercise.name);
+            return (
               <article
                 data-workout-card
                 data-exercise-id={exercise.id}
@@ -240,807 +233,857 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
                 data-exercise-reps={exercise.reps ?? ""}
                 data-planned-sets={exercise.sets ?? 1}
                 data-series-completed="0"
-                class="hidden rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40"
+                data-exercise-notes={exercise.notes ?? ""}
+                data-lib-category={lib?.category ?? ""}
+                data-lib-muscle={lib?.muscle ?? ""}
+                data-lib-equipment={lib?.equipment ?? ""}
+                data-lib-accent={lib?.accent ?? "#10b981"}
+                data-has-lib={lib ? "1" : "0"}
+                class="hidden space-y-5"
               >
-                <div class="flex flex-col gap-3 border-b border-slate-200 pb-4 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ejercicio {index + 1}</p>
-                    <h4 class="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{exercise.name}</h4>
+                {/* Pre-rendered avatar — hidden, cloned into drawer on demand */}
+                {lib && (
+                  <div id={`ex-avatar-${exercise.id}`} class="hidden" aria-hidden="true">
+                    <ExerciseMotionAvatar exercise={lib} />
                   </div>
+                )}
 
-                  <div class="flex flex-wrap items-center gap-2 sm:justify-end">
-                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">Asignado por rutina</span>
-                    <button type="button" data-complete-exercise class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">Cumplí serie</button>
+                <!-- Header -->
+                <div class="flex items-start justify-between gap-3 pt-1">
+                  <div class="flex-1">
+                    <p class="text-xs font-semibold uppercase tracking-widest text-emerald-400">
+                      Ejercicio {index + 1} de {exerciseCount}
+                    </p>
+                    <h2 class="mt-1 text-3xl font-black leading-tight text-white">{exercise.name}</h2>
+                  </div>
+                  {(lib || exercise.notes) && (
+                    <button type="button" data-info-btn
+                      class="mt-2 flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/20 transition">
+                      <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                      </svg>
+                      Info
+                    </button>
+                  )}
+                </div>
+
+                <!-- Plan pills -->
+                <div class="flex flex-wrap gap-2">
+                  <span class="rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold text-white">{exercise.sets ?? "?"} series</span>
+                  <span class="rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold text-white">{exercise.reps ?? "?"} reps</span>
+                  {exercise.rest_seconds ? (
+                    <span class="rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold text-white">{exercise.rest_seconds}s descanso</span>
+                  ) : null}
+                </div>
+
+                <!-- Previous record -->
+                {lastEntry && (
+                  <p class="text-xs text-slate-500">
+                    Última sesión: <span class="font-medium text-slate-400">{lastWeight || "—"} kg · {lastReps || "—"} reps</span>
+                  </p>
+                )}
+
+                <!-- Series ring -->
+                <div class="flex items-center justify-center py-2">
+                  <div class="relative flex h-32 w-32 items-center justify-center">
+                    <svg class="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="6"/>
+                      <circle
+                        data-series-ring
+                        cx="50" cy="50" r="44"
+                        fill="none" stroke="#10b981" stroke-width="6"
+                        stroke-linecap="round"
+                        stroke-dasharray="276.46"
+                        stroke-dashoffset="276.46"
+                        class="transition-all duration-500"
+                      />
+                    </svg>
+                    <div class="text-center">
+                      <p data-series-progress class="text-3xl font-black text-white tabular-nums">0/{exercise.sets ?? 1}</p>
+                      <p data-series-state class="mt-0.5 text-xs text-slate-400">Serie 1</p>
+                    </div>
                   </div>
                 </div>
 
-                <div class="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-                  <section class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Plan del entrenador</p>
-                    <div class="mt-3 grid gap-2 text-sm text-slate-700 dark:text-slate-200">
-                      <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-950/50">
-                        <span class="text-slate-500 dark:text-slate-400">Series</span>
-                        <span class="font-bold">{exercise.sets ?? "libre"}</span>
-                      </div>
-                      <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-950/50">
-                        <span class="text-slate-500 dark:text-slate-400">Reps</span>
-                        <span class="font-bold">{exercise.reps ?? "libre"}</span>
-                      </div>
-                      <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-950/50">
-                        <span class="text-slate-500 dark:text-slate-400">Descanso</span>
-                        <span class="font-bold">{exercise.rest_seconds ? `${exercise.rest_seconds}s` : "libre"}</span>
-                      </div>
-                    </div>
-                    {lastEntry && (
-                      <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                        Último registro: {lastWeight || "-"} kg · {lastReps || "-"} · descanso {lastRest || "-"}s
-                      </p>
-                    )}
-                  </section>
-
-                  <section class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Tu registro</p>
-                    <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      <label class="block space-y-2">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Peso usado (kg)</span>
-                        <input type="text" inputmode="decimal" data-field="weight_kg" value={lastWeight} placeholder="Ej: 42.5" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10" />
-                        {lastWeight && <p class="text-xs text-slate-500 dark:text-slate-400">Último peso: {lastWeight} kg</p>}
-                      </label>
-
-                      <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Series</p>
-                        <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100"><span data-series-progress>0/0</span></p>
-                        <p data-series-state class="mt-1 text-xs text-slate-500 dark:text-slate-400">Serie 1 de 1</p>
-                      </div>
-
-                      <label class="block space-y-2">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Reps / tiempo</span>
-                        <input type="text" data-field="reps_done" value={exercise.reps ?? ""} placeholder={exercise.reps ?? "Ej: 10 reps / 30s"} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10" />
-                        {lastReps && <p class="text-xs text-slate-500 dark:text-slate-400">Últimas reps: {lastReps}</p>}
-                      </label>
-
-                      <label class="block space-y-2">
-                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Descanso real (s)</span>
-                        <input type="number" min="0" max="9999" data-field="rest_seconds" value={exercise.rest_seconds ?? ""} placeholder={exercise.rest_seconds ?? 0} class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10" />
-                        {lastRest !== "" && <p class="text-xs text-slate-500 dark:text-slate-400">Descanso anterior: {lastRest}s</p>}
-                      </label>
-                    </div>
-                  </section>
+                <!-- Weight input -->
+                <div>
+                  <label class="block">
+                    <span class="text-xs font-semibold uppercase tracking-widest text-slate-400">Peso (kg)</span>
+                    <input
+                      type="text"
+                      inputmode="decimal"
+                      data-field="weight_kg"
+                      value={lastWeight}
+                      placeholder={lastWeight || "0"}
+                      class="mt-2 w-full rounded-2xl bg-white/10 px-4 py-4 text-center text-3xl font-black text-white placeholder-white/20 transition focus:bg-white/15 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </label>
                 </div>
 
-                <label class="mt-3 block space-y-2">
-                  <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Notas</span>
-                  <textarea rows="2" data-field="notes" placeholder="Cómo se sintió, técnica, carga, etc." class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10"></textarea>
-                </label>
+                <!-- Reps input -->
+                <div>
+                  <label class="block">
+                    <span class="text-xs font-semibold uppercase tracking-widest text-slate-400">Reps / tiempo</span>
+                    <input
+                      type="text"
+                      data-field="reps_done"
+                      value={exercise.reps ?? ""}
+                      placeholder={exercise.reps ?? "—"}
+                      class="mt-2 w-full rounded-2xl bg-white/10 px-4 py-3 text-center text-xl font-bold text-white placeholder-white/20 transition focus:bg-white/15 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </label>
+                </div>
+
+                <!-- Hidden fields -->
+                <input type="hidden" data-field="rest_seconds" value={exercise.rest_seconds ?? ""} />
+                <textarea rows="1" data-field="notes" class="sr-only" aria-hidden="true"></textarea>
+
+                <!-- CTA -->
+                <button
+                  type="button"
+                  data-complete-exercise
+                  class="w-full rounded-2xl bg-emerald-500 py-5 text-lg font-black text-slate-950 shadow-xl shadow-emerald-500/25 transition active:scale-[0.97]"
+                >
+                  ✓  Serie cumplida
+                </button>
               </article>
-                );
-              })()
-            ))}
-          </div>
-
-          <div class="grid gap-4 lg:grid-cols-[1fr_auto]">
-            <label class="block space-y-2">
-              <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Notas de la sesión</span>
-              <textarea name="session_notes" rows="4" placeholder="Sensaciones generales, molestias, observaciones..." class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-500/10"></textarea>
-            </label>
-
-            <div class="flex flex-col justify-end gap-3">
-              <div id="training-message" class="hidden rounded-2xl px-4 py-3 text-sm font-medium"></div>
-              <button id="training-submit" type="submit" class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60">
-                Guardar sesión
-              </button>
-            </div>
-          </div>
-        </form>
-
-        <section id="recent-sessions" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100">Sesiones recientes</h3>
-              <p class="text-sm text-slate-600 dark:text-slate-400">Últimos entrenamientos guardados para esta rutina.</p>
-            </div>
-          </div>
-
-          {sessionHistory.length > 0 ? (
-            <div class="mt-4 grid gap-3">
-              {sessionHistory.map((session) => (
-                <article class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
-                  <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p class="text-sm font-bold text-slate-900 dark:text-slate-100">{session.started_at ? new Date(session.started_at).toLocaleString("es-ES") : "Sin fecha"}</p>
-                      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{session.completed_total}/{session.exercises_total} ejercicios completados</p>
-                    </div>
-                    {session.finished_at && <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">Terminada</span>}
-                  </div>
-                  {session.notes && <p class="mt-3 text-sm text-slate-600 dark:text-slate-400">{session.notes}</p>}
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-400">Todavía no hay sesiones guardadas.</div>
-          )}
-        </section>
+            );
+          })}
+        </div>
       </div>
-    )}
-  </div>
+
+      <!-- ══════════════════════════════════════════════════ -->
+      <!-- REST TIMER OVERLAY (z-50)                         -->
+      <!-- ══════════════════════════════════════════════════ -->
+      <div id="rest-overlay" class="hidden fixed inset-0 z-50 flex-col items-center justify-center bg-slate-950/97 px-6 text-center backdrop-blur-sm">
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Recuperando</p>
+
+        <div class="relative mt-6 flex h-56 w-56 items-center justify-center">
+          <svg class="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="8"/>
+            <circle
+              id="rest-ring"
+              cx="100" cy="100" r="88"
+              fill="none" stroke="#10b981" stroke-width="8"
+              stroke-linecap="round"
+              stroke-dasharray="552.92"
+              stroke-dashoffset="0"
+            />
+          </svg>
+          <p id="rest-timer" class="text-7xl font-black text-white tabular-nums leading-none">00:00</p>
+        </div>
+
+        <p class="mt-6 text-sm text-slate-400">
+          Siguiente: <span id="rest-next-name" class="font-bold text-white">—</span>
+        </p>
+
+        <div class="mt-5 flex items-center gap-3">
+          <button type="button" data-adjust-rest="-15"
+            class="rounded-full bg-white/10 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/20">
+            −15s
+          </button>
+          <button type="button" data-adjust-rest="15"
+            class="rounded-full bg-white/10 px-6 py-3 text-sm font-bold text-white transition hover:bg-white/20">
+            +15s
+          </button>
+        </div>
+
+        <button type="button" id="skip-rest"
+          class="mt-6 text-sm text-slate-500 underline underline-offset-2 transition hover:text-slate-300">
+          Saltar descanso
+        </button>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════ -->
+      <!-- PHASE 2 — COMPLETION CELEBRATION (z-40)           -->
+      <!-- ══════════════════════════════════════════════════ -->
+      <div id="phase-complete" class="hidden fixed inset-0 z-40 flex-col items-center justify-center bg-slate-950 px-6 text-center">
+        <div id="confetti-container" class="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true"></div>
+
+        <div id="trophy-el" class="select-none text-8xl" style="animation: trophyIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both">🏆</div>
+        <h2 class="mt-5 text-3xl font-black text-white">¡Rutina completada!</h2>
+        <p class="mt-2 text-slate-400">Diste todo hoy. Cada serie suma.</p>
+
+        <div class="mt-8 grid w-full max-w-xs grid-cols-2 gap-3">
+          <div class="rounded-2xl bg-white/5 p-4 text-center">
+            <p class="text-3xl font-black text-emerald-400">{exerciseCount}</p>
+            <p class="mt-1 text-xs text-slate-400">ejercicios</p>
+          </div>
+          <div class="rounded-2xl bg-white/5 p-4 text-center">
+            <p id="stat-sets" class="text-3xl font-black text-emerald-400">—</p>
+            <p class="mt-1 text-xs text-slate-400">series hechas</p>
+          </div>
+        </div>
+
+        <div id="training-message" class="hidden mt-4 w-full max-w-xs rounded-2xl px-4 py-3 text-sm font-medium"></div>
+
+        <button id="training-submit" type="button"
+          class="mt-6 w-full max-w-xs rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 py-5 text-base font-black text-slate-950 shadow-2xl shadow-emerald-500/30 transition active:scale-[0.97]">
+          Guardar sesión
+        </button>
+
+        <button type="button" id="toggle-notes" class="mt-4 text-sm text-slate-500 transition hover:text-slate-300">
+          + Agregar notas de sesión
+        </button>
+        <textarea
+          id="session-notes-input"
+          rows="3"
+          placeholder="Observaciones generales..."
+          class="hidden mt-3 w-full max-w-xs resize-none rounded-2xl bg-white/10 px-4 py-3 text-sm text-white placeholder-white/30 focus:bg-white/15 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        ></textarea>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════ -->
+      <!-- INFO DRAWER (z-50)                                -->
+      <!-- ══════════════════════════════════════════════════ -->
+      <div id="drawer-backdrop" class="hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"></div>
+      <div id="info-drawer" class="hidden fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-lg rounded-t-3xl bg-slate-900 px-6 pt-4 pb-10 shadow-2xl">
+        <div class="mb-4 flex justify-center">
+          <div class="h-1 w-10 rounded-full bg-white/20"></div>
+        </div>
+        <div class="flex items-start justify-between gap-3">
+          <h3 id="drawer-exercise-name" class="text-xl font-black text-white">Ejercicio</h3>
+          <button type="button" id="close-drawer"
+            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-lg text-white transition hover:bg-white/20">
+            ×
+          </button>
+        </div>
+        <div id="drawer-content" class="mt-4 space-y-2 text-sm leading-relaxed text-slate-300"></div>
+      </div>
+
+    </div>
+  )}
+
+  <style>
+    @keyframes trophyIn {
+      from { transform: scale(0) rotate(-20deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+    }
+    @keyframes confettiFall {
+      0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+    @keyframes seriesBurst {
+      0%   { transform: scale(1); }
+      35%  { transform: scale(1.07); }
+      100% { transform: scale(1); }
+    }
+    .series-burst { animation: seriesBurst 0.35s ease-out; }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    #info-drawer.open { animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) both; }
+    #phase-training.flex  { display: flex; flex-direction: column; }
+    #phase-complete.flex  { display: flex; flex-direction: column; }
+    #rest-overlay.flex    { display: flex; flex-direction: column; }
+  </style>
 </AppLayout>
 
 <script define:vars={{ clientId, sessionStartedAt, draftKey }}>
-  const form = document.getElementById("training-form");
-  const startButton = document.getElementById("start-training");
-  const introPanel = document.getElementById("training-intro");
-  const recentSessions = document.getElementById("recent-sessions");
-  const nextUpPanel = document.getElementById("next-up-panel");
-  const exerciseCards = Array.from(document.querySelectorAll("[data-workout-card]"));
-  const adjustRestButtons = Array.from(document.querySelectorAll("[data-adjust-rest]"));
-  const messageBox = document.getElementById("training-message");
-  const submitButton = document.getElementById("training-submit");
-  const restTimer = document.getElementById("rest-timer");
-  const timerHelper = document.getElementById("timer-helper");
-  const sessionState = document.getElementById("session-state");
-  const sessionStateLine = document.getElementById("session-state-line");
-  const progressPill = document.getElementById("training-progress-pill");
-  const exerciseProgressBar = document.getElementById("exercise-progress-bar");
-  const sessionProgressBar = document.getElementById("session-progress-bar");
-  const sessionProgressLabel = document.getElementById("session-progress-label");
-  const currentExerciseLabel = document.getElementById("current-exercise-label");
-  const nextUpList = document.getElementById("next-up-list");
-  const trainingTitle = document.getElementById("training-title");
-  const completionPanel = document.getElementById("training-complete-panel");
-  const submitHelper = document.getElementById("submit-helper");
+  // ─── Elements ────────────────────────────────────────────────────
+  const phaseIntro    = document.getElementById("phase-intro");
+  const phaseTraining = document.getElementById("phase-training");
+  const phaseComplete = document.getElementById("phase-complete");
+  const restOverlay   = document.getElementById("rest-overlay");
+  const infoDrawer    = document.getElementById("info-drawer");
+  const drawerBackdrop = document.getElementById("drawer-backdrop");
 
-  let activeIndex = -1;
-  let restInterval = null;
-  let restEndsAt = null;
-  let restLastDuration = 0;
-  let audioContext = null;
-  let draftSaveTimer = null;
-  let carryWeightValue = "";
+  const startButton     = document.getElementById("start-training");
+  const btnBackIntro    = document.getElementById("btn-back-intro");
+  const skipRestButton  = document.getElementById("skip-rest");
+  const submitButton    = document.getElementById("training-submit");
+  const messageBox      = document.getElementById("training-message");
+  const restTimerEl     = document.getElementById("rest-timer");
+  const restRing        = document.getElementById("rest-ring");
+  const exerciseCounter = document.getElementById("exercise-counter");
+  const restNextName    = document.getElementById("rest-next-name");
+  const toggleNotesBtn  = document.getElementById("toggle-notes");
+  const sessionNotesInput = document.getElementById("session-notes-input");
+  const statSets        = document.getElementById("stat-sets");
+  const confettiContainer = document.getElementById("confetti-container");
 
+  const exerciseCards      = Array.from(document.querySelectorAll("[data-workout-card]"));
+  const progressSegments   = Array.from(document.querySelectorAll("[data-progress-seg]"));
+  const adjustRestButtons  = Array.from(document.querySelectorAll("[data-adjust-rest]"));
+
+  // ─── State ───────────────────────────────────────────────────────
+  let activeIndex        = -1;
+  let restInterval       = null;
+  let restEndsAt         = null;
+  let restLastDuration   = 0;
+  let restTotalDuration  = 0;
+  let currentRestOnFinish = null;
+  let audioContext       = null;
+  let draftSaveTimer     = null;
+  let carryWeightValue   = "";
+
+  // ─── Phase Management ────────────────────────────────────────────
+  function showPhase(phase) {
+    [phaseIntro, phaseTraining].forEach(el => el?.classList.add("hidden"));
+    [phaseTraining, phaseComplete].forEach(el => el?.classList.remove("flex"));
+
+    if (phase === "intro") {
+      phaseIntro?.classList.remove("hidden");
+    } else if (phase === "training") {
+      phaseTraining?.classList.remove("hidden");
+      phaseTraining?.classList.add("flex");
+    } else if (phase === "complete") {
+      phaseComplete?.classList.remove("hidden");
+      phaseComplete?.classList.add("flex");
+      launchConfetti();
+      updateCompletionStats();
+      playCompletionSound();
+    }
+  }
+
+  // ─── Progress Segments ───────────────────────────────────────────
+  function updateProgressSegments() {
+    progressSegments.forEach((seg, i) => {
+      const bar = seg.querySelector("div");
+      if (!bar) return;
+      if (i < activeIndex)       bar.style.width = "100%";
+      else if (i === activeIndex) bar.style.width = "50%";
+      else                        bar.style.width = "0%";
+    });
+    if (exerciseCounter) exerciseCounter.textContent = `${activeIndex + 1}/${exerciseCards.length}`;
+  }
+
+  // ─── SVG Rings ───────────────────────────────────────────────────
+  const SERIES_CIRC = 276.46;  // 2π × 44
+  const REST_CIRC   = 552.92;  // 2π × 88
+
+  function updateSeriesRing(card) {
+    const ring = card.querySelector("[data-series-ring]");
+    if (!ring) return;
+    const completed = getCompletedSeries(card);
+    const total     = getPlannedSets(card);
+    const fraction  = total > 0 ? completed / total : 0;
+    ring.style.strokeDashoffset = String(SERIES_CIRC * (1 - fraction));
+  }
+
+  function updateRestRing(remaining, total) {
+    if (!restRing) return;
+    const fraction = total > 0 ? remaining / total : 0;
+    restRing.style.strokeDashoffset = String(REST_CIRC * (1 - fraction));
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────────
   function getPlannedSets(card) {
-    const planned = Number(card.dataset.plannedSets || 1);
-    return Number.isFinite(planned) && planned > 0 ? planned : 1;
+    const n = Number(card.dataset.plannedSets || 1);
+    return Number.isFinite(n) && n > 0 ? n : 1;
   }
-
   function getCompletedSeries(card) {
-    const completed = Number(card.dataset.seriesCompleted || 0);
-    return Number.isFinite(completed) && completed >= 0 ? completed : 0;
+    const n = Number(card.dataset.seriesCompleted || 0);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
   }
-
-  function updateSessionProgressUI() {
-    const total = exerciseCards.length || 1;
-    const completedExercises = exerciseCards.filter((card) => card.dataset.completed === "true").length;
-    const completedSeries = exerciseCards.reduce((sum, card) => sum + getCompletedSeries(card), 0);
-    const plannedSeries = exerciseCards.reduce((sum, card) => sum + getPlannedSets(card), 0) || 1;
-    const exercisePercent = Math.round((completedExercises / total) * 100);
-    const sessionPercent = Math.round((completedSeries / plannedSeries) * 100);
-
-    if (exerciseProgressBar) {
-      exerciseProgressBar.style.width = `${exercisePercent}%`;
-    }
-
-    if (sessionProgressBar) {
-      sessionProgressBar.style.width = `${sessionPercent}%`;
-    }
-
-    if (sessionProgressLabel) {
-      sessionProgressLabel.textContent = `${sessionPercent}%`;
-    }
-  }
-
-  function updateSessionStateLine(text) {
-    if (sessionStateLine) sessionStateLine.textContent = text;
-  }
-
-  function isWorkoutComplete() {
-    return exerciseCards.length > 0 && exerciseCards.every((card) => card.dataset.completed === "true");
-  }
-
-  function updateSubmitState() {
-    if (!(submitButton instanceof HTMLButtonElement)) return;
-
-    const completed = isWorkoutComplete();
-
-    submitButton.disabled = !completed;
-    submitButton.className = completed
-      ? "inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:text-slate-950"
-      : "inline-flex items-center justify-center rounded-xl bg-slate-300 px-5 py-3 text-sm font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200 disabled:cursor-not-allowed disabled:opacity-60";
-
-    if (submitHelper) {
-      submitHelper.textContent = completed
-        ? "Todo listo. Guarda la sesión para registrar el entrenamiento."
-        : "Se habilita al completar la rutina.";
-    }
-
-    if (completionPanel) {
-      completionPanel.classList.toggle("hidden", !completed);
-    }
-  }
-
-  function saveDraft() {
-    try {
-      const payload = {
-        activeIndex,
-        sessionNotes: String(form?.elements["session_notes"]?.value ?? ""),
-        exercises: exerciseCards.map((card) => ({
-          exerciseId: Number(card.dataset.exerciseId || 0),
-          seriesCompleted: getCompletedSeries(card),
-          completed: card.dataset.completed === "true",
-          weight_kg: String(card.querySelector('[data-field="weight_kg"]')?.value ?? ""),
-          reps_done: String(card.querySelector('[data-field="reps_done"]')?.value ?? ""),
-          rest_seconds: String(card.querySelector('[data-field="rest_seconds"]')?.value ?? ""),
-          notes: String(card.querySelector('[data-field="notes"]')?.value ?? ""),
-        })),
-      };
-
-      localStorage.setItem(draftKey, JSON.stringify(payload));
-    } catch {
-      /* ignore draft errors */
-    }
-  }
-
   function getWeightInput(card) {
     return card.querySelector('[data-field="weight_kg"]');
   }
-
   function rememberWeightFromCard(card) {
     const input = getWeightInput(card);
     if (input instanceof HTMLInputElement) {
-      const value = String(input.value ?? "").trim();
-      if (value) carryWeightValue = value;
+      const v = String(input.value ?? "").trim();
+      if (v) carryWeightValue = v;
     }
   }
-
   function applyCarryDefaults(card) {
     const input = getWeightInput(card);
     if (!(input instanceof HTMLInputElement)) return;
-
-    const currentValue = String(input.value ?? "").trim();
-    if (currentValue) {
-      carryWeightValue = currentValue;
-    } else if (carryWeightValue) {
-      input.value = carryWeightValue;
-    }
+    const cur = String(input.value ?? "").trim();
+    if (cur)             carryWeightValue = cur;
+    else if (carryWeightValue) input.value = carryWeightValue;
+  }
+  function formatSeconds(s) {
+    const safe = Math.max(0, Math.floor(s));
+    return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
+  }
+  function parseDecimal(v) {
+    if (v == null) return null;
+    const raw = String(v).trim();
+    if (!raw) return null;
+    const n = Number(raw.replace(",", "."));
+    return Number.isNaN(n) ? null : n;
+  }
+  function parseInteger(v) {
+    if (v == null) return null;
+    const raw = String(v).trim();
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isInteger(n) ? n : null;
   }
 
-  function queueDraftSave() {
-    if (draftSaveTimer) window.clearTimeout(draftSaveTimer);
-    draftSaveTimer = window.setTimeout(saveDraft, 300);
-  }
-
-  function restoreDraft() {
-    try {
-      const raw = localStorage.getItem(draftKey);
-      if (!raw) return;
-
-      const draft = JSON.parse(raw);
-      if (!draft || typeof draft !== "object") return;
-
-      const exerciseDrafts = Array.isArray(draft.exercises) ? draft.exercises : [];
-
-      exerciseCards.forEach((card) => {
-        const exerciseId = Number(card.dataset.exerciseId || 0);
-        const saved = exerciseDrafts.find((item) => Number(item.exerciseId || 0) === exerciseId);
-        if (!saved) return;
-
-        const seriesCompleted = Number(saved.seriesCompleted ?? 0);
-        if (Number.isFinite(seriesCompleted) && seriesCompleted >= 0) {
-          card.dataset.seriesCompleted = String(seriesCompleted);
-        }
-
-        if (saved.completed) {
-          card.dataset.completed = "true";
-        }
-
-        const weightInput = card.querySelector('[data-field="weight_kg"]');
-        if (weightInput instanceof HTMLInputElement && saved.weight_kg !== undefined) {
-          weightInput.value = String(saved.weight_kg ?? "");
-        }
-
-        const repsInput = card.querySelector('[data-field="reps_done"]');
-        if (repsInput instanceof HTMLInputElement && saved.reps_done !== undefined) {
-          repsInput.value = String(saved.reps_done ?? "");
-        }
-
-        const restInput = card.querySelector('[data-field="rest_seconds"]');
-        if (restInput instanceof HTMLInputElement && saved.rest_seconds !== undefined) {
-          restInput.value = String(saved.rest_seconds ?? "");
-        }
-
-        const notesInput = card.querySelector('[data-field="notes"]');
-        if (notesInput instanceof HTMLTextAreaElement && saved.notes !== undefined) {
-          notesInput.value = String(saved.notes ?? "");
-        }
-
-        rememberWeightFromCard(card);
-        syncSeriesUI(card);
-      });
-
-      if (typeof draft.sessionNotes === "string" && form?.elements["session_notes"] instanceof HTMLTextAreaElement) {
-        form.elements["session_notes"].value = draft.sessionNotes;
-      }
-
-      if (typeof draft.activeIndex === "number" && draft.activeIndex >= 0) {
-        activeIndex = draft.activeIndex;
-      }
-    } catch {
-      /* ignore draft errors */
-    }
-  }
-
-  function clearDraft() {
-    try {
-      localStorage.removeItem(draftKey);
-    } catch {
-      /* ignore */
-    }
-  }
-
-  function getAudioContext() {
-    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextCtor) return null;
-
-    if (!audioContext) {
-      audioContext = new AudioContextCtor();
-    }
-
+  // ─── Audio / Haptic ──────────────────────────────────────────────
+  function getAudioCtx() {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return null;
+    if (!audioContext) audioContext = new Ctor();
     return audioContext;
   }
-
-  function playSeriesSound() {
-    const audioContext = getAudioContext();
-    if (!audioContext) return;
-
-    if (audioContext.state === "suspended") {
-      audioContext.resume().catch(() => undefined);
-    }
-
-    const now = audioContext.currentTime;
-    [880, 660].forEach((frequency, index) => {
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.type = "sine";
-      oscillator.frequency.value = frequency;
-      gainNode.gain.value = 0.0001;
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      const startAt = now + index * 0.12;
-      gainNode.gain.setValueAtTime(0.0001, startAt);
-      gainNode.gain.exponentialRampToValueAtTime(0.2, startAt + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.14);
-
-      oscillator.start(startAt);
-      oscillator.stop(startAt + 0.18);
+  function playTone(frequencies, ctx) {
+    const now = ctx.currentTime;
+    frequencies.forEach(([freq, delay, dur]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.value = 0.0001;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const t = now + delay;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.start(t);
+      osc.stop(t + dur + 0.05);
     });
-
-    if (navigator.vibrate) {
-      navigator.vibrate([80, 40, 80]);
-    }
+  }
+  function playSeriesSound() {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    playTone([[880, 0, 0.14], [660, 0.12, 0.14]], ctx);
+    if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+  }
+  function playCompletionSound() {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    playTone([[523, 0, 0.3], [659, 0.15, 0.3], [784, 0.3, 0.3], [1047, 0.45, 0.5]], ctx);
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]);
   }
 
+  // ─── Confetti ────────────────────────────────────────────────────
+  function launchConfetti() {
+    if (!confettiContainer) return;
+    const colors = ["#10b981","#34d399","#6ee7b7","#f59e0b","#fbbf24","#fb7185","#a78bfa","#60a5fa"];
+    for (let i = 0; i < 70; i++) {
+      const el    = document.createElement("div");
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const size  = 5 + Math.random() * 9;
+      el.style.cssText = [
+        "position:absolute",
+        `top:-20px`,
+        `left:${Math.random() * 100}%`,
+        `width:${size}px`,
+        `height:${size}px`,
+        `background:${color}`,
+        `border-radius:${Math.random() > 0.5 ? "50%" : "2px"}`,
+        `animation:confettiFall ${2 + Math.random() * 2}s ease-in ${Math.random() * 1.5}s both`,
+      ].join(";");
+      confettiContainer.appendChild(el);
+    }
+  }
+  function updateCompletionStats() {
+    if (!statSets) return;
+    statSets.textContent = String(exerciseCards.reduce((s, c) => s + getCompletedSeries(c), 0));
+  }
+
+  // ─── Series UI ───────────────────────────────────────────────────
   function syncSeriesUI(card) {
     const progress = card.querySelector("[data-series-progress]");
-    const state = card.querySelector("[data-series-state]");
-    const button = card.querySelector('[data-complete-exercise]');
-    const completed = getCompletedSeries(card);
-    const total = getPlannedSets(card);
+    const state    = card.querySelector("[data-series-state]");
+    const button   = card.querySelector("[data-complete-exercise]");
+    const done     = getCompletedSeries(card);
+    const total    = getPlannedSets(card);
 
-    if (progress) progress.textContent = `${Math.min(completed, total)}/${total}`;
-    if (state) state.textContent = completed < total ? `Serie ${completed + 1} de ${total}` : "Ejercicio completo";
+    if (progress) progress.textContent = `${Math.min(done, total)}/${total}`;
+    if (state)    state.textContent    = done < total ? `Serie ${done + 1}` : "¡Listo!";
     if (button instanceof HTMLButtonElement) {
-      button.textContent = completed < total ? "Completar serie" : "Ejercicio listo";
-      button.disabled = false;
+      button.textContent = done < total ? "✓  Serie cumplida" : "✓  Ejercicio listo";
+      button.disabled    = false;
     }
+    updateSeriesRing(card);
   }
 
-  function showMessage(text, type = "error") {
-    if (!messageBox) return;
-
-    messageBox.textContent = text;
-    messageBox.classList.remove("hidden");
-    messageBox.className =
-      "rounded-2xl px-4 py-3 text-sm font-medium " +
-      (type === "success"
-        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
-        : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300");
-  }
-
-  function parseDecimal(value) {
-    if (value === null || value === undefined) return null;
-    const raw = String(value).trim();
-    if (!raw) return null;
-    const parsed = Number(raw.replace(",", "."));
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-
-  function parseInteger(value) {
-    if (value === null || value === undefined) return null;
-    const raw = String(value).trim();
-    if (!raw) return null;
-    const parsed = Number(raw);
-    return Number.isInteger(parsed) ? parsed : null;
-  }
-
-  function formatSeconds(totalSeconds) {
-    const safe = Math.max(0, Math.floor(totalSeconds));
-    const minutes = String(Math.floor(safe / 60)).padStart(2, "0");
-    const seconds = String(safe % 60).padStart(2, "0");
-    return `${minutes}:${seconds}`;
-  }
-
+  // ─── Rest Timer ──────────────────────────────────────────────────
   function clearRestTimer() {
-    if (restInterval) {
-      window.clearInterval(restInterval);
-      restInterval = null;
-    }
+    if (restInterval) { window.clearInterval(restInterval); restInterval = null; }
     restEndsAt = null;
-    restTimer?.classList.remove("animate-pulse");
-    if (timerHelper) timerHelper.textContent = "Se activará al completar una serie.";
+    currentRestOnFinish = null;
   }
-
-  function getRemainingRestSeconds() {
-    if (!restEndsAt) return 0;
-    return Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
-  }
-
   function renderRestTime(seconds) {
-    if (!restTimer) return;
-    restTimer.textContent = formatSeconds(seconds);
+    if (restTimerEl) restTimerEl.textContent = formatSeconds(seconds);
+    updateRestRing(seconds, restTotalDuration);
   }
-
-  function adjustRest(deltaSeconds) {
-    if (deltaSeconds === 0) return;
-
+  function showRestOverlay(nextName) {
+    if (restNextName) restNextName.textContent = nextName || "Último ejercicio";
+    restOverlay?.classList.remove("hidden");
+    restOverlay?.classList.add("flex");
+  }
+  function hideRestOverlay() {
+    restOverlay?.classList.remove("flex");
+    restOverlay?.classList.add("hidden");
+  }
+  function adjustRest(delta) {
+    if (delta === 0) return;
     if (!restEndsAt) {
-      restLastDuration = Math.max(0, restLastDuration + deltaSeconds);
+      restLastDuration  = Math.max(0, restLastDuration + delta);
+      restTotalDuration = restLastDuration;
       renderRestTime(restLastDuration);
-      if (timerHelper) {
-        timerHelper.textContent = `Descanso preparado: ${formatSeconds(restLastDuration)}.`;
-      }
       return;
     }
-
-    const updatedRemaining = Math.max(0, getRemainingRestSeconds() + deltaSeconds);
-    restEndsAt = Date.now() + updatedRemaining * 1000;
-    renderRestTime(updatedRemaining);
-
-    if (timerHelper) {
-      timerHelper.textContent = updatedRemaining > 0
-        ? `Descanso ajustado a ${formatSeconds(updatedRemaining)}.`
-        : "Descanso terminado.";
-    }
-
-    if (updatedRemaining === 0) {
+    const updated = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000) + delta);
+    restEndsAt = Date.now() + updated * 1000;
+    renderRestTime(updated);
+    if (updated === 0) {
       clearRestTimer();
-      window.setTimeout(() => advanceToNext(), 150);
+      hideRestOverlay();
+      const fn = currentRestOnFinish;
+      currentRestOnFinish = null;
+      if (typeof fn === "function") fn();
     }
   }
-
-  function setSessionState(text) {
-    if (sessionState) sessionState.textContent = text;
-    updateSessionStateLine(text);
-  }
-
-  function setCurrentExerciseLabel(text) {
-    if (currentExerciseLabel) currentExerciseLabel.textContent = text;
-  }
-
-  function updateProgress() {
-    const completedCount = exerciseCards.filter((card) => card.dataset.completed === "true").length;
-    const total = exerciseCards.length;
-    if (progressPill) progressPill.textContent = `${Math.max(1, activeIndex + 1)} / ${total}`;
-    if (trainingTitle) trainingTitle.textContent = activeIndex >= 0 ? `Paso ${activeIndex + 1} de ${total}` : trainingTitle.textContent || "Entrenamiento";
-    if (sessionState) sessionState.textContent = completedCount >= total ? "Todo listo para cerrar la sesión" : activeIndex >= 0 ? "En curso" : "Preparado para arrancar";
-    updateSessionProgressUI();
-    updateSubmitState();
-  }
-
-  function updateNextUp() {
-    if (!nextUpList) return;
-
-    const nextCards = exerciseCards.slice(activeIndex + 1, activeIndex + 3);
-    nextUpList.innerHTML = nextCards.length
-      ? nextCards
-          .map((card, offset) => {
-            const name = card.dataset.exerciseName ?? "Ejercicio";
-            const sets = card.dataset.exerciseSets || "libre";
-            const reps = card.dataset.exerciseReps || "libre";
-            const rest = Number(card.dataset.restSeconds ?? 0);
-            return `
-              <div class="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">${offset === 0 ? "Siguiente" : "Después"}</p>
-                <p class="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">${name}</p>
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">${sets} series · ${reps} reps · ${rest ? `${rest}s descanso` : "sin descanso"}</p>
-              </div>`;
-          })
-          .join("")
-      : '<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">No hay más ejercicios en cola.</div>';
-  }
-
-  function showCard(index) {
+  function startRest(restSeconds, nextName, onFinish) {
     clearRestTimer();
-    activeIndex = index;
-
-    exerciseCards.forEach((card, cardIndex) => {
-      const visible = cardIndex === index;
-      card.classList.toggle("hidden", !visible);
-    });
-
-    const currentCard = exerciseCards[index];
-    if (!currentCard) {
-      updateProgress();
-      updateNextUp();
-      return;
-    }
-
-    const name = currentCard.dataset.exerciseName ?? "Ejercicio";
-    const sets = currentCard.dataset.exerciseSets || "libre";
-    const reps = currentCard.dataset.exerciseReps || "libre";
-    const restSeconds = Number(currentCard.dataset.restSeconds ?? 0);
-
-    applyCarryDefaults(currentCard);
-    setCurrentExerciseLabel(name);
-    syncSeriesUI(currentCard);
-    updateProgress();
-    updateNextUp();
-
-    if (progressPill) progressPill.textContent = `${index + 1} / ${exerciseCards.length}`;
-    if (restTimer) restTimer.textContent = "00:00";
-    setSessionState(`Plan: ${sets} series · ${reps} reps`);
-    updateSessionProgressUI();
-
-    currentCard.scrollIntoView({ behavior: "smooth", block: "start" });
-
-    const completeButton = currentCard.querySelector('[data-complete-exercise]');
-    if (completeButton instanceof HTMLButtonElement) {
-      completeButton.disabled = currentCard.dataset.completed === "true";
-    }
-  }
-
-  function advanceToNext() {
-    const nextIndex = activeIndex + 1;
-    if (nextIndex >= exerciseCards.length) {
-      clearRestTimer();
-      if (restTimer) restTimer.textContent = "00:00";
-      setSessionState("Entrenamiento completado. Todo listo para cerrar la sesión");
-      setCurrentExerciseLabel("Finalizado");
-      updateProgress();
-      updateNextUp();
-      return;
-    }
-
-    showCard(nextIndex);
-  }
-
-  function startRest(restSeconds, onFinish) {
-    clearRestTimer();
-
-    if (!restTimer) return;
-
+    currentRestOnFinish = onFinish;
     restLastDuration = Math.max(0, restSeconds);
+    restTotalDuration = restLastDuration;
 
     if (!restSeconds || restSeconds <= 0) {
       renderRestTime(0);
-      if (timerHelper) timerHelper.textContent = "Sin descanso programado. Avanzando...";
-      window.setTimeout(() => {
-        if (typeof onFinish === "function") onFinish();
-      }, 350);
+      hideRestOverlay();
+      window.setTimeout(() => { if (typeof onFinish === "function") onFinish(); }, 300);
       return;
     }
 
+    showRestOverlay(nextName);
     restEndsAt = Date.now() + restSeconds * 1000;
     renderRestTime(restSeconds);
-    setSessionState("Descanso en curso");
-    restTimer.classList.add("animate-pulse");
-    if (timerHelper) timerHelper.textContent = "Respira, recupera y prepara la siguiente serie.";
 
     restInterval = window.setInterval(() => {
       if (!restEndsAt) return;
-
       const remaining = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
       renderRestTime(remaining);
-
       if (remaining <= 0) {
         clearRestTimer();
         renderRestTime(0);
-        setSessionState("Descanso terminado");
-        if (timerHelper) timerHelper.textContent = "Listo para continuar.";
         window.setTimeout(() => {
+          hideRestOverlay();
           if (typeof onFinish === "function") onFinish();
-        }, 450);
+        }, 400);
       }
     }, 250);
   }
 
-  function finishExercise(card) {
-    card.dataset.completed = "true";
-    card.classList.add("ring-2", "ring-emerald-400", "ring-emerald-400/40");
-
-    card.querySelectorAll("input, textarea").forEach((field) => {
-      field.disabled = true;
-    });
-
-    const button = card.querySelector('[data-complete-exercise]');
-    if (button instanceof HTMLButtonElement) {
-      button.textContent = "Ejercicio listo";
-      button.disabled = true;
-    }
+  // ─── Exercise Navigation ─────────────────────────────────────────
+  function nextExerciseName(afterIndex) {
+    const next = exerciseCards[afterIndex + 1];
+    return next ? (next.dataset.exerciseName ?? null) : null;
   }
+  function showCard(index) {
+    clearRestTimer();
+    activeIndex = index;
+    exerciseCards.forEach((c, i) => c.classList.toggle("hidden", i !== index));
 
-  function markComplete(card) {
-    if (!(card instanceof HTMLElement)) return;
-
-    const completed = getCompletedSeries(card);
-    const total = getPlannedSets(card);
-    const restSeconds = Number(card.dataset.restSeconds ?? 0);
-
-    playSeriesSound();
-
-    if (completed + 1 >= total) {
-      card.dataset.seriesCompleted = String(total);
-      syncSeriesUI(card);
-      finishExercise(card);
-        setSessionState("Ejercicio completado");
-      queueDraftSave();
-      startRest(restSeconds, () => {
-        updateProgress();
-        updateNextUp();
-        advanceToNext();
-      });
-      updateProgress();
-      updateNextUp();
-      return;
-    }
-
-    card.dataset.seriesCompleted = String(completed + 1);
-    syncSeriesUI(card);
-    const button = card.querySelector('[data-complete-exercise]');
-    if (button instanceof HTMLButtonElement) {
-      button.textContent = "Descansando...";
-      button.disabled = true;
-    }
-    setSessionState(`Serie ${completed + 1} de ${total} completada`);
-    queueDraftSave();
-    startRest(restSeconds, () => {
-      syncSeriesUI(card);
-      setSessionState(`Listo para la serie ${completed + 2} de ${total}`);
-      updateProgress();
-      updateNextUp();
-    });
-    updateProgress();
-    updateNextUp();
-  }
-
-  startButton?.addEventListener("click", () => {
-    introPanel?.classList.add("hidden");
-    recentSessions?.classList.add("hidden");
-    nextUpPanel?.classList.add("hidden");
-    form?.classList.remove("hidden");
-    form?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (activeIndex < 0) showCard(0);
-    else showCard(activeIndex);
-  });
-
-  adjustRestButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const delta = Number(button.dataset.adjustRest || 0);
-      adjustRest(delta);
-    });
-  });
-
-  window.addEventListener("beforeunload", saveDraft);
-
-  exerciseCards.forEach((card, index) => {
-    const button = card.querySelector('[data-complete-exercise]');
-    if (!(button instanceof HTMLButtonElement)) return;
+    const card = exerciseCards[index];
+    if (!card) { updateProgressSegments(); return; }
 
     applyCarryDefaults(card);
     syncSeriesUI(card);
+    updateProgressSegments();
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    card.querySelectorAll("input, textarea").forEach((field) => {
-      field.addEventListener("input", queueDraftSave);
-      field.addEventListener("change", queueDraftSave);
+    const btn = card.querySelector("[data-complete-exercise]");
+    if (btn instanceof HTMLButtonElement) btn.disabled = card.dataset.completed === "true";
+  }
+  function advanceToNext() {
+    const next = activeIndex + 1;
+    if (next >= exerciseCards.length) { showPhase("complete"); return; }
+    showCard(next);
+  }
+  function finishExercise(card) {
+    card.dataset.completed = "true";
+    card.querySelectorAll("input").forEach(f => { f.disabled = true; });
+    const btn = card.querySelector("[data-complete-exercise]");
+    if (btn instanceof HTMLButtonElement) {
+      btn.textContent = "✓  Ejercicio listo";
+      btn.disabled = true;
+      btn.classList.remove("bg-emerald-500", "shadow-emerald-500/25");
+      btn.classList.add("bg-emerald-700/60");
+    }
+    // Fill segment
+    const seg = progressSegments[activeIndex];
+    if (seg) { const bar = seg.querySelector("div"); if (bar) bar.style.width = "100%"; }
+  }
+  function markComplete(card) {
+    if (!(card instanceof HTMLElement)) return;
+    const done  = getCompletedSeries(card);
+    const total = getPlannedSets(card);
+    const rest  = Number(card.dataset.restSeconds ?? 0);
+    const nextName = nextExerciseName(activeIndex);
+
+    playSeriesSound();
+
+    // Burst animation
+    const btn = card.querySelector("[data-complete-exercise]");
+    if (btn instanceof HTMLElement) {
+      btn.classList.remove("series-burst");
+      void btn.offsetWidth;
+      btn.classList.add("series-burst");
+    }
+
+    if (done + 1 >= total) {
+      card.dataset.seriesCompleted = String(total);
+      syncSeriesUI(card);
+      finishExercise(card);
+      queueDraftSave();
+      startRest(rest, nextName, () => advanceToNext());
+      return;
+    }
+
+    card.dataset.seriesCompleted = String(done + 1);
+    syncSeriesUI(card);
+    if (btn instanceof HTMLButtonElement) { btn.textContent = "Descansando..."; btn.disabled = true; }
+    queueDraftSave();
+    startRest(rest, card.dataset.exerciseName ?? "", () => {
+      syncSeriesUI(card);
     });
+  }
 
-    const weightInput = getWeightInput(card);
-    if (weightInput instanceof HTMLInputElement) {
-      weightInput.addEventListener("input", () => {
-        const value = String(weightInput.value ?? "").trim();
-        if (value) carryWeightValue = value;
+  // ─── Draft ───────────────────────────────────────────────────────
+  function queueDraftSave() {
+    if (draftSaveTimer) window.clearTimeout(draftSaveTimer);
+    draftSaveTimer = window.setTimeout(saveDraft, 300);
+  }
+  function saveDraft() {
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({
+        activeIndex,
+        exercises: exerciseCards.map(c => ({
+          exerciseId:     Number(c.dataset.exerciseId || 0),
+          seriesCompleted: getCompletedSeries(c),
+          completed:      c.dataset.completed === "true",
+          weight_kg:      String(c.querySelector('[data-field="weight_kg"]')?.value ?? ""),
+          reps_done:      String(c.querySelector('[data-field="reps_done"]')?.value ?? ""),
+          rest_seconds:   String(c.querySelector('[data-field="rest_seconds"]')?.value ?? ""),
+          notes:          String(c.querySelector('[data-field="notes"]')?.value ?? ""),
+        })),
+      }));
+    } catch { /* ignore */ }
+  }
+  function restoreDraft() {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (!draft || typeof draft !== "object") return;
+      const saved = Array.isArray(draft.exercises) ? draft.exercises : [];
+      exerciseCards.forEach(card => {
+        const exerciseId = Number(card.dataset.exerciseId || 0);
+        const item = saved.find(x => Number(x.exerciseId || 0) === exerciseId);
+        if (!item) return;
+        const sc = Number(item.seriesCompleted ?? 0);
+        if (Number.isFinite(sc) && sc >= 0) card.dataset.seriesCompleted = String(sc);
+        if (item.completed) card.dataset.completed = "true";
+        const set = (sel, val) => { const el = card.querySelector(sel); if (el && val !== undefined) el.value = String(val ?? ""); };
+        set('[data-field="weight_kg"]',   item.weight_kg);
+        set('[data-field="reps_done"]',   item.reps_done);
+        set('[data-field="rest_seconds"]', item.rest_seconds);
+        set('[data-field="notes"]',        item.notes);
+        rememberWeightFromCard(card);
+        syncSeriesUI(card);
+      });
+      if (typeof draft.activeIndex === "number" && draft.activeIndex >= 0) activeIndex = draft.activeIndex;
+    } catch { /* ignore */ }
+  }
+  function clearDraft() { try { localStorage.removeItem(draftKey); } catch { /* ignore */ } }
+
+  // ─── Data collection & Submit ────────────────────────────────────
+  function collectExercises() {
+    return exerciseCards.map(c => ({
+      routine_exercise_id: Number(c.dataset.exerciseId || 0),
+      completed:  c.dataset.completed === "true",
+      weight_kg:  parseDecimal(c.querySelector('[data-field="weight_kg"]')?.value),
+      reps_done:  String(c.querySelector('[data-field="reps_done"]')?.value ?? "").trim(),
+      sets_done:  getCompletedSeries(c),
+      rest_seconds: parseInteger(c.querySelector('[data-field="rest_seconds"]')?.value),
+      notes:      String(c.querySelector('[data-field="notes"]')?.value ?? "").trim(),
+    }));
+  }
+  function showMessage(text, type = "error") {
+    if (!messageBox) return;
+    messageBox.textContent = text;
+    messageBox.classList.remove("hidden");
+    messageBox.className = "mt-4 w-full max-w-xs rounded-2xl px-4 py-3 text-sm font-medium " + (
+      type === "success"
+        ? "bg-emerald-500/20 text-emerald-300"
+        : "bg-red-500/20 text-red-300"
+    );
+  }
+
+  // ─── Event Listeners ─────────────────────────────────────────────
+  startButton?.addEventListener("click", () => {
+    showPhase("training");
+    restoreDraft();
+    if (activeIndex < 0) showCard(0);
+    else showCard(activeIndex);
+    updateProgressSegments();
+  });
+
+  btnBackIntro?.addEventListener("click", () => {
+    clearRestTimer();
+    hideRestOverlay();
+    showPhase("intro");
+  });
+
+  skipRestButton?.addEventListener("click", () => {
+    clearRestTimer();
+    hideRestOverlay();
+    const fn = currentRestOnFinish;
+    currentRestOnFinish = null;
+    if (typeof fn === "function") fn();
+  });
+
+  adjustRestButtons.forEach(btn => {
+    btn.addEventListener("click", () => adjustRest(Number(btn.dataset.adjustRest || 0)));
+  });
+
+  toggleNotesBtn?.addEventListener("click", () => {
+    if (!sessionNotesInput) return;
+    const hidden = sessionNotesInput.classList.contains("hidden");
+    sessionNotesInput.classList.toggle("hidden", !hidden);
+    if (toggleNotesBtn) toggleNotesBtn.textContent = hidden ? "− Ocultar notas" : "+ Agregar notas de sesión";
+    if (hidden) sessionNotesInput.focus();
+  });
+
+  // Info drawer
+  document.addEventListener("click", e => {
+    const infoBtn = e.target?.closest("[data-info-btn]");
+    if (!infoBtn) return;
+    const card       = infoBtn.closest("[data-workout-card]");
+    const exerciseId = card?.dataset.exerciseId ?? "";
+    const name       = card?.dataset.exerciseName ?? "Ejercicio";
+    const notes      = card?.dataset.exerciseNotes ?? "";
+    const category   = card?.dataset.libCategory ?? "";
+    const muscle     = card?.dataset.libMuscle ?? "";
+    const equipment  = card?.dataset.libEquipment ?? "";
+    const accent     = card?.dataset.libAccent ?? "#10b981";
+    const hasLib     = card?.dataset.hasLib === "1";
+
+    const drawerNameEl    = document.getElementById("drawer-exercise-name");
+    const drawerContentEl = document.getElementById("drawer-content");
+    if (!drawerNameEl || !drawerContentEl) return;
+
+    drawerNameEl.textContent = name;
+
+    // Chips row
+    const chips = [
+      category  ? `<span style="background:${accent}22;color:${accent}" class="rounded-full px-3 py-1 text-xs font-bold">${category}</span>` : "",
+      muscle    ? `<span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-300">${muscle}</span>` : "",
+      equipment ? `<span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-300">${equipment}</span>` : "",
+    ].filter(Boolean).join("");
+
+    // Avatar HTML (pre-rendered on server, cloned here)
+    const avatarEl = exerciseId ? document.getElementById(`ex-avatar-${exerciseId}`) : null;
+    const avatarHTML = avatarEl ? avatarEl.innerHTML : "";
+
+    // Description: trainer notes first, then library description (via paragraph splitting)
+    const descHTML = notes
+      ? `<div class="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+           <p class="text-xs font-semibold text-amber-400 mb-1">Nota del entrenador</p>
+           <p class="text-slate-300">${notes}</p>
+         </div>`
+      : "";
+
+    // Generic guide built from category
+    const guideMap = {
+      "Push":      ["Mantén el tronco firme durante todo el movimiento.", "Baja con control y empuja con intención.", "Cuida la alineación de hombros y codos."],
+      "Pull":      ["Abre el pecho antes de iniciar el tirón.", "Tira con el codo, no solo con la mano.", "Pausa al final para sentir la contracción."],
+      "Pierna":    ["Activa el abdomen y fija la cadera antes de bajar.", "Rodillas en línea con los pies durante todo el recorrido.", "Empuja el suelo en la subida."],
+      "Posterior": ["Mantén la espalda neutra, no redondees.", "La bisagra de cadera inicia el movimiento.", "Siente el trabajo en glúteos e isquios."],
+      "Core":      ["Pelvis y tórax en posición neutra siempre.", "Mueve solo lo necesario.", "Prioriza el control sobre la velocidad."],
+      "Cardio":    ["Ritmo constante y respiración controlada.", "Mantén la técnica aunque suba la intensidad.", "Activa el abdomen en cada repetición."],
+      "Movilidad": ["Movimiento suave y progresivo.", "Sin rebotes ni tirones.", "Busca amplitud, no velocidad."],
+    };
+    const tips = guideMap[category] ?? ["Controla el recorrido completo.", "Mantén buena postura durante toda la serie.", "Respira de forma constante."];
+    const guideHTML = hasLib ? `
+      <div class="mt-3 space-y-2">
+        ${tips.map(t => `<div class="flex items-start gap-2"><span style="color:${accent}" class="mt-0.5 shrink-0 text-sm">▸</span><p class="text-slate-300 text-sm">${t}</p></div>`).join("")}
+      </div>` : "";
+
+    drawerContentEl.innerHTML = `
+      ${avatarHTML ? `<div class="mb-4 overflow-hidden rounded-2xl">${avatarHTML}</div>` : ""}
+      ${chips ? `<div class="flex flex-wrap gap-2 mb-4">${chips}</div>` : ""}
+      ${descHTML}
+      ${guideHTML}
+      ${!notes && !hasLib ? `<p class="text-slate-400">Sin descripción disponible.</p>` : ""}
+    `;
+
+    infoDrawer?.classList.remove("hidden");
+    infoDrawer?.classList.add("open");
+    drawerBackdrop?.classList.remove("hidden");
+  });
+  function closeDrawer() {
+    infoDrawer?.classList.add("hidden");
+    infoDrawer?.classList.remove("open");
+    drawerBackdrop?.classList.add("hidden");
+  }
+  document.getElementById("close-drawer")?.addEventListener("click", closeDrawer);
+  drawerBackdrop?.addEventListener("click", closeDrawer);
+
+  // Exercise complete
+  exerciseCards.forEach((card, index) => {
+    const btn = card.querySelector("[data-complete-exercise]");
+    if (!(btn instanceof HTMLButtonElement)) return;
+    applyCarryDefaults(card);
+    syncSeriesUI(card);
+    card.querySelectorAll("input, textarea").forEach(f => {
+      f.addEventListener("input",  queueDraftSave);
+      f.addEventListener("change", queueDraftSave);
+    });
+    const wi = getWeightInput(card);
+    if (wi instanceof HTMLInputElement) {
+      wi.addEventListener("input", () => {
+        const v = String(wi.value ?? "").trim();
+        if (v) carryWeightValue = v;
         queueDraftSave();
       });
     }
-
-    button.addEventListener("click", () => {
+    btn.addEventListener("click", () => {
       if (index !== activeIndex) return;
       rememberWeightFromCard(card);
       markComplete(card);
     });
   });
 
-  function collectExercises() {
-    return exerciseCards.map((card) => ({
-      routine_exercise_id: Number(card.dataset.exerciseId || 0),
-      completed: card.dataset.completed === "true",
-      weight_kg: parseDecimal(card.querySelector('[data-field="weight_kg"]')?.value),
-      reps_done: String(card.querySelector('[data-field="reps_done"]')?.value ?? "").trim(),
-      sets_done: getCompletedSeries(card),
-      rest_seconds: parseInteger(card.querySelector('[data-field="rest_seconds"]')?.value),
-      notes: String(card.querySelector('[data-field="notes"]')?.value ?? "").trim(),
-    }));
-  }
-
-  form?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
+  // Submit
+  submitButton?.addEventListener("click", async () => {
     try {
       messageBox?.classList.add("hidden");
-
       const payload = {
-        routine_day_id: Number(form.elements["routine_day_id"]?.value ?? 0),
-        client_id: Number(form.elements["client_id"]?.value ?? clientId),
-        started_at: String(form.elements["started_at"]?.value ?? sessionStartedAt),
-        finished_at: new Date().toISOString(),
-        notes: String(form.elements["session_notes"]?.value ?? "").trim(),
-        exercises: collectExercises(),
+        routine_day_id: Number(document.getElementById("hid-routine-day-id")?.value ?? 0),
+        client_id:      Number(document.getElementById("hid-client-id")?.value ?? clientId),
+        started_at:     String(document.getElementById("hid-started-at")?.value ?? sessionStartedAt),
+        finished_at:    new Date().toISOString(),
+        notes:          String(sessionNotesInput?.value ?? "").trim(),
+        exercises:      collectExercises(),
       };
-
-      if (submitButton) {
+      if (submitButton instanceof HTMLButtonElement) {
         submitButton.textContent = "Guardando...";
-        submitButton.setAttribute("disabled", "true");
+        submitButton.disabled   = true;
       }
-
       const response = await fetch("/api/routines/workout-session", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body:    JSON.stringify(payload),
       });
-
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No se pudo guardar la sesión");
-
-      showMessage("Sesión guardada. Tu progreso quedó registrado.", "success");
-      setSessionState("Sesión guardada");
-      if (completionPanel) {
-        completionPanel.classList.remove("hidden");
-        completionPanel.innerHTML = `
-          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 dark:text-emerald-300">Sesión guardada</p>
-          <h3 class="mt-2 text-lg font-bold">Tu progreso quedó registrado correctamente</h3>
-          <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-200">Redirigiendo al resumen de la rutina para continuar el seguimiento.</p>
-        `;
-      }
+      showMessage("Sesión guardada correctamente.", "success");
       clearDraft();
-
       setTimeout(() => {
         window.location.href = `/clients/${clientId}/routine?status=success&message=Sesión%20guardada`;
       }, 1400);
-    } catch (error) {
-      showMessage(error instanceof Error ? error.message : "Ocurrió un error inesperado");
-      if (submitButton) {
-        submitButton.textContent = "Guardar y finalizar";
-        submitButton.removeAttribute("disabled");
+    } catch (err) {
+      showMessage(err instanceof Error ? err.message : "Ocurrió un error inesperado");
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.textContent = "Guardar sesión";
+        submitButton.disabled   = false;
       }
-      updateSubmitState();
     }
   });
 
-  function updateTrainingHeader() {
-    if (trainingTitle) {
-      trainingTitle.textContent = activeIndex >= 0 ? `Paso ${activeIndex + 1} de ${exerciseCards.length}` : "Sesión en curso";
-    }
-    if (progressPill) {
-      progressPill.textContent = `${Math.max(1, activeIndex + 1)} / ${exerciseCards.length}`;
-    }
-  }
-
-  updateProgress();
-  updateNextUp();
-  updateTrainingHeader();
-  restoreDraft();
-  updateProgress();
-  updateNextUp();
-  updateTrainingHeader();
+  window.addEventListener("beforeunload", saveDraft);
+  updateProgressSegments();
 </script>

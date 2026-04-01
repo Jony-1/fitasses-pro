@@ -12,33 +12,45 @@ const { items, variant } = Astro.props as Props;
 <nav
   aria-label={variant === "desktop" ? "Navegación principal" : "Navegación móvil"}
   class:list={[
-    variant === "desktop" ? "flex-1 space-y-2 p-4" : "flex gap-2 overflow-x-auto pb-1",
+    variant === "desktop" ? "space-y-0.5 px-3" : "flex gap-1.5 overflow-x-auto pb-0.5",
   ]}
 >
-  {
-    items.map((item) => (
-      <a
-        href={item.href}
-        aria-current={item.active ? "page" : undefined}
-        class:list={
-          variant === "desktop"
-            ? [
-                "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition",
-                item.active
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
-              ]
-            : [
-                "whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition",
-                item.active
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                  : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
-              ]
-        }
-      >
-        <span class={variant === "desktop" ? "text-base" : "mr-1"}>{item.icon}</span>
-        <span>{item.label}</span>
-      </a>
-    ))
-  }
+  {items.map((item) => (
+    <a
+      href={item.href}
+      aria-current={item.active ? "page" : undefined}
+      class:list={
+        variant === "desktop"
+          ? [
+              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+              item.active
+                ? "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400 font-semibold"
+                : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-200",
+            ]
+          : [
+              "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
+              item.active
+                ? "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+                : "bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-400",
+            ]
+      }
+    >
+      {variant === "desktop" ? (
+        <>
+          <span class:list={["flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-base transition-all",
+            item.active
+              ? "bg-emerald-500/20 dark:bg-emerald-500/20"
+              : "bg-slate-100 dark:bg-white/[0.05] group-hover:bg-slate-200 dark:group-hover:bg-white/10"
+          ]}>{item.icon}</span>
+          <span>{item.label}</span>
+          {item.active && <span class="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-500"></span>}
+        </>
+      ) : (
+        <>
+          <span>{item.icon}</span>
+          <span>{item.label}</span>
+        </>
+      )}
+    </a>
+  ))}
 </nav>

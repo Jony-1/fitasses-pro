@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* Activa dark mode por clase .dark en <html> */
 @custom-variant dark (&:where(.dark, .dark *));
 
 html {
@@ -9,10 +8,11 @@ html {
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  @apply bg-slate-50 text-slate-900 dark:text-slate-100;
+  background-color: #f8fafc;
   background-image:
-    radial-gradient(circle at top, rgba(16, 185, 129, 0.08), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.06), transparent 28%);
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(16, 185, 129, 0.06), transparent),
+    radial-gradient(ellipse 50% 40% at 90% 100%, rgba(139, 92, 246, 0.04), transparent);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -20,38 +20,69 @@ body {
 }
 
 html.dark body {
-  background-color: #020617;
+  background-color: #070c18;
   background-image:
-    radial-gradient(circle at top, rgba(16, 185, 129, 0.12), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.1), transparent 30%),
-    linear-gradient(180deg, rgba(2, 6, 23, 0.98), rgba(15, 23, 42, 0.98));
+    radial-gradient(ellipse 90% 55% at 50% -5%, rgba(16, 185, 129, 0.11), transparent),
+    radial-gradient(ellipse 55% 45% at 95% 105%, rgba(139, 92, 246, 0.07), transparent);
 }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-transparent; }
+::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-300 dark:bg-slate-700; }
+::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-600; }
 
 ::selection {
-  @apply bg-emerald-200 text-emerald-950 dark:bg-emerald-500/30 dark:text-emerald-50;
+  @apply bg-emerald-200 text-emerald-950 dark:bg-emerald-500/25 dark:text-emerald-50;
 }
 
-img,
-svg,
-video,
-canvas {
-  display: block;
-  max-width: 100%;
+img, svg, video, canvas { display: block; max-width: 100%; }
+
+input, textarea, select {
+  @apply outline-none transition;
+  &:focus-visible {
+    @apply ring-2 ring-emerald-500/40 ring-offset-0;
+  }
 }
 
-/* Inputs consistentes */
-input,
-textarea,
-select {
-  @apply outline-none transition focus-visible:ring-2 focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-500/30;
-}
-
-/* Botones más suaves */
 button {
-  @apply transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-500/30;
+  @apply transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40;
 }
 
-/* Links base */
 a {
-  @apply transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-500/30;
+  @apply transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40;
+}
+
+/* Animaciones globales reutilizables */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in-up  { animation: fade-in-up  0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-fade-in     { animation: fade-in     0.3s ease both; }
+.animate-scale-in    { animation: scale-in    0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Staggered children */
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 60ms; }
+.stagger > *:nth-child(3) { animation-delay: 120ms; }
+.stagger > *:nth-child(4) { animation-delay: 180ms; }
+.stagger > *:nth-child(5) { animation-delay: 240ms; }
+.stagger > *:nth-child(6) { animation-delay: 300ms; }
+
+/* Glow effect utility */
+.glow-emerald {
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.18), 0 0 4px rgba(16, 185, 129, 0.08);
+}
+.dark .glow-emerald {
+  box-shadow: 0 0 32px rgba(16, 185, 129, 0.22), 0 0 8px rgba(16, 185, 129, 0.1);
 }
