@@ -1,0 +1,27 @@
+{
+  "packageId": "com.fitassess.pro",
+  "host": "fitasses-pro-production.up.railway.app",
+  "name": "FitAssess Pro",
+  "launcherName": "FitAssess",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#10b981",
+  "backgroundColor": "#070c18",
+  "startUrl": "/login",
+  "iconUrl": "https://fitasses-pro-production.up.railway.app/icons/icon-512.png",
+  "maskableIconUrl": "https://fitasses-pro-production.up.railway.app/icons/icon-512.png",
+  "monochromeIconUrl": "https://fitasses-pro-production.up.railway.app/icons/icon-192.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingMode": "mine",
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://fitasses-pro-production.up.railway.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": { "enabled": false },
+    "playBilling": { "enabled": false }
+  },
+  "enableNotifications": false,
+  "shortcuts": [],
+  "minSdkVersion": 21,
+  "targetSdkVersion": 34
+}
