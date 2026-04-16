@@ -671,3 +671,4 @@ Hay que revisar ese archivo, seguramente un import mal cerrado.
 No reinventar estructura:
 auth está en src/auth, no en src/lib/auth.
 ```
+

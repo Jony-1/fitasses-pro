@@ -4,7 +4,13 @@ import "../styles/global.css";
 const user = Astro.locals.user;
 
 if (user) {
-    return Astro.redirect(String(user.role) === "gym_manager" ? "/gym-manager" : "/dashboard");
+    if (String(user.role) === "gym_manager") {
+        return Astro.redirect("/gym-manager");
+    }
+    if (String(user.role) === "client") {
+        return Astro.redirect("/client-home");
+    }
+    return Astro.redirect("/dashboard");
 }
 
 const error = Astro.url.searchParams.get("error");

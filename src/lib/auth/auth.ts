@@ -41,6 +41,9 @@ export async function createSession(userId: number) {
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
 
+    // Eliminar sesiones anteriores del usuario antes de crear una nueva
+    await sql`DELETE FROM sessions WHERE user_id = ${userId}`;
+
     await sql`
     INSERT INTO sessions (user_id, token, expires_at)
     VALUES (${userId}, ${token}, ${expiresAt.toISOString()})

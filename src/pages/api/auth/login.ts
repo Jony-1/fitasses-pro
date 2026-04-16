@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { sql } from "../../../lib/db/client";
 import { verifyPassword } from "../../../lib/auth/password";
-import { createSession } from "../../../lib/auth/session";
+import { createSession } from "../../../lib/auth/auth";
 
 function redirectToLogin(error: string) {
     return new Response(null, {
@@ -75,6 +75,8 @@ export const POST: APIRoute = async (context) => {
             status: 303,
             headers: {
                 Location: redirectTo,
+                "Cache-Control": "no-store, no-cache, must-revalidate, private",
+                "Pragma": "no-cache",
             },
         });
     } catch (error) {

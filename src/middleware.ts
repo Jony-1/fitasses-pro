@@ -26,10 +26,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const pathname = context.url.pathname;
 
     const isPublic = PUBLIC_EXACT_PATHS.has(pathname) || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-        
+
     if (!user && !isPublic) {
         return context.redirect("/login");
     }
 
-    return next();
+    const response = await next();
+
+    // Evitar que proxies o CDNs cacheen páginas con datos de usuario
+    if (user || !isPublic) {
+        response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+        response.headers.set("Pragma", "no-cache");
+    }
+
+    return response;
 });
