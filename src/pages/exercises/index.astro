@@ -195,7 +195,7 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
       </div>
     </form>
 
-    <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {visibleExercisesWithImages.map((exercise) => (
         <article
           data-exercise-card
@@ -328,8 +328,8 @@ const sourceCount = exerciseCatalog.reduce<Record<string, number>>((acc, exercis
     </div>
   </div>
 
-  <dialog id="exercise-modal" hidden={!canEditExercise} class="exercise-modal fixed inset-0 m-0 h-[100dvh] w-[100vw] max-w-none bg-transparent p-4 backdrop:bg-slate-950/85 backdrop:backdrop-blur-md dark:backdrop:bg-slate-950/90">
-    <form method="POST" action="/api/exercises/save" class="w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_30px_120px_rgba(0,0,0,0.55)] dark:border-slate-800 dark:bg-slate-950">
+  <dialog id="exercise-modal" hidden={!canEditExercise} class="exercise-modal fixed inset-0 m-0 h-[100dvh] w-[100vw] max-w-none bg-transparent p-2 sm:p-4 backdrop:bg-slate-950/85 backdrop:backdrop-blur-md dark:backdrop:bg-slate-950/90">
+    <form method="POST" action="/api/exercises/save" class="w-full max-w-6xl max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_30px_120px_rgba(0,0,0,0.55)] dark:border-slate-800 dark:bg-slate-950">
       <div class="flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">Biblioteca</p>

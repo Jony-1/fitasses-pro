@@ -60,7 +60,7 @@ const { showTrainerSelect = false, trainers = [], values = {} } = Astro.props;
     )
 }
 
-<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+<div class="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
     <div>
         <label
             for="full_name"
@@ -115,7 +115,7 @@ const { showTrainerSelect = false, trainers = [], values = {} } = Astro.props;
     <textarea
         id="notes"
         name="notes"
-        rows="4"
+        rows="3"
         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/10"
         placeholder="Ej. Molestias, restricciones, notas iniciales..."
     >{values.notes ?? ""}</textarea>

@@ -125,7 +125,7 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
           <span class="inline-flex items-center rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-emerald-400">
             {todayInfo.label}
           </span>
-          <h1 class="mt-3 text-4xl font-black leading-tight text-white">{todayDay.title}</h1>
+          <h1 class="mt-3 text-2xl font-black leading-tight text-white sm:text-4xl">{todayDay.title}</h1>
           {todayDay.focus && <p class="mt-2 text-slate-400">{todayDay.focus}</p>}
 
           <!-- Stats -->
@@ -254,7 +254,7 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
                     <p class="text-xs font-semibold uppercase tracking-widest text-emerald-400">
                       Ejercicio {index + 1} de {exerciseCount}
                     </p>
-                    <h2 class="mt-1 text-3xl font-black leading-tight text-white">{exercise.name}</h2>
+                    <h2 class="mt-1 text-xl font-black leading-tight text-white sm:text-3xl">{exercise.name}</h2>
                   </div>
                   {(lib || exercise.notes) && (
                     <button type="button" data-info-btn
@@ -437,7 +437,7 @@ const draftKey = `training-draft:${clientId}:${todayDay?.id ?? "none"}`;
       <!-- INFO DRAWER (z-50)                                -->
       <!-- ══════════════════════════════════════════════════ -->
       <div id="drawer-backdrop" class="hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"></div>
-      <div id="info-drawer" class="hidden fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-lg rounded-t-3xl bg-slate-900 px-6 pt-4 pb-10 shadow-2xl">
+      <div id="info-drawer" class="hidden fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-lg rounded-t-3xl bg-slate-900 px-6 pt-4 pb-10 shadow-2xl max-h-[80dvh] overflow-y-auto">
         <div class="mb-4 flex justify-center">
           <div class="h-1 w-10 rounded-full bg-white/20"></div>
         </div>

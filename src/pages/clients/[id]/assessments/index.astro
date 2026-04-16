@@ -112,18 +112,18 @@ function formatDelta(value: number | null, suffix = "") {
                     </div>
 
                     <div class="flex flex-col gap-3 sm:flex-row">
-                        <a href={`/clients/${client.id}/progress`} class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                        <a href={`/clients/${client.id}/progress`} class="inline-flex w-full items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200 sm:w-auto">
                             Ver progreso
                         </a>
                         {canManageClientAssessments && (
-                            <a href={`/clients/${client.id}/assessments/valoracion_new`} class="inline-flex items-center justify-center rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/30">
+                            <a href={`/clients/${client.id}/assessments/valoracion_new`} class="inline-flex w-full items-center justify-center rounded-xl border border-blue-300 px-4 py-2.5 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 dark:border-blue-800 dark:text-blue-200 dark:hover:bg-blue-950/30 sm:w-auto">
                                 Nueva valoración
                             </a>
                         )}
                     </div>
                 </div>
 
-                <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-900/70">
                         <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Peso</p>
                         <p class="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{formatNumber(latestAssessment.weight_kg, " kg")}</p>

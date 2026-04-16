@@ -45,7 +45,7 @@ const clientsTotal = clientsRows[0]?.total ?? 0;
             description="Desde aquí podrás gestionar entrenadores, gestores de gimnasio y revisar información general del sistema."
         />
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             <StatCard label="Entrenadores registrados" value={trainersTotal} />
             <StatCard label="Usuarios cliente" value={clientUsersTotal} />
             <StatCard label="Clientes creados" value={clientsTotal} />

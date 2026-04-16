@@ -31,12 +31,12 @@ const {
   {showTrainerChart && <DashboardTrainerChart items={dashboard.trainerClientCounts} />}
 
   {showAlerts ? (
-    <div class="grid gap-6 xl:grid-cols-2">
+    <div class="grid gap-6 lg:grid-cols-2">
       <DashboardAlerts alerts={dashboard.alerts} />
       <DashboardRecentNotifications items={dashboard.recentNotifications} />
     </div>
   ) : (
-    <div class="grid gap-6 xl:grid-cols-2">
+    <div class="grid gap-6 lg:grid-cols-2">
       <DashboardAttendanceSummary items={dashboard.attendanceSummary} />
       <DashboardRecentNotifications items={dashboard.recentNotifications} />
     </div>
@@ -44,7 +44,7 @@ const {
 
   <DashboardRiskClients items={dashboard.riskClients} />
 
-  <div class="grid gap-6 xl:grid-cols-2">
+  <div class="grid gap-6 lg:grid-cols-2">
     <DashboardRecentAssessments items={dashboard.recentAssessments} />
     <DashboardRecentClients items={dashboard.recentClients} />
   </div>
