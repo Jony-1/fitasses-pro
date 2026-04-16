@@ -44,7 +44,7 @@ const trainers =
   <div class="mx-auto max-w-5xl px-4 py-4 sm:px-6 lg:px-8 sm:py-6">
     <div class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950">
       <div class="grid gap-0 lg:grid-cols-[1fr_1.05fr]">
-        <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-6 text-slate-950 sm:p-8 lg:min-h-[calc(100vh-4rem)] lg:p-10">
+        <div class="relative hidden overflow-hidden bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-6 text-slate-950 sm:p-8 lg:flex lg:flex-col lg:min-h-[calc(100vh-4rem)] lg:p-10">
           <div class="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/20 blur-2xl"></div>
           <div class="absolute -bottom-16 right-12 h-56 w-56 rounded-full bg-black/10 blur-3xl"></div>
 
@@ -90,17 +90,17 @@ const trainers =
                 trainers={trainers}
               />
 
-              <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-6 dark:border-slate-800">
+              <div class="flex flex-col gap-3 border-t border-slate-200 pt-6 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-end">
                 <a
                   href="/clients"
-                  class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                  class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto"
                 >
                   Cancelar
                 </a>
 
                 <button
                   type="submit"
-                  class="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-400 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
+                  class="w-full rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-400 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300 sm:w-auto"
                 >
                   Guardar cliente
                 </button>

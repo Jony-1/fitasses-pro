@@ -75,8 +75,8 @@ const trainerRows = await sql`
             </a>
         </SectionHeader>
 
-        <div class="grid gap-6 xl:grid-cols-3">
-            <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:col-span-1">
+        <div class="grid gap-6 lg:grid-cols-3">
+            <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:col-span-1">
                 <h2 class="text-xl font-bold text-slate-900 dark:text-slate-100">{gym?.name ?? "Gimnasio"}</h2>
                 <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Entrenadores asignados: <strong>{trainerRows.length}</strong></p>
                 <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Clientes activos del gimnasio: <strong>{dashboard.stats.activeClients}</strong></p>
@@ -101,7 +101,7 @@ const trainerRows = await sql`
                 </div>
             </div>
 
-            <div class="xl:col-span-2">
+            <div class="lg:col-span-2">
                 <DashboardOverview dashboard={dashboard} showTrainerChart />
             </div>
         </div>

@@ -13,7 +13,7 @@ const { clientId, canManageClient, canManageAssessments, activeView } = Astro.pr
   {canManageClient && (
     <a
       href={`/clients/${clientId}/edit`}
-      class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30"
+      class="inline-flex w-full items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30 sm:w-auto"
     >
       Editar cliente
     </a>
@@ -23,7 +23,7 @@ const { clientId, canManageClient, canManageAssessments, activeView } = Astro.pr
     <button
       type="button"
       id="delete-client"
-      class="inline-flex items-center justify-center rounded-xl border border-red-300/60 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-950 transition hover:bg-red-500/20"
+      class="inline-flex w-full items-center justify-center rounded-xl border border-red-300/60 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-950 transition hover:bg-red-500/20 sm:w-auto"
     >
       Eliminar cliente
     </button>
@@ -32,7 +32,7 @@ const { clientId, canManageClient, canManageAssessments, activeView } = Astro.pr
   {activeView !== "routine" && (
     <a
       href={`/clients/${clientId}/routine`}
-      class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30"
+      class="inline-flex w-full items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30 sm:w-auto"
     >
       Mi rutina
     </a>
@@ -41,7 +41,7 @@ const { clientId, canManageClient, canManageAssessments, activeView } = Astro.pr
   {activeView !== "progress" && (
     <a
       href={`/clients/${clientId}/progress`}
-      class="inline-flex items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30"
+      class="inline-flex w-full items-center justify-center rounded-xl border border-white/30 bg-white/20 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-white/30 sm:w-auto"
     >
       Mi progreso
     </a>
@@ -50,7 +50,7 @@ const { clientId, canManageClient, canManageAssessments, activeView } = Astro.pr
   {activeView !== "assessments" && (
     <a
       href={`/clients/${clientId}/assessments`}
-      class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-900"
+      class="inline-flex w-full items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-900 sm:w-auto"
     >
       Valoraciones
     </a>

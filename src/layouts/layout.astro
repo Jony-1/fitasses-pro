@@ -130,6 +130,15 @@ const navItemsWithActive = computeNavItemsWithActive(buildNavItems(user, clientI
                   {user.name}
                 </span>
               )}
+
+              <!-- Cerrar sesión (móvil) -->
+              {user && (
+                <form action="/api/auth/logout" method="POST" class="md:hidden">
+                  <button type="submit" class="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10">
+                    Salir
+                  </button>
+                </form>
+              )}
             </div>
           </div>
 

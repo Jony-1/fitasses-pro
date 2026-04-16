@@ -103,12 +103,27 @@ const stats = [
           <span class="hidden dark:inline">☀️</span>
           </button>
 
-          <a href="/login" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-            Iniciar sesion
-          </a>
-          <a href="/register" class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
-            Registrarse
-          </a>
+          {user ? (
+            <>
+              <a href={String(user.role) === "gym_manager" ? "/gym-manager" : String(user.role) === "client" ? "/client-home" : "/dashboard"} class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                Mi panel
+              </a>
+              <form action="/api/auth/logout" method="POST" style="display:inline">
+                <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                  Cerrar sesión
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <a href="/login" class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                Iniciar sesion
+              </a>
+              <a href="/register" class="inline-flex items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">
+                Registrarse
+              </a>
+            </>
+          )}
         </div>
       </header>
 
@@ -129,12 +144,20 @@ const stats = [
               </p>
 
               <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-                <a href="/login" class="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-600">
-                  Entrar ahora
-                </a>
-                <a href="/register" class="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
-                  Crear cuenta
-                </a>
+                {user ? (
+                  <a href={String(user.role) === "gym_manager" ? "/gym-manager" : String(user.role) === "client" ? "/client-home" : "/dashboard"} class="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-600">
+                    Ir a mi panel
+                  </a>
+                ) : (
+                  <>
+                    <a href="/login" class="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-600">
+                      Entrar ahora
+                    </a>
+                    <a href="/register" class="inline-flex items-center justify-center rounded-2xl border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+                      Crear cuenta
+                    </a>
+                  </>
+                )}
               </div>
 
               <div class="mt-8 grid gap-3 sm:grid-cols-3">
@@ -245,12 +268,20 @@ const stats = [
             </div>
 
             <div class="flex flex-col gap-3 sm:flex-row">
-              <a href="/login" class="inline-flex items-center justify-center rounded-2xl bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300">
-                Iniciar sesion
-              </a>
-              <a href="/register" class="inline-flex items-center justify-center rounded-2xl border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
-                Registrarse
-              </a>
+              {user ? (
+                <a href={String(user.role) === "gym_manager" ? "/gym-manager" : String(user.role) === "client" ? "/client-home" : "/dashboard"} class="inline-flex items-center justify-center rounded-2xl bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300">
+                  Ir a mi panel
+                </a>
+              ) : (
+                <>
+                  <a href="/login" class="inline-flex items-center justify-center rounded-2xl bg-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 transition hover:bg-emerald-300">
+                    Iniciar sesion
+                  </a>
+                  <a href="/register" class="inline-flex items-center justify-center rounded-2xl border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+                    Registrarse
+                  </a>
+                </>
+              )}
             </div>
           </div>
         </section>
